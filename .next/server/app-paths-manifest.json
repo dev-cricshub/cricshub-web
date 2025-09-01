@@ -1,5 +1,4 @@
 {
   "/page": "app/page.js",
-  "/terms-of-service/page": "app/terms-of-service/page.js",
-  "/contact-us/page": "app/contact-us/page.js"
+  "/terms-of-service/page": "app/terms-of-service/page.js"
 }

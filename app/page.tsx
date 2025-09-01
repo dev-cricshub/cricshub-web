@@ -6,7 +6,7 @@ import Features from './components/Features';
 import Countdown from './components/Countdown';
 import SocialShare from './components/SocialShare';
 import Footer from './components/Footer';
-
+import Do from './components/Do';
 
 export default function Home() {
   return (
@@ -14,6 +14,7 @@ export default function Home() {
       <Hero />
       <Countdown />
       <Features />
+      <Do/>
       <SocialShare />
       <Footer />
     </div>

@@ -18,7 +18,7 @@ export default function Footer() {
     {
       name: "Instagram",
       icon: "ri-instagram-fill", // Using filled icon for solid look
-      link: "https://www.instagram.com/_cricshub/" // Replace with actual Instagram
+      link: "https://www.instagram.com/cricshubapp/" // Replace with actual Instagram
     },
     // You can add more social channels here
   ];

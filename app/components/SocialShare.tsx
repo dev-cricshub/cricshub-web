@@ -10,6 +10,8 @@ export default function CommunityConnect() {
     isSuccess: false,
     isAlreadyRegistered: false
   });
+
+  const [isLoading, setIsLoading] = useState(false);
   
   const socialChannels = [
     {
@@ -21,11 +23,11 @@ export default function CommunityConnect() {
       link: "https://www.linkedin.com/company/cricshub/about/"
     },
     {
-      name: "X (Twitter)", // Updated name
-      icon: "ri-twitter-x-fill", // Changed icon to X
+      name: "X (Twitter)",
+      icon: "ri-twitter-x-fill",
       value: "Follow for real-time sneak peeks.",
-      color: "bg-gray-700 hover:bg-gray-800", // Adjusted color for X
-      gradient: "from-gray-700 to-gray-800", // Adjusted gradient for X
+      color: "bg-gray-700 hover:bg-gray-800",
+      gradient: "from-gray-700 to-gray-800",
       link: "https://twitter.com/your-twitter-handle"
     },
     {
@@ -34,7 +36,7 @@ export default function CommunityConnect() {
       value: "Visual updates & community highlights.",
       color: "bg-pink-500 hover:bg-pink-600",
       gradient: "from-pink-500 to-pink-600",
-      link: "https://www.instagram.com/_cricshub/"
+      link: "https://www.instagram.com/cricshubapp/"
     },
     {
       name: "Email Us",
@@ -48,6 +50,7 @@ export default function CommunityConnect() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsLoading(true);
   
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
@@ -103,6 +106,8 @@ export default function CommunityConnect() {
         isSuccess: false,
         isAlreadyRegistered: false
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -117,7 +122,6 @@ export default function CommunityConnect() {
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className={`bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl transform transition-transform duration-300 scale-100`}>
             <div className="text-center">
-              {/* Conditional rendering for icons and GIFs */}
               {dialogue.isSuccess ? (
                 <div className="text-green-500 mb-4">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,9 +129,8 @@ export default function CommunityConnect() {
                   </svg>
                 </div>
               ) : dialogue.isAlreadyRegistered ? (
-                // Use an image tag for the GIF
                 <div className="mb-4">
-                  <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYTBkaW9kcTNieXgzZWppYWl0eHJ0enZ6OTVyZmp6cm1qbXg1aTZmaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/nVE8OaIGkUhf7rkieR/giphy.gif "alt="Already registered" className="h-24 w-auto mx-auto" />
+                  <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYTBkaW9kcTNieXgzZWppYWl0eHJ0enZ6OTVyZmp6cm1qbXg1aTZmaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/nVE8OaIGkUhf7rkieR/giphy.gif" alt="Already registered" className="h-24 w-auto mx-auto" />
                 </div>
               ) : (
                 <div className="text-red-500 mb-4">
@@ -155,13 +158,11 @@ export default function CommunityConnect() {
         <div className="text-center mb-20">
           <div
             className="inline-block bg-gray-100/50 backdrop-blur-sm text-gray-700 px-6 py-2 rounded-full text-sm font-semibold mb-4 border border-gray-300"
-            data-aos="zoom-in" data-aos-duration="600" // AOS for tagline
           >
             JOIN THE COMMUNITY
           </div>
           <h2
             className="text-5xl md:text-6xl font-bold text-gray-800 mb-6"
-            data-aos="fade-up" data-aos-delay="100" data-aos-duration="800" // AOS for heading
           >
             Stay Connected with
             <span className="block bg-gradient-to-r from-blue-600 to-gray-700 bg-clip-text text-transparent">
@@ -170,7 +171,6 @@ export default function CommunityConnect() {
           </h2>
           <p
             className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed"
-            data-aos="fade-up" data-aos-delay="200" data-aos-duration="800" // AOS for subheading
           >
             Be the first to know about CricsHub's launch, exclusive beta access, and development insights.
           </p>
@@ -180,7 +180,6 @@ export default function CommunityConnect() {
           {/* Social Channels Section */}
           <div
             className="bg-gray-50 rounded-3xl p-8 border border-gray-200 hover:shadow-lg transition-all duration-300"
-            data-aos="fade-right" data-aos-duration="1000" data-aos-once="true" // AOS for social channels column
           >
             <h3 className="text-3xl font-bold text-gray-800 mb-8">Follow Our Journey</h3>
             <div className="space-y-6">
@@ -188,8 +187,6 @@ export default function CommunityConnect() {
                 <div
                   key={index}
                   className="flex items-center space-x-4 group"
-                  data-aos="fade-up" data-aos-delay={300 + index * 100} data-aos-duration="800" // Staggered AOS for each channel
-                  data-aos-once="true"
                 >
                   <a href={channel.link} target="_blank" rel="noopener noreferrer" className="relative group flex items-center space-x-4 w-full">
                     <div className={`w-16 h-16 bg-gradient-to-r ${channel.gradient} rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-105 shadow-md group-hover:shadow-lg p-2 sm:p-0`}>
@@ -209,7 +206,6 @@ export default function CommunityConnect() {
           <div
             id="waitlist-form"
             className="bg-gray-50 rounded-3xl p-8 border border-gray-200 hover:shadow-lg transition-all duration-300"
-            data-aos="fade-left" data-aos-duration="1000" data-aos-once="true" // AOS for form column
           >
             <h3 className="text-3xl font-bold text-gray-800 mb-8">Join Our Exclusive Waitlist</h3>
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -218,19 +214,19 @@ export default function CommunityConnect() {
                 name="name"
                 placeholder="Your Name"
                 className="w-full px-6 py-4 rounded-2xl border border-gray-300 bg-white text-gray-800 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all duration-300"
-                data-aos="fade-up" data-aos-delay="100"
+                required
               />
               <input 
                 type="email" 
                 name="email"
                 placeholder="Your Email Address"
                 className="w-full px-6 py-4 rounded-2xl border border-gray-300 bg-white text-gray-800 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all duration-300"
-                data-aos="fade-up" data-aos-delay="200"
+                required
               />
               <select 
                 name="interest"
                 className="w-full px-6 py-4 rounded-2xl border border-gray-300 bg-white text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all duration-300 appearance-none pr-8 custom-select"
-                data-aos="fade-up" data-aos-delay="300"
+                required
               >
                 <option value="" disabled selected className="text-gray-500">I'm most excited about...</option>
                 <option value="live-scoring" className="text-gray-800">Live Match Scoring</option>
@@ -239,7 +235,6 @@ export default function CommunityConnect() {
                 <option value="fantasy-cricket" className="text-gray-800">Fantasy Cricket</option>
                 <option value="all-features" className="text-gray-800">All Features</option>
               </select>
-              {/* Custom arrow for select to maintain clean design */}
               <style jsx>{`
                 .custom-select {
                   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3e%3cpath d='M7 7l3-3 3 3m0 6l-3 3-3-3' stroke='%234B5563' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
@@ -249,12 +244,22 @@ export default function CommunityConnect() {
                 }
               `}</style>
               <button 
-  type="submit"
-  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg cursor-pointer whitespace-nowrap flex items-center justify-center"
-  data-aos="fade-up" data-aos-delay="400"
->
-  Get Early Access & Updates
-</button>
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg cursor-pointer whitespace-nowrap flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </span>
+                ) : (
+                  'Get Early Access & Updates'
+                )}
+              </button>
             </form>
           </div>
         </div>
