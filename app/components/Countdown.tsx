@@ -1,94 +1,104 @@
 'use client';
 
-import { useState } from "react"; // Import the useState hook
+import { useState } from "react";
 
 export default function Countdown() {
-  const [isNotified, setIsNotified] = useState(false);
-
-  const handleNotifyMeClick = () => {
-    setIsNotified(true);
-  };
-
   const stats = [
     {
-      number: "100K+",
-      label: "Live Matches Projected",
+      number: "1K+",
+      label: "Live Matches Scored",
       icon: "ri-play-circle-line",
-      gradient: "from-blue-500 to-blue-600",
-      color: "text-blue-600"
+      gradient: "from-blue-400 to-blue-600",
     },
     {
-      number: "50K+",
-      label: "YouTube Streams Supported",
+      number: "300+",
+      label: "YouTube Streams Managed",
       icon: "ri-youtube-line",
       gradient: "from-red-500 to-red-600",
-      color: "text-red-600"
     },
     {
-      number: "5K+",
-      label: "Tournaments Empowered",
+      number: "500+",
+      label: "Tournaments Organized",
       icon: "ri-trophy-line",
       gradient: "from-yellow-500 to-yellow-600",
-      color: "text-yellow-600"
     },
-    {
-      number: "1M+",
-      label: "Future Fantasy Players",
-      icon: "ri-star-line",
-      gradient: "from-purple-500 to-purple-600",
-      color: "text-purple-600"
-    }
   ];
 
   return (
-    <section className="py-24 bg-white text-gray-800 relative overflow-hidden">
-      <div className="absolute inset-0">
-        <div className="absolute top-32 left-32 w-40 h-40 bg-gray-100/50 rounded-full blur-2xl animate-pulse"></div>
-        <div className="absolute bottom-40 right-40 w-32 h-32 bg-gray-200/50 rounded-full blur-xl animate-pulse delay-1000"></div>
+    <section className="py-24 bg-gradient-to-b from-white to-gray-50 text-gray-800 relative overflow-hidden">
+      {/* Decorative Blurs */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-32 left-24 w-40 h-40 bg-gray-100/40 rounded-full blur-2xl animate-pulse"></div>
+        <div className="absolute bottom-32 right-24 w-32 h-32 bg-gray-200/40 rounded-full blur-xl animate-pulse delay-1000"></div>
       </div>
 
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="text-center mb-16">
-          <div 
-            className="inline-block bg-gray-100/50 backdrop-blur-sm text-gray-700 px-6 py-2 rounded-full text-sm font-semibold mb-4 border border-gray-300"
-            data-aos="fade-up" // Added AOS
-          >
-            GET READY FOR THE FUTURE OF CRICKET
-          </div>
-          <h2 
-            className="text-5xl md:text-6xl font-bold text-gray-800 mb-6"
-            data-aos="fade-up" data-aos-delay="100" // Added AOS
-          >
-            Experience the Cricket
-            <span className="block bg-gradient-to-r from-gray-600 to-gray-400 bg-clip-text text-transparent">
-              Revolution
-            </span>
-          </h2>
-          <p 
-            className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed"
-            data-aos="fade-up" data-aos-delay="200" // Added AOS
-          >
-            Prepare to transform your game experience with CricsHub's upcoming comprehensive platform – launching soon!
-          </p>
+      <div className="container mx-auto px-6 relative z-10 text-center">
+        {/* Launch Tagline */}
+        <div
+          className="inline-block bg-gray-100/60 backdrop-blur-sm text-gray-700 px-6 py-2 rounded-full text-sm font-semibold mb-4 border border-gray-300"
+          data-aos="fade-up"
+        >
+          CRICSHUB IS NOW LIVE
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+        {/* Main Heading */}
+        <h2
+          className="text-4xl md:text-5xl font-bold text-gray-800 mb-4"
+          data-aos="fade-up"
+          data-aos-delay="100"
+        >
+          Join the{" "}
+          <span className="bg-gradient-to-r from-gray-700 to-gray-500 bg-clip-text text-transparent">
+            Cricket Revolution
+          </span>
+        </h2>
+
+        {/* Subtext */}
+        <p
+          className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed"
+          data-aos="fade-up"
+          data-aos-delay="200"
+        >
+          Cricshub is officially live on Google Play! Dive into live scores,
+          manage tournaments, stream matches, and build your dream fantasy
+          teams — all in one powerful app made for every cricket lover.
+        </p>
+
+        {/* Stats Grid - Adjusted for 3 items */}
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-14 max-w-4xl mx-auto"
+          data-aos="fade-up"
+          data-aos-delay="300"
+        >
           {stats.map((stat, index) => (
-            <div 
-              key={index} 
-              className="bg-white rounded-3xl p-8 text-center hover:bg-gray-50 transition-all duration-500 transform hover:-translate-y-4 group border border-gray-200 shadow-sm"
-              data-aos="fade-up" // Fade up animation
-              data-aos-delay={index * 100 + 300} // Stagger delay for each card
+            <div
+              key={index}
+              className="bg-white border border-gray-200 rounded-2xl p-6 text-center shadow-sm hover:shadow-md transition-transform duration-300 hover:-translate-y-1"
             >
-              <div className={`w-20 h-20 bg-gradient-to-br ${stat.gradient} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                <i className={`${stat.icon} text-3xl text-white`}></i>
+              <div
+                className={`w-12 h-12 mx-auto mb-4 rounded-full bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}
+              >
+                <i className={`${stat.icon} text-xl text-white`}></i>
               </div>
-              <div className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 group-hover:scale-105 transition-transform duration-300">
+              <h3 className="text-xl font-bold text-gray-800 mb-1">
                 {stat.number}
-              </div>
-              <div className="text-gray-600 font-semibold">{stat.label}</div>
+              </h3>
+              <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
             </div>
           ))}
+        </div>
+
+        {/* CTA */}
+        <div className="mt-12" data-aos="fade-up" data-aos-delay="400">
+          <a
+            href="https://play.google.com/store/apps/details?id=dev.cricshub.team"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 border border-gray-300 px-6 py-3 rounded-full font-semibold text-gray-700 hover:bg-gray-100 hover:scale-105 transition-transform duration-300 shadow-sm"
+          >
+            <i className="ri-google-play-fill text-xl text-green-600"></i>
+            <span>Download Now on Google Play</span>
+          </a>
         </div>
       </div>
     </section>
