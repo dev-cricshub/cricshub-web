@@ -9,20 +9,36 @@ export default function Countdown() {
       label: "Live Matches Scored",
       icon: "ri-play-circle-line",
       gradient: "from-blue-400 to-blue-600",
+      animation: "scale"
     },
     {
       number: "300+",
       label: "YouTube Streams Managed",
       icon: "ri-youtube-line",
       gradient: "from-red-500 to-red-600",
+      animation: "slide"
     },
     {
       number: "500+",
       label: "Tournaments Organized",
       icon: "ri-trophy-line",
       gradient: "from-yellow-500 to-yellow-600",
+      animation: "rotate"
     },
   ];
+
+  const getAnimationClass = (animationType) => {
+    switch (animationType) {
+      case 'scale':
+        return 'hover:scale-105 hover:shadow-lg';
+      case 'slide':
+        return 'hover:translate-x-2 hover:shadow-lg';
+      case 'rotate':
+        return 'hover:rotate-1 hover:shadow-lg';
+      default:
+        return 'hover:scale-105';
+    }
+  };
 
   return (
     <section className="py-24 bg-gradient-to-b from-white to-gray-50 text-gray-800 relative overflow-hidden">
@@ -73,7 +89,7 @@ export default function Countdown() {
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="bg-white border border-gray-200 rounded-2xl p-6 text-center shadow-sm hover:shadow-md transition-transform duration-300 hover:-translate-y-1"
+              className={`bg-white border border-gray-200 rounded-2xl p-6 text-center shadow-sm transition-all duration-300 ease-in-out transform ${getAnimationClass(stat.animation)}`}
             >
               <div
                 className={`w-12 h-12 mx-auto mb-4 rounded-full bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}
@@ -89,17 +105,7 @@ export default function Countdown() {
         </div>
 
         {/* CTA */}
-        <div className="mt-12" data-aos="fade-up" data-aos-delay="400">
-          <a
-            href="https://play.google.com/store/apps/details?id=dev.cricshub.team"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 border border-gray-300 px-6 py-3 rounded-full font-semibold text-gray-700 hover:bg-gray-100 hover:scale-105 transition-transform duration-300 shadow-sm"
-          >
-            <i className="ri-google-play-fill text-xl text-green-600"></i>
-            <span>Download Now on Google Play</span>
-          </a>
-        </div>
+        
       </div>
     </section>
   );
