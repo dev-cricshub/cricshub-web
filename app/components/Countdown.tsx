@@ -9,36 +9,20 @@ export default function Countdown() {
       label: "Live Matches Scored",
       icon: "ri-play-circle-line",
       gradient: "from-blue-400 to-blue-600",
-      animation: "scale"
     },
     {
       number: "300+",
       label: "YouTube Streams Managed",
       icon: "ri-youtube-line",
       gradient: "from-red-500 to-red-600",
-      animation: "slide"
     },
     {
       number: "500+",
       label: "Tournaments Organized",
       icon: "ri-trophy-line",
       gradient: "from-yellow-500 to-yellow-600",
-      animation: "rotate"
     },
   ];
-
-  const getAnimationClass = (animationType) => {
-    switch (animationType) {
-      case 'scale':
-        return 'hover:scale-105 hover:shadow-lg';
-      case 'slide':
-        return 'hover:translate-x-2 hover:shadow-lg';
-      case 'rotate':
-        return 'hover:rotate-1 hover:shadow-lg';
-      default:
-        return 'hover:scale-105';
-    }
-  };
 
   return (
     <section className="py-24 bg-gradient-to-b from-white to-gray-50 text-gray-800 relative overflow-hidden">
@@ -89,7 +73,7 @@ export default function Countdown() {
           {stats.map((stat, index) => (
             <div
               key={index}
-              className={`bg-white border border-gray-200 rounded-2xl p-6 text-center shadow-sm transition-all duration-300 ease-in-out transform ${getAnimationClass(stat.animation)}`}
+              className="bg-white border border-gray-200 rounded-2xl p-6 text-center shadow-sm hover:shadow-md transition-transform duration-300 hover:-translate-y-1"
             >
               <div
                 className={`w-12 h-12 mx-auto mb-4 rounded-full bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}
