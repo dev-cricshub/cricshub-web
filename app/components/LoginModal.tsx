@@ -10,6 +10,7 @@ type Step = 'phone' | 'otp' | 'success';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 const COUNTRY_CODES = [
@@ -22,7 +23,7 @@ const COUNTRY_CODES = [
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 30;
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState(COUNTRY_CODES[0]);
@@ -101,8 +102,12 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
         // Close modal and refresh the page so the app picks up the new session
         setTimeout(() => {
-          onClose();
-          window.location.href = '/dashboard';
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            onClose();
+            window.location.href = '/dashboard'; // Fallback if no callback provided
+          }
         }, 1500);
 
       } else {

@@ -2,57 +2,95 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import LoginModal from './LoginModal';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
-  // TODO: Replace with your real auth context / session check
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{ name: string; phone: string } | null>(null);
 
+  // 1. Handle scroll effect
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // 2. Check login status on mount
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+
+  const checkAuthStatus = () => {
+    const token = localStorage.getItem('jwtToken');
+    const name = localStorage.getItem('userName');
+    const phone = localStorage.getItem('userPhone');
+
+    if (token && name) {
+      setIsLoggedIn(true);
+      setUser({ name, phone: phone || '' });
+    }
+  };
+
+  // 3. Complete Logout Logic
   const handleLogout = () => {
-    // TODO: Clear JWT token, call backend logout endpoint if needed
-    // await fetch('https://your-api.com/api/v1/auth/logout', { method: 'POST', ... });
+    localStorage.removeItem('jwtToken');
+    localStorage.removeItem('userUUID');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userPhone');
+    localStorage.removeItem('hasSubscription');
+
     setIsLoggedIn(false);
     setUser(null);
+
+    // Optional: Force reload to clear any cached states/redirect to home
+    window.location.href = '/';
   };
 
   return (
     <>
       <nav
-        className={`sticky top-0 z-40 transition-all duration-300 ${
-          scrolled
-            ? 'bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100'
-            : 'bg-white'
-        }`}
+        className={`sticky top-0 z-40 transition-all duration-300 ${scrolled
+          ? 'bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100'
+          : 'bg-white'
+          }`}
       >
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <Image src="/images/iconLogo.png" alt="Cricshub" width={36} height={36} className="rounded-lg" />
             <Image src="/images/textLogo.png" alt="Cricshub" width={90} height={28} className="object-contain hidden sm:block" />
-          </div>
+          </Link>
 
           {/* Right side */}
           <div className="flex items-center gap-3">
             {isLoggedIn && user ? (
-              // Logged-in state: avatar + menu
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600 hidden sm:block">Hi, <span className="font-semibold text-gray-800">{user.name}</span></span>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm text-gray-500 hover:text-red-500 font-medium transition-colors"
+              // Logged-in state: Dashboard button + Logout
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/dashboard"
+                  className="group flex items-center gap-1.5 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-sm font-semibold px-4 py-2 rounded-full hover:shadow-lg hover:shadow-blue-200 transition-all duration-300 hover:-translate-y-0.5"
                 >
-                  Logout
-                </button>
+                  <i className="ri-dashboard-line text-base" />
+                  <span className="hidden sm:block">Dashboard</span>
+                </Link>
+
+                <div className="flex items-center gap-3 border-l border-gray-200 pl-4">
+                  <span className="text-sm text-gray-600 hidden sm:block">
+                    Hi, <span className="font-semibold text-gray-800">{user.name}</span>
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    title="Logout"
+                    className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                  >
+                    <i className="ri-logout-circle-r-line text-lg" />
+                  </button>
+                </div>
               </div>
             ) : (
               // Logged-out state: Login button
@@ -68,7 +106,14 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
+      <LoginModal
+        isOpen={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onSuccess={() => {
+          setLoginOpen(false);
+          checkAuthStatus();
+        }}
+      />
     </>
   );
 }
