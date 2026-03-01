@@ -503,10 +503,13 @@ export default function DashboardPage() {
                 <i className="ri-vip-crown-line" />Upgrade
               </Link>
             )}
-            <div className="flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white px-4 py-2 rounded-full text-sm font-bold">
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white px-4 py-2 rounded-full text-sm font-bold hover:shadow-lg hover:shadow-blue-200 hover:-translate-y-0.5 transition-all cursor-pointer"
+            >
               <i className="ri-user-line" />
               <span className="hidden sm:block">{user?.name ?? '…'}</span>
-            </div>
+            </Link>
             <button onClick={() => {
               localStorage.removeItem('userUUID');
               localStorage.removeItem('userName');
