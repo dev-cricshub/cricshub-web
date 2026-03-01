@@ -2,48 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import { sendOtp, verifyOtp } from '@/lib/api';
 
-// ─── PLACEHOLDER API CALLS ────────────────────────────────────────────────────
-
-async function sendOtp(phone: string): Promise<{ success: boolean; message: string }> {
-  // TODO: Replace with real API call to Spring Boot backend
-  // const res = await fetch('https://your-api.com/api/v1/auth/send-otp', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ phoneNumber: phone }),
-  // });
-  // return res.json();
-
-  console.log('[PLACEHOLDER] sendOtp called with:', phone);
-  await new Promise((r) => setTimeout(r, 1200)); // Simulate network delay
-  return { success: true, message: 'OTP sent successfully' };
-}
-
-async function verifyOtp(
-  phone: string,
-  otp: string
-): Promise<{ success: boolean; token?: string; user?: { name: string; phone: string } }> {
-  // TODO: Replace with real API call to Spring Boot backend
-  // const res = await fetch('https://your-api.com/api/v1/auth/verify-otp', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ phoneNumber: phone, otp }),
-  // });
-  // return res.json();
-
-  console.log('[PLACEHOLDER] verifyOtp called with:', phone, otp);
-  await new Promise((r) => setTimeout(r, 1200));
-  if (otp === '000000') {
-    return { success: false };
-  }
-  return {
-    success: true,
-    token: 'mock-jwt-token',
-    user: { name: 'Cricket Fan', phone },
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 type Step = 'phone' | 'otp' | 'success';
 
@@ -54,7 +14,7 @@ interface LoginModalProps {
 
 const COUNTRY_CODES = [
   { code: '+91', flag: '🇮🇳', label: 'IN' },
-  { code: '+1',  flag: '🇺🇸', label: 'US' },
+  { code: '+1', flag: '🇺🇸', label: 'US' },
   { code: '+44', flag: '🇬🇧', label: 'GB' },
   { code: '+61', flag: '🇦🇺', label: 'AU' },
 ];
@@ -105,7 +65,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setError('');
     setLoading(true);
     try {
-      const res = await sendOtp(`${countryCode.code}${phone}`);
+      const res = await sendOtp(phone);
       if (res.success) {
         setStep('otp');
         startResendTimer();
@@ -120,22 +80,33 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     }
   };
 
-  const handleVerifyOtp = async () => {
-    const otpString = otp.join('');
-    if (otpString.length < OTP_LENGTH) {
-      setError('Please enter all 6 digits');
-      return;
-    }
+  const handleVerifyOtpWithValues = async (otpValues: string[]) => {
+    const otpString = otpValues.join('');
+    if (otpString.length < OTP_LENGTH) return;
+
     setError('');
     setLoading(true);
     try {
-      const res = await verifyOtp(`${countryCode.code}${phone}`, otpString);
-      if (res.success) {
-        // TODO: Store res.token in your auth context / localStorage
+      // const fullPhone = `${countryCode.code}${phone}`;
+      const res = await verifyOtp(phone, otpString);
+      console.log(res)
+      if (res.success && res.data) {
+        // Save auth data to localStorage
+        localStorage.setItem('jwtToken', res.data.token);
+        localStorage.setItem('userUUID', res.data.user.id);
+        localStorage.setItem('userName', res.data.user.name);
+        localStorage.setItem('userPhone', res.data.user.phone);
+
         setStep('success');
-        setTimeout(() => onClose(), 2000);
+
+        // Close modal and refresh the page so the app picks up the new session
+        setTimeout(() => {
+          onClose();
+          window.location.href = '/dashboard';
+        }, 1500);
+
       } else {
-        setError('Invalid OTP. Please try again.');
+        setError(res.message || 'Invalid OTP. Please try again.');
         setOtp(Array(OTP_LENGTH).fill(''));
         otpRefs.current[0]?.focus();
       }
@@ -145,6 +116,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setLoading(false);
     }
   };
+
+  const handleVerifyOtp = () => handleVerifyOtpWithValues(otp);
 
   const handleOtpChange = (index: number, value: string) => {
     const digit = value.replace(/\D/g, '').slice(-1);
@@ -158,28 +131,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     // Auto-submit when all filled
     if (digit && index === OTP_LENGTH - 1 && newOtp.every((d) => d !== '')) {
       setTimeout(() => handleVerifyOtpWithValues(newOtp), 100);
-    }
-  };
-
-  const handleVerifyOtpWithValues = async (otpValues: string[]) => {
-    const otpString = otpValues.join('');
-    if (otpString.length < OTP_LENGTH) return;
-    setError('');
-    setLoading(true);
-    try {
-      const res = await verifyOtp(`${countryCode.code}${phone}`, otpString);
-      if (res.success) {
-        setStep('success');
-        setTimeout(() => onClose(), 2000);
-      } else {
-        setError('Invalid OTP. Please try again.');
-        setOtp(Array(OTP_LENGTH).fill(''));
-        otpRefs.current[0]?.focus();
-      }
-    } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -384,7 +335,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     <button
                       onClick={async () => {
                         setLoading(true);
-                        await sendOtp(`${countryCode.code}${phone}`);
+                        await sendOtp(phone);
                         setLoading(false);
                         setOtp(Array(OTP_LENGTH).fill(''));
                         startResendTimer();
