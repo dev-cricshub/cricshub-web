@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { fetchUserMatches, fetchUserSubscription } from '@/lib/api';
 
 // ═══════════════════════════════════════════════════════════
 // TYPES — mirroring MatchResponse.java exactly
@@ -22,6 +23,8 @@ interface MatchResponse {
   winner: string | null;
   matchOps: string[];
   currentScorer: string | null;
+  creatorId: string;
+  adminHasSubscription: boolean;
 }
 interface CurrentUser { id: string; name: string; phone: string; hasSubscription: boolean; }
 
@@ -46,73 +49,48 @@ function getCurrentUser(): CurrentUser | null {
 }
 
 // ═══════════════════════════════════════════════════════════
-// PLACEHOLDER API CALLS
-// ═══════════════════════════════════════════════════════════
-
-async function fetchAllUserMatches(userId: string): Promise<MatchResponse[]> {
-  await new Promise(r => setTimeout(r, 700));
-  return [
-    {
-      id: 'match-admin-live', tournamentResponse: { id: 't1', name: 'Ranchi Premier League 2025' },
-      team1: { id: 'tm1', name: 'Mumbai XI', logoPath: null, creator: { id: userId, name: 'You' }, captain: null, players: [], inviteToken: '' },
-      team2: { id: 'tm2', name: 'Delhi Strikers', logoPath: null, creator: { id: 'u2', name: 'Amit' }, captain: null, players: [], inviteToken: '' },
-      creatorName: { id: userId, name: 'You' },
-      matchDate: '2026-02-26', matchTime: '14:30:00', venue: 'Jharkhand State Cricket Stadium',
-      status: 'Live', stage: 'Final', team1Score: 148, team2Score: 132, winner: null,
-      matchOps: [userId, 'op-uuid-2'], currentScorer: userId,
-    },
-    {
-      id: 'match-admin-upcoming', tournamentResponse: { id: 't1', name: 'Ranchi Premier League 2025' },
-      team1: { id: 'tm3', name: 'Hyderabad Royals', logoPath: null, creator: { id: userId, name: 'You' }, captain: null, players: [], inviteToken: '' },
-      team2: { id: 'tm4', name: 'Bangalore Bulls', logoPath: null, creator: { id: 'u3', name: 'Vikram' }, captain: null, players: [], inviteToken: '' },
-      creatorName: { id: userId, name: 'You' },
-      matchDate: '2026-03-02', matchTime: '09:00:00', venue: 'Rajiv Gandhi Stadium',
-      status: 'Upcoming', stage: 'Semi Final', team1Score: null, team2Score: null, winner: null,
-      matchOps: [userId], currentScorer: null,
-    },
-    {
-      id: 'match-admin-past', tournamentResponse: { id: 't2', name: 'Winter Classic 2025' },
-      team1: { id: 'tm5', name: 'Sunrise FC', logoPath: null, creator: { id: userId, name: 'You' }, captain: null, players: [], inviteToken: '' },
-      team2: { id: 'tm6', name: 'Monsoon XI', logoPath: null, creator: { id: 'u4', name: 'Raj' }, captain: null, players: [], inviteToken: '' },
-      creatorName: { id: userId, name: 'You' },
-      matchDate: '2026-02-18', matchTime: '11:00:00', venue: 'Cricshub Ground A',
-      status: 'Completed', stage: 'Group Stage', team1Score: 167, team2Score: 142, winner: 'Sunrise FC',
-      matchOps: [userId], currentScorer: null,
-    },
-    {
-      id: 'match-op-live', tournamentResponse: { id: 't3', name: 'City T20 Cup' },
-      team1: { id: 'tm7', name: 'Chennai Hawks', logoPath: null, creator: { id: 'admin-uuid', name: 'Suresh' }, captain: null, players: [], inviteToken: '' },
-      team2: { id: 'tm8', name: 'Kolkata Knights', logoPath: null, creator: { id: 'admin-uuid', name: 'Suresh' }, captain: null, players: [], inviteToken: '' },
-      creatorName: { id: 'admin-uuid', name: 'Suresh' },
-      matchDate: '2026-02-26', matchTime: '10:00:00', venue: 'Salt Lake Stadium',
-      status: 'Live', stage: 'Semi Final', team1Score: 89, team2Score: 76, winner: null,
-      matchOps: [userId, 'admin-uuid'], currentScorer: userId,
-    },
-    {
-      id: 'match-op-upcoming', tournamentResponse: null,
-      team1: { id: 'tm9', name: 'Rising Stars', logoPath: null, creator: { id: 'admin-uuid-2', name: 'Priya' }, captain: null, players: [], inviteToken: '' },
-      team2: { id: 'tm10', name: 'Thunder Bolts', logoPath: null, creator: { id: 'admin-uuid-2', name: 'Priya' }, captain: null, players: [], inviteToken: '' },
-      creatorName: { id: 'admin-uuid-2', name: 'Priya' },
-      matchDate: '2026-03-05', matchTime: '15:00:00', venue: 'Local Ground, Ranchi',
-      status: 'Upcoming', stage: null, team1Score: null, team2Score: null, winner: null,
-      matchOps: [userId, 'admin-uuid-2'], currentScorer: null,
-    },
-  ];
-}
-
-// ═══════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════
 
-const fmt12 = (t: string) => { if (!t) return ''; const [h, m] = t.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`; };
-const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-const initials = (n: string) => n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-const daysUntil = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
+const fmt12 = (t: string | number[]) => {
+  if (!t) return '';
+  let h: number, m: string | number;
+
+  if (Array.isArray(t)) {
+    // Spring Boot array format: [14, 30]
+    h = t[0];
+    m = t[1] !== undefined ? t[1].toString().padStart(2, '0') : '00';
+  } else {
+    // String format: "14:30:00"
+    const parts = t.split(':');
+    h = parseInt(parts[0]);
+    m = parts[1];
+  }
+  return `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
+};
+
+const fmtDate = (d: string | number[]) => {
+  if (!d) return '';
+  // JS Date expects month index (0-11), so we subtract 1 from the Spring Boot month
+  const dateObj = Array.isArray(d) ? new Date(d[0], d[1] - 1, d[2]) : new Date(d);
+  return dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const initials = (n: string) => {
+  if (!n) return '';
+  return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+};
+
+const daysUntil = (d: string | number[]) => {
+  if (!d) return 0;
+  const dateObj = Array.isArray(d) ? new Date(d[0], d[1] - 1, d[2]) : new Date(d);
+  return Math.ceil((dateObj.getTime() - Date.now()) / 86400000);
+};
 
 function classifyMatches(matches: MatchResponse[], userId: string): MatchWithRole[] {
   return matches.map(m => ({
     ...m,
-    role: m.creatorName.id === userId ? 'admin' : 'operator',
+    role: m.creatorId === userId ? 'admin' : 'operator',
   }));
 }
 
@@ -120,8 +98,17 @@ function classifyMatches(matches: MatchResponse[], userId: string): MatchWithRol
 // TEAM AVATAR
 // ═══════════════════════════════════════════════════════════
 
-function TeamAvatar({ name, size = 'md', gradient = 'from-[#34B8FF] to-[#1E88E5]' }: { name: string; size?: 'sm' | 'md' | 'lg'; gradient?: string }) {
+function TeamAvatar({ name, logoPath, size = 'md', gradient = 'from-[#34B8FF] to-[#1E88E5]' }: { name: string; logoPath?: string | null; size?: 'sm' | 'md' | 'lg'; gradient?: string }) {
   const sz = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-14 h-14 text-base' : 'w-11 h-11 text-sm';
+
+  if (logoPath) {
+    return (
+      <div className={`${sz} rounded-xl overflow-hidden shadow-sm flex-shrink-0 relative bg-white`}>
+        <Image src={logoPath} alt={name} fill className="object-cover" />
+      </div>
+    );
+  }
+
   return (
     <div className={`${sz} rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center font-black text-white shadow-sm flex-shrink-0`}>
       {initials(name)}
@@ -149,8 +136,9 @@ function RoleBadge({ role }: { role: MatchRole }) {
 // LIVE MATCH CARD
 // ═══════════════════════════════════════════════════════════
 
-function LiveMatchCard({ match, hasSubscription }: { match: MatchWithRole; hasSubscription: boolean }) {
+function LiveMatchCard({ match }: { match: MatchWithRole }) {
   const isAdmin = match.role === 'admin';
+  const canStream = match.adminHasSubscription;
 
   return (
     <div className="relative bg-white rounded-2xl border-2 border-gray-100 overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -207,7 +195,7 @@ function LiveMatchCard({ match, hasSubscription }: { match: MatchWithRole; hasSu
 
       {/* Actions — streaming only */}
       <div className="px-5 pb-5 space-y-2">
-        {hasSubscription ? (
+        {canStream ? (
           <Link href={`/stream/${match.id}`}
             className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-sm rounded-xl hover:shadow-lg hover:shadow-red-200 hover:scale-[1.02] transition-all">
             <i className="ri-live-line text-base animate-pulse" />
@@ -238,9 +226,10 @@ function LiveMatchCard({ match, hasSubscription }: { match: MatchWithRole; hasSu
 // UPCOMING MATCH CARD
 // ═══════════════════════════════════════════════════════════
 
-function UpcomingMatchCard({ match, hasSubscription }: { match: MatchWithRole; hasSubscription: boolean }) {
+function UpcomingMatchCard({ match }: { match: MatchWithRole }) {
   const isAdmin = match.role === 'admin';
   const days = daysUntil(match.matchDate);
+  const canStream = match.adminHasSubscription;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 overflow-hidden">
@@ -279,7 +268,7 @@ function UpcomingMatchCard({ match, hasSubscription }: { match: MatchWithRole; h
 
         {/* Actions — streaming only */}
         <div className="space-y-2">
-          {hasSubscription ? (
+          {canStream ? (
             <Link href={`/stream/${match.id}`}
               className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold rounded-xl hover:shadow-md hover:shadow-blue-200 transition-all">
               <i className="ri-broadcast-line" />Open Stream Dashboard
@@ -433,14 +422,39 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const u = getCurrentUser() ?? { id: 'mock-uuid', name: 'Demo User', phone: '', hasSubscription: true };
-    setUser(u);
+    const initUser = async () => {
+      const u = getCurrentUser();
+      if (!u) {
+        // Redirect to homepage if no user
+        window.location.href = '/';
+        return;
+      }
+
+      try {
+        // Fetch real subscription status from backend
+        const subData = await fetchUserSubscription(u.id);
+        u.hasSubscription = subData?.hasSubscription ?? false;
+        localStorage.setItem('hasSubscription', String(u.hasSubscription));
+      } catch (error) {
+        console.error("Failed to verify subscription:", error);
+        u.hasSubscription = false;
+      }
+
+      setUser(u);
+    };
+
+    initUser();
   }, []);
 
   const loadMatches = useCallback(async (userId: string) => {
-    const raw = await fetchAllUserMatches(userId);
-    setMatches(classifyMatches(raw, userId));
-    setLoading(false);
+    try {
+      const rawMatches = await fetchUserMatches(userId);
+      setMatches(classifyMatches(rawMatches, userId));
+    } catch (error) {
+      console.error("Failed to load matches:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { if (user) loadMatches(user.id); }, [user, loadMatches]);
@@ -493,7 +507,13 @@ export default function DashboardPage() {
               <i className="ri-user-line" />
               <span className="hidden sm:block">{user?.name ?? '…'}</span>
             </div>
-            <button onClick={() => console.log('[PLACEHOLDER] Logout')}
+            <button onClick={() => {
+              localStorage.removeItem('userUUID');
+              localStorage.removeItem('userName');
+              localStorage.removeItem('userPhone');
+              localStorage.removeItem('jwtToken');
+              window.location.href = '/';
+            }}
               className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Logout">
               <i className="ri-logout-circle-line text-xl" />
             </button>
@@ -599,7 +619,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-5">
-              {liveMatches.map(m => <LiveMatchCard key={m.id} match={m} hasSubscription={user?.hasSubscription ?? false} />)}
+              {liveMatches.map(m => <LiveMatchCard key={m.id} match={m} />)}
             </div>
           )}
         </section>
@@ -616,7 +636,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {upcomingMatches.map(m => <UpcomingMatchCard key={m.id} match={m} hasSubscription={user?.hasSubscription ?? false} />)}
+              {upcomingMatches.map(m => <UpcomingMatchCard key={m.id} match={m} />)}
             </div>
           )}
         </section>
