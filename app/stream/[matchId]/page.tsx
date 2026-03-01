@@ -4,6 +4,17 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import {
+    fetchMatchById,
+    fetchMatchState,
+    fetchStreamSession,
+    fetchMatchSubscription,
+    claimStreamLock,
+    releaseStreamLock,
+    pushActiveBanner,
+    streamHeartbeat
+} from '@/lib/api';
+import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -12,11 +23,11 @@ import { useParams } from 'next/navigation';
 interface PlayerDetails { playerId: string; name: string; }
 interface PlayerStats { playerId: string; name: string; runs: number; ballsFaced: number; fours: number; sixes: number; strikeRate: number; wicketDetails: { dismissalType: string } | null; overs: number; ballsBowled: number; runsConceded: number; wicketsTaken: number; economyRate: number; }
 interface TeamDetails { name: string; logoUrl: string | null; playingXI: PlayerStats[]; score: number; wickets: number; overs: number; extras: { wide: number; noBall: number; bye: number; legBye: number; penalty: number } | null; }
-interface MatchState { matchId: string; team1: TeamDetails; team2: TeamDetails; tossWinner: string; choice: string; isFirstInnings: boolean; completedOvers: number; totalOvers: number; matchComplete: boolean; winner: string | null; battingFirst: TeamDetails | null; currentStriker: PlayerDetails | null; currentNonStriker: PlayerDetails | null; currentBowler: PlayerDetails | null; currentOverBalls: string[]; }
+interface MatchState { matchId: string; team1: TeamDetails; team2: TeamDetails; tossWinner: string; choice: string; FirstInnings: boolean; completedOvers: number; totalOvers: number; matchComplete: boolean; winner: string | null; battingFirst: TeamDetails | null; currentStriker: PlayerDetails | null; currentNonStriker: PlayerDetails | null; currentBowler: PlayerDetails | null; currentOverBalls: string[]; }
 interface MatchInfo { id: string; venue: string; matchDate: string; matchTime: string; stage: string | null; status: string; overs: number; tournamentName: string | null; team1: { id: string; name: string; logoPath: string | null }; team2: { id: string; name: string; logoPath: string | null }; creatorId: string; matchOps: string[]; }
 interface StreamSession { isLocked: boolean; lockedByUserId: string | null; lockedByName: string | null; }
 
-export type BannerType = 'none' | 'main' | 'playingXI_bat' | 'playingXI_bowl' | 'score';
+export type BannerType = 'none' | 'main' | 'playingXI_bat' | 'playingXI_bowl' | 'score' | string;
 type MatchRole = 'admin' | 'operator';
 
 interface MatchSubscription {
@@ -29,83 +40,6 @@ interface AddOnTemplate {
     id: string; name: string; tier: 'pro' | 'elite';
     price: number; previewGradient: string;
     features: string[];
-}
-
-// ═══════════════════════════════════════════════════════════
-// PLACEHOLDER API CALLS
-// ═══════════════════════════════════════════════════════════
-
-async function fetchMatchInfo(matchId: string): Promise<MatchInfo> {
-    // TODO: GET /api/v1/matches/{matchId}
-    await new Promise(r => setTimeout(r, 500));
-    return {
-        id: matchId, venue: 'Jharkhand State Cricket Stadium',
-        matchDate: '2026-02-26', matchTime: '14:30:00',
-        stage: 'Final', status: 'Live', overs: 20,
-        tournamentName: 'Ranchi Premier League 2025',
-        team1: { id: 't1', name: 'Mumbai XI', logoPath: null },
-        team2: { id: 't2', name: 'Delhi Strikers', logoPath: null },
-        // These come from MatchResponse.creatorName.id and matchOps
-        creatorId: 'mock-uuid',   // TODO: map from match.creatorName.id
-        matchOps: ['mock-uuid', 'op-uuid-2'],
-    };
-}
-
-async function fetchMatchState(matchId: string): Promise<MatchState> {
-    // TODO: GET /api/v1/matches/matchstate/{matchId}
-    await new Promise(r => setTimeout(r, 300));
-    const xi = (pfx: string): PlayerStats[] => Array.from({ length: 11 }, (_, i) => ({
-        playerId: `${pfx}${i}`, name: `Player ${i + 1}`,
-        runs: 20 + i * 9, ballsFaced: 18 + i * 6, fours: i % 4, sixes: i % 2, strikeRate: 110 + i * 5,
-        wicketDetails: i < 4 ? { dismissalType: ['Bowled', 'Caught', 'LBW', 'Run Out'][i] } : null,
-        overs: i < 5 ? i + 1 : 0, ballsBowled: i < 5 ? (i + 1) * 6 : 0,
-        runsConceded: i < 5 ? (i + 1) * 9 : 0, wicketsTaken: i < 5 ? i % 3 : 0, economyRate: i < 5 ? 7.5 : 0,
-    }));
-    const t1: TeamDetails = { name: 'Mumbai XI', logoUrl: null, playingXI: xi('mum'), score: 148, wickets: 5, overs: 20, extras: { wide: 4, noBall: 1, bye: 2, legBye: 1, penalty: 0 } };
-    const t2: TeamDetails = { name: 'Delhi Strikers', logoUrl: null, playingXI: xi('del'), score: 132, wickets: 7, overs: 18.2, extras: { wide: 3, noBall: 0, bye: 1, legBye: 2, penalty: 0 } };
-    return {
-        matchId, team1: t1, team2: t2,
-        tossWinner: 'Mumbai XI', choice: 'Bat',
-        isFirstInnings: false, completedOvers: 18, totalOvers: 20,
-        matchComplete: false, winner: null,
-        battingFirst: t1,
-        currentStriker: { playerId: 'del4', name: 'Player 5' },
-        currentNonStriker: { playerId: 'del5', name: 'Player 6' },
-        currentBowler: { playerId: 'mum7', name: 'Player 8' },
-        currentOverBalls: ['1', '0', 'W', '4', '2'],
-    };
-}
-
-async function fetchStreamSession(matchId: string): Promise<StreamSession> {
-    // TODO: GET /api/v1/stream/{matchId}/session
-    await new Promise(r => setTimeout(r, 200));
-    return { isLocked: false, lockedByUserId: null, lockedByName: null };
-}
-
-async function fetchMatchSubscription(matchId: string): Promise<MatchSubscription> {
-    // TODO: GET /api/v1/stream/{matchId}/subscription
-    // Returns the admin's subscription status + which add-on templates they've purchased for THIS match.
-    // Both admin and operators call this — operators use it to see what's available to activate.
-    await new Promise(r => setTimeout(r, 250));
-    return { adminHasSubscription: true, purchasedTemplateIds: ['tpl-pro-1'] };
-}
-
-async function claimStreamLock(matchId: string, userId: string): Promise<{ success: boolean }> {
-    // TODO: POST /api/v1/stream/{matchId}/claim  body: { userId }
-    console.log('[PLACEHOLDER] claimStreamLock', { matchId, userId });
-    await new Promise(r => setTimeout(r, 400));
-    return { success: true };
-}
-
-async function releaseStreamLock(matchId: string, userId: string): Promise<void> {
-    // TODO: POST /api/v1/stream/{matchId}/release  body: { userId }
-    console.log('[PLACEHOLDER] releaseStreamLock', { matchId, userId });
-}
-
-async function pushActiveBanner(matchId: string, banner: BannerType, templateId: string | null): Promise<void> {
-    // TODO: POST /api/v1/stream/{matchId}/banner  body: { banner, templateId }
-    console.log('[PLACEHOLDER] pushActiveBanner', { matchId, banner, templateId });
-    await new Promise(r => setTimeout(r, 150));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -123,11 +57,43 @@ const ADDON_TEMPLATES: AddOnTemplate[] = [
 // HELPERS
 // ═══════════════════════════════════════════════════════════
 
-const fmt12 = (t: string) => { if (!t) return ''; const [h, m] = t.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`; };
-const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+const fmt12 = (t: string | number[]) => {
+    if (!t) return '';
+    let h: number, m: string | number;
+
+    if (Array.isArray(t)) {
+        // Spring Boot array format: [14, 30]
+        h = t[0];
+        m = t[1] !== undefined ? t[1].toString().padStart(2, '0') : '00';
+    } else {
+        // String format: "14:30:00"
+        const parts = t.split(':');
+        h = parseInt(parts[0]);
+        m = parts[1];
+    }
+    return `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
+};
+const fmtDate = (d: string | number[]) => {
+    if (!d) return '';
+    // JS Date expects month index (0-11), so we subtract 1 from the Spring Boot month
+    const dateObj = Array.isArray(d) ? new Date(d[0], d[1] - 1, d[2]) : new Date(d);
+    return dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 const ballBg = (b: string) => b === 'W' ? 'bg-red-500 text-white' : b === '4' ? 'bg-blue-500 text-white' : b === '6' ? 'bg-purple-500 text-white' : b === '0' ? 'bg-gray-100 text-gray-500' : 'bg-emerald-500 text-white';
-const getBatTeam = (s: MatchState): TeamDetails => { if (!s.battingFirst) return s.team1; return s.isFirstInnings ? (s.battingFirst.name === s.team1.name ? s.team1 : s.team2) : (s.battingFirst.name === s.team1.name ? s.team2 : s.team1); };
-const getBowlTeam = (s: MatchState): TeamDetails => { const bat = getBatTeam(s); return bat.name === s.team1.name ? s.team2 : s.team1; };
+const getBatTeam = (s: MatchState): TeamDetails | null => {
+    if (!s?.team1 || !s?.team2) return null;
+    if (!s.battingFirst) return s.team1;
+    return s.firstInnings // Check firstInnings instead!
+        ? (s.battingFirst.name === s.team1.name ? s.team1 : s.team2)
+        : (s.battingFirst.name === s.team1.name ? s.team2 : s.team1);
+};
+
+const getBowlTeam = (s: MatchState): TeamDetails | null => {
+    if (!s?.team1 || !s?.team2) return null;
+    const bat = getBatTeam(s);
+    if (!bat) return null;
+    return bat.name === s.team1.name ? s.team2 : s.team1;
+};
 
 // ═══════════════════════════════════════════════════════════
 // SCORE LIVE MINI
@@ -136,7 +102,15 @@ const getBowlTeam = (s: MatchState): TeamDetails => { const bat = getBatTeam(s);
 function ScoreLive({ state }: { state: MatchState }) {
     const bat = getBatTeam(state);
     const bowl = getBowlTeam(state);
+
+    if (!bat || !bowl) return (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <p className="text-xs text-gray-400 text-center">Match not started yet</p>
+        </div>
+    );
+
     const crr = bat.overs > 0 ? (bat.score / bat.overs).toFixed(2) : '—';
+
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50">
@@ -151,6 +125,7 @@ function ScoreLive({ state }: { state: MatchState }) {
                     <p className="font-black text-2xl text-[#1E88E5]">{bat.score}/{bat.wickets}</p>
                 </div>
                 <p className="text-xs text-gray-400">{bat.overs} ov · CRR {crr}</p>
+
                 {state.currentOverBalls?.length > 0 && (
                     <div>
                         <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">This over</p>
@@ -161,17 +136,37 @@ function ScoreLive({ state }: { state: MatchState }) {
                         </div>
                     </div>
                 )}
-                {(state.currentStriker || state.currentNonStriker) && (
+
+                {(state.currentStriker || state.currentNonStriker || state.currentBowler) && (
                     <div className="space-y-1 pt-2 border-t border-gray-50">
+                        {/* Batters */}
                         {[state.currentStriker, state.currentNonStriker].filter(Boolean).map((p, i) => {
                             const stats = bat.playingXI.find(ps => ps.playerId === p?.playerId);
                             return (
                                 <div key={i} className="flex items-center justify-between text-xs">
                                     <span className="text-gray-700 font-semibold">{i === 0 ? '🏏 ' : ''}{p?.name}</span>
-                                    {stats && <span className="text-gray-500 font-mono">{stats.runs}({stats.ballsFaced})</span>}
+                                    {stats ? <span className="text-gray-500 font-mono">{stats.runs}({stats.ballsFaced})</span> : <span className="text-gray-500 font-mono">0(0)</span>}
                                 </div>
                             );
                         })}
+
+                        {/* Bowler */}
+                        {state.currentBowler && (
+                            <div className="flex items-center justify-between text-xs pt-2 mt-2 border-t border-dashed border-gray-100">
+                                <span className="text-gray-700 font-semibold">⚾ {state.currentBowler.name}</span>
+                                {(() => {
+                                    // Find bowler stats from the bowling team's playing XI
+                                    const bStats = bowl.playingXI.find(ps => ps.playerId === state.currentBowler?.playerId);
+                                    return bStats ? (
+                                        <span className="text-gray-500 font-mono">
+                                            {bStats.wicketsTaken}-{bStats.runsConceded} ({bStats.overs})
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-500 font-mono">0-0 (0)</span>
+                                    );
+                                })()}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -338,13 +333,13 @@ function OperatorTemplateCard({ tpl, active, canActivate, onActivate }: {
 // STREAM CONTROL PANEL (shared)
 // ═══════════════════════════════════════════════════════════
 
-function StreamControlPanel({ session, streaming, claimBusy, canStream, lockedReason, onClaim, onRelease, obsUrl, copied, onCopy }: {
+function StreamControlPanel({ session, streaming, claimBusy, canStream, lockedReason, onClaim, onRelease, obsUrl, copied, onCopy, currentUserId }: {
     session: StreamSession; streaming: boolean; claimBusy: boolean;
     canStream: boolean; lockedReason?: string;
     onClaim: () => void; onRelease: () => void;
-    obsUrl: string; copied: boolean; onCopy: () => void;
+    obsUrl: string; copied: boolean; onCopy: () => void; currentUserId: string;
 }) {
-    const lockedByOther = session.isLocked && !streaming;
+    const lockedByOther = session.isLocked && session.lockedByUserId !== currentUserId;
     return (
         <div className="space-y-4">
             {/* Stream state */}
@@ -436,6 +431,7 @@ function StreamControlPanel({ session, streaming, claimBusy, canStream, lockedRe
 export default function StreamDashboard() {
     const params = useParams();
     const matchId = params?.matchId as string;
+    const [currentUser, setCurrentUser] = useState({ id: '', name: '' });
 
     const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
     const [matchState, setMatchState] = useState<MatchState | null>(null);
@@ -447,15 +443,18 @@ export default function StreamDashboard() {
     const [claimBusy, setClaimBusy] = useState(false);
     const [bannerBusy, setBannerBusy] = useState(false);
     const [copied, setCopied] = useState(false);
-    const pollRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Auth — replace with real session
-    const currentUser = {
-        id: (typeof window !== 'undefined' ? localStorage.getItem('userUUID') : null) ?? 'mock-uuid',
-        name: (typeof window !== 'undefined' ? localStorage.getItem('userName') : null) ?? 'Demo User',
-    };
-    const obsUrl = typeof window !== 'undefined' ? `${window.location.origin}/obs/${matchId}` : `/obs/${matchId}`;
-
+    // Auth
+    useEffect(() => {
+        setCurrentUser({
+            id: localStorage.getItem('userUUID') ?? '',
+            name: localStorage.getItem('userName') ?? 'User',
+        });
+    }, []);
+    const [obsUrl, setObsUrl] = useState('');
+    useEffect(() => {
+        setObsUrl(`${window.location.origin}/obs/${matchId}`);
+    }, [matchId]);
     // Derive role once matchInfo loaded
     const matchRole: MatchRole | null = matchInfo
         ? (matchInfo.creatorId === currentUser.id ? 'admin' : 'operator')
@@ -463,79 +462,145 @@ export default function StreamDashboard() {
 
     const isAdmin = matchRole === 'admin';
     const isOperator = matchRole === 'operator';
-    const iAmStreaming = streaming && session.lockedByUserId === currentUser.id;
+    const iAmStreaming = session.isLocked && session.lockedByUserId === currentUser.id;
 
-    // Admin can stream if admin has subscription
-    // Operator can stream regardless (they just use what's available)
-    const canStream = isAdmin
-        ? (matchSub?.adminHasSubscription ?? false)
-        : (matchSub?.adminHasSubscription ?? false); // Operator also needs admin to have subscribed
+    const canStream = matchSub?.adminHasSubscription ?? false;
 
     const streamLockReason = isAdmin
         ? 'Subscribe to unlock the streaming dashboard for your matches.'
         : 'The match admin needs an active subscription to enable streaming.';
 
-    // Initial load
+    // ══ LIVE WEBSOCKET CONNECTION ══
+    const { matchState: wsMatchState, activeBanner: wsActiveBanner } = useMatchWebSocket(matchId);
+
+    // Sync WS data to local state
     useEffect(() => {
-        if (!matchId) return;
+        if (wsMatchState) setMatchState(wsMatchState);
+    }, [wsMatchState]);
+
+    useEffect(() => {
+        if (wsActiveBanner && wsActiveBanner !== activeBanner) {
+            setActiveBanner(wsActiveBanner as BannerType);
+        }
+    }, [wsActiveBanner]);
+
+    // ══ INITIAL DATA LOAD ══
+    useEffect(() => {
+        if (!matchId || !currentUser.id) return;
         Promise.all([
-            fetchMatchInfo(matchId),
+            fetchMatchById(matchId),
             fetchMatchState(matchId),
             fetchStreamSession(matchId),
             fetchMatchSubscription(matchId),
-        ]).then(([info, state, sess, sub]) => {
-            setMatchInfo(info); setMatchState(state); setSession(sess); setMatchSub(sub);
-            if (sess.isLocked && sess.lockedByUserId === currentUser.id) setStreaming(true);
+        ]).then(([rawMatch, state, sess, sub]) => {
+            const actualMatch = rawMatch?.data || rawMatch;
+            const actualState = state?.data || state;
+
+            // Map raw MatchResponse2 to MatchInfo UI shape
+            // We pull the team names from the 'actualState' because 'actualMatch' only has IDs
+            setMatchInfo({
+                id: actualMatch?.matchId || actualMatch?.id,
+                venue: actualMatch?.venue || 'Venue TBD',
+                matchDate: actualMatch?.matchDate,
+                matchTime: actualMatch?.matchTime,
+                stage: actualMatch?.stage,
+                status: actualMatch?.status,
+                overs: actualMatch?.overs,
+                tournamentName: actualMatch?.tournamentResponse?.name || null,
+
+                // EXTRACT NAMES FROM MATCH STATE:
+                team1: {
+                    id: actualMatch?.team1Id || 't1',
+                    name: actualState?.team1?.name || 'Team 1',
+                    logoPath: actualState?.team1?.logoUrl || null
+                },
+                team2: {
+                    id: actualMatch?.team2Id || 't2',
+                    name: actualState?.team2?.name || 'Team 2',
+                    logoPath: actualState?.team2?.logoUrl || null
+                },
+
+                // Fallbacks in case MatchResponse2 doesn't include these:
+                creatorId: actualMatch?.creatorId || actualMatch?.creatorName?.id,
+                matchOps: actualMatch?.matchOps || []
+            });
+
+            setMatchState(actualState);
+
+            setSession({
+                isLocked: sess?.locked ?? false,
+                lockedByUserId: sess?.lockedByUserId ?? null,
+                lockedByName: sess?.lockedByName ?? null
+            });
+
+            setMatchSub(sub);
+
+            if (sess?.locked && sess?.lockedByUserId === currentUser.id) setStreaming(true);
+            setLoading(false);
+        }).catch(err => {
+            console.error("Failed to load match dashboard:", err);
             setLoading(false);
         });
-    }, [matchId]);
+    }, [matchId, currentUser.id]);
 
-    // Poll match state every 4s
+
+    // ══ STREAM HEARTBEAT ══
     useEffect(() => {
-        if (!matchId) return;
-        pollRef.current = setInterval(async () => {
-            // TODO: Replace with WebSocket /topic/match/{matchId}
-            const s = await fetchMatchState(matchId);
-            setMatchState(s);
-        }, 4000);
-        return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    }, [matchId]);
+        if (!iAmStreaming || !matchId) return;
+
+        // Ping the server every 60 seconds to keep the stream lock alive
+        const interval = setInterval(() => {
+            streamHeartbeat(matchId, currentUser.id).catch(console.error);
+        }, 60000);
+
+        return () => clearInterval(interval);
+    }, [iAmStreaming, matchId, currentUser.id]);
 
     const handleClaim = async () => {
         setClaimBusy(true);
-        const result = await claimStreamLock(matchId, currentUser.id);
+        const result = await claimStreamLock(matchId, currentUser.id, currentUser.name);
         if (result.success) {
             setSession({ isLocked: true, lockedByUserId: currentUser.id, lockedByName: currentUser.name });
             setStreaming(true);
         } else {
-            alert('Could not claim stream — another operator may have just taken it.');
+            alert(`Could not claim stream: ${result.message || 'Already locked'}`);
         }
         setClaimBusy(false);
     };
 
     const handleRelease = async () => {
         await releaseStreamLock(matchId, currentUser.id);
-        await pushActiveBanner(matchId, 'none', null);
+        await pushActiveBanner(matchId, currentUser.id, 'none', null);
         setSession({ isLocked: false, lockedByUserId: null, lockedByName: null });
-        setStreaming(false); setActiveBanner('none');
+        setStreaming(false);
+        setActiveBanner('none');
     };
 
     const handleBanner = async (banner: BannerType) => {
         if (!iAmStreaming || bannerBusy) return;
         setBannerBusy(true);
         const next = activeBanner === banner ? 'none' : banner;
-        await pushActiveBanner(matchId, next, null);
+
+        // Determine if it's a standard banner or premium template ID
+        const isPremium = next.startsWith('tpl-');
+        const payloadBanner = isPremium ? 'premium' : next;
+        const payloadTemplateId = isPremium ? next : null;
+
+        await pushActiveBanner(matchId, currentUser.id, payloadBanner, payloadTemplateId);
+
         setActiveBanner(next);
         setBannerBusy(false);
     };
 
     const handleBuyTemplate = (tpl: AddOnTemplate) => {
-        // TODO: Add to cart and redirect to pricing/checkout
-        // Or open an in-page purchase modal
         window.location.href = `/pricing?addon=${tpl.id}&matchId=${matchId}`;
     };
 
-    const copyObs = () => { navigator.clipboard.writeText(obsUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+    const copyObs = () => {
+        navigator.clipboard.writeText(obsUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     if (loading) return (
         <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
@@ -629,6 +694,7 @@ export default function StreamDashboard() {
                             canStream={canStream} lockedReason={streamLockReason}
                             onClaim={handleClaim} onRelease={handleRelease}
                             obsUrl={obsUrl} copied={copied} onCopy={copyObs}
+                            currentUserId={currentUser.id}
                         />
 
                         {/* Live score */}
@@ -650,7 +716,8 @@ export default function StreamDashboard() {
                                             : activeBanner === 'main' ? '📺 Main Match Banner is live on OBS'
                                                 : activeBanner === 'playingXI_bat' ? '🏏 Batting XI Banner is live on OBS'
                                                     : activeBanner === 'playingXI_bowl' ? '🎳 Bowling XI Banner is live on OBS'
-                                                        : '📊 Score Overlay is live on OBS'}
+                                                        : activeBanner === 'score' ? '📊 Score Overlay is live on OBS'
+                                                            : `✨ ${ADDON_TEMPLATES.find(t => t.id === activeBanner)?.name ?? 'Premium Overlay'} is live on OBS`}
                                     </p>
                                     <p className="text-xs text-gray-400">{activeBanner !== 'none' ? 'Displaying in your OBS browser source' : 'Select a banner below to show it'}</p>
                                 </div>
@@ -830,7 +897,7 @@ export default function StreamDashboard() {
                 </div>
             </div>
 
-            <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />
+            <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />{/* TEMPORARY DEV TOGGLE - Remove before production */}
         </div>
     );
 }
