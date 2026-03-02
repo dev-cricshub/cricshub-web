@@ -312,8 +312,16 @@ export default function StreamDashboard() {
     const [successAddonId, setSuccessAddonId] = useState<string | null>(null);
 
     useEffect(() => {
+        const userId = localStorage.getItem('userUUID');
+
+        // If no user is logged in, immediately redirect to home page
+        if (!userId) {
+            window.location.href = '/';
+            return;
+        }
+
         setCurrentUser({
-            id: localStorage.getItem('userUUID') ?? '',
+            id: userId,
             name: localStorage.getItem('userName') ?? 'User',
         });
     }, []);
