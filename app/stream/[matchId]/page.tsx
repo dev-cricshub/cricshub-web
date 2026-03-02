@@ -303,6 +303,7 @@ export default function StreamDashboard() {
 
     const [streaming, setStreaming] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [isUnauthorized, setIsUnauthorized] = useState(false);
     const [claimBusy, setClaimBusy] = useState(false);
     const [bannerBusy, setBannerBusy] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -351,6 +352,14 @@ export default function StreamDashboard() {
             fetchAvailableTemplates() // Fetch backend templates
         ]).then(([rawMatch, state, sess, sub, tpls]) => {
             const actualMatch = rawMatch?.data || rawMatch;
+            const creatorId = actualMatch?.creatorId || actualMatch?.creatorName?.id;
+            const opsArray = actualMatch?.matchOps || [];
+
+            if (currentUser.id !== creatorId && !opsArray.includes(currentUser.id)) {
+                setIsUnauthorized(true);
+                setLoading(false);
+                return; // Stop loading the rest of the dashboard
+            }
             const actualState = state?.data || state;
 
             setMatchInfo({
@@ -504,6 +513,24 @@ export default function StreamDashboard() {
                 </div>
                 <p className="font-semibold text-gray-500">Loading stream studio…</p>
             </div>
+        </div>
+    );
+
+    if (isUnauthorized) return (
+        <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-6">
+            <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl text-center border border-gray-100">
+                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i className="ri-shield-keyhole-line text-4xl text-red-500" />
+                </div>
+                <h1 className="text-2xl font-black text-gray-900 mb-2">Access Denied</h1>
+                <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+                    You do not have permission to view the streaming dashboard for this match. You must be the Match Admin or an assigned Match Operator.
+                </p>
+                <Link href="/dashboard" className="block w-full py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+                    Back to My Dashboard
+                </Link>
+            </div>
+            <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />
         </div>
     );
 
