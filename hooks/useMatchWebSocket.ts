@@ -26,19 +26,30 @@ export function useMatchWebSocket(matchId: string) {
         try {
           const parsed = JSON.parse(msg.body);
 
-          // Safely handle if backend sends { eventName, payload } OR raw payload
+          // Unwrap the payload and eventName
+          const eventName = parsed.eventName;
           const data = parsed.payload ? parsed.payload : parsed;
 
-          // 🔥 Anti-Crash Check: Is it the FULL MatchState?
-          if (data && data.team1 && data.team2) {
-            setMatchState(data);
-          } else {
-            // It's a partial DTO update! Fetch the full state to prevent UI crash.
-            console.log(
-              "Received partial update, fetching full MatchState safely...",
-            );
-            const fullState = await fetchMatchState(matchId);
-            setMatchState(fullState.data || fullState);
+          // Only process match-state related events
+          if (
+            !eventName || // Fallback just in case backend hasn't updated yet
+            eventName === "live-score-board" ||
+            eventName === "ball-update" ||
+            eventName === "undo-ball-update" ||
+            eventName === "innings-complete" ||
+            eventName === "match-complete"
+          ) {
+            // 🔥 Anti-Crash Check: Is it the FULL MatchState?
+            if (data && data.team1 && data.team2) {
+              setMatchState(data);
+            } else {
+              // It's a partial DTO update! Fetch the full state to prevent UI crash.
+              console.log(
+                "Received partial update, fetching full MatchState safely...",
+              );
+              const fullState = await fetchMatchState(matchId);
+              setMatchState(fullState.data || fullState);
+            }
           }
         } catch (err) {
           console.error("Error parsing match WebSocket message:", err);
@@ -48,8 +59,13 @@ export function useMatchWebSocket(matchId: string) {
       // Listen for OBS Banner Overlay Updates
       stompClient.subscribe(`/topic/stream/${matchId}`, (msg) => {
         try {
-          const payload = JSON.parse(msg.body);
-          setActiveBanner(payload.activeBanner);
+          const parsed = JSON.parse(msg.body);
+          // Safely handle both wrapped and unwrapped for Stream updates too
+          const payload = parsed.payload ? parsed.payload : parsed;
+
+          if (payload && payload.activeBanner) {
+            setActiveBanner(payload.activeBanner);
+          }
         } catch (err) {
           console.error("Error parsing stream WebSocket message:", err);
         }
