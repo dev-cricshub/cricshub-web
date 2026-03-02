@@ -317,7 +317,8 @@ export default function StreamDashboard() {
 
         // If no user is logged in, immediately redirect to home page
         if (!userId) {
-            window.location.href = '/';
+            const returnUrl = encodeURIComponent(window.location.pathname);
+            window.location.href = `/?login=true&redirect=${returnUrl}`;
             return;
         }
 

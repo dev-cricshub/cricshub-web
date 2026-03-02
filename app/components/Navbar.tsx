@@ -24,6 +24,16 @@ export default function Navbar() {
     checkAuthStatus();
   }, []);
 
+  // 3. DEEP LINKING: Auto-open modal if URL has ?login=true
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('login') === 'true') {
+        setLoginOpen(true);
+      }
+    }
+  }, []);
+
 
   const checkAuthStatus = () => {
     const token = localStorage.getItem('jwtToken');
@@ -47,7 +57,6 @@ export default function Navbar() {
     setIsLoggedIn(false);
     setUser(null);
 
-    // Optional: Force reload to clear any cached states/redirect to home
     window.location.href = '/';
   };
 
@@ -112,6 +121,18 @@ export default function Navbar() {
         onSuccess={() => {
           setLoginOpen(false);
           checkAuthStatus();
+
+          // Check URL for deep link redirect vs normal login
+          const searchParams = new URLSearchParams(window.location.search);
+          const redirectUrl = searchParams.get('redirect');
+
+          if (redirectUrl) {
+            // Operator clicked email link -> straight to stream dashboard
+            window.location.href = redirectUrl;
+          } else {
+            // Normal user clicked login -> straight to main dashboard
+            window.location.href = '/dashboard';
+          }
         }}
       />
     </>

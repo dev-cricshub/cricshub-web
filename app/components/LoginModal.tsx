@@ -106,7 +106,17 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
             onSuccess();
           } else {
             onClose();
-            window.location.href = '/dashboard'; // Fallback if no callback provided
+            // 🔥 Check if the URL has a ?redirect= parameter
+            const searchParams = new URLSearchParams(window.location.search);
+            const redirectUrl = searchParams.get('redirect');
+
+            if (redirectUrl) {
+              // Deep link from email: Send them straight to the stream dashboard
+              window.location.href = redirectUrl;
+            } else {
+              // Normal login from homepage: Send to main dashboard
+              window.location.href = '/dashboard';
+            }
           }
         }, 1500);
 
