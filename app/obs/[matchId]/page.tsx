@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+
+import { fetchMatchById, fetchMatchState, fetchStreamState } from '@/lib/api';
+
 // ═══════════════════════════════════════════════════════════
 // TYPES — exact mirror of MatchState.java
 // ═══════════════════════════════════════════════════════════
@@ -21,7 +26,7 @@ interface MatchState {
     matchId: string;
     team1: TeamDetails; team2: TeamDetails;
     tossWinner: string; choice: string;
-    isFirstInnings: boolean; completedOvers: number; totalOvers: number;
+    firstInnings: boolean; completedOvers: number; totalOvers: number;
     matchComplete: boolean; winner: string | null; winBy: string | null;
     battingFirst: TeamDetails | null; battingSecond: TeamDetails | null;
     currentStriker: PlayerDetails | null; currentNonStriker: PlayerDetails | null; currentBowler: PlayerDetails | null;
@@ -34,67 +39,8 @@ interface MatchInfo {
     team1: { name: string; logoPath: string | null };
     team2: { name: string; logoPath: string | null };
 }
-type BannerType = 'none' | 'main' | 'playingXI_bat' | 'playingXI_bowl' | 'score';
+type BannerType = 'none' | 'main' | 'playingXI_bat' | 'playingXI_bowl' | 'score' | string;
 interface StreamState { activeBanner: BannerType; templateId: string | null; }
-
-// ═══════════════════════════════════════════════════════════
-// PLACEHOLDER API CALLS
-// ═══════════════════════════════════════════════════════════
-
-async function fetchMatchInfoObs(matchId: string): Promise<MatchInfo> {
-    // TODO: GET /api/v1/matches/{matchId}
-    await new Promise(r => setTimeout(r, 200));
-    return {
-        id: matchId, venue: 'Jharkhand State Cricket Stadium',
-        matchDate: '2026-02-26', matchTime: '14:30:00',
-        stage: 'Final', overs: 20, tournamentName: 'Ranchi Premier League 2025',
-        team1: { name: 'Mumbai XI', logoPath: null },
-        team2: { name: 'Delhi Strikers', logoPath: null },
-    };
-}
-
-async function fetchMatchStateObs(matchId: string): Promise<MatchState> {
-    // TODO: GET /api/v1/matches/matchstate/{matchId}
-    // IMPORTANT: Replace this polling with WebSocket for zero-latency updates:
-    //   const stompClient = new Client({ brokerURL: 'ws://your-api/ws' });
-    //   stompClient.activate();
-    //   stompClient.subscribe(`/topic/match/${matchId}`, msg => setLiveState(JSON.parse(msg.body)));
-    //   stompClient.subscribe(`/topic/stream/${matchId}`, msg => setStreamState(JSON.parse(msg.body)));
-    await new Promise(r => setTimeout(r, 150));
-    const xi = (pfx: string): PlayerStats[] => Array.from({ length: 11 }, (_, i) => ({
-        playerId: `${pfx}${i}`, name: `Player ${i + 1}`,
-        runs: 20 + i * 9, ballsFaced: 18 + i * 6,
-        fours: i % 4, sixes: i % 2, strikeRate: 110 + i * 5,
-        wicketDetails: i < 4 ? { dismissalType: ['Bowled', 'Caught', 'LBW', 'Run Out'][i], bowlerId: null, catcherId: null, runOutMakerId: null, overNumber: i + 1, ballNumber: i + 3 } : null,
-        overs: i < 5 ? i + 1 : 0, ballsBowled: i < 5 ? (i + 1) * 6 : 0,
-        runsConceded: i < 5 ? (i + 1) * 9 : 0, wicketsTaken: i < 5 ? i % 3 : 0, economyRate: i < 5 ? 7.5 + i * 0.4 : 0,
-    }));
-    const t1: TeamDetails = { name: 'Mumbai XI', logoUrl: null, playingXI: xi('mum'), captainId: null, score: 148, wickets: 5, overs: 20, ballsPlayed: 120, extras: { wide: 4, noBall: 1, bye: 2, legBye: 1, penalty: 0 } };
-    const t2: TeamDetails = { name: 'Delhi Strikers', logoUrl: null, playingXI: xi('del'), captainId: null, score: 132, wickets: 7, overs: 18.2, ballsPlayed: 110, extras: { wide: 3, noBall: 0, bye: 1, legBye: 2, penalty: 0 } };
-    return {
-        matchId, team1: t1, team2: t2,
-        tossWinner: 'Mumbai XI', choice: 'Bat',
-        isFirstInnings: false, completedOvers: 18, totalOvers: 20,
-        matchComplete: false, winner: null, winBy: null,
-        battingFirst: t1, battingSecond: t2,
-        currentStriker: { playerId: 'del4', name: 'Player 5' },
-        currentNonStriker: { playerId: 'del5', name: 'Player 6' },
-        currentBowler: { playerId: 'mum7', name: 'Player 8' },
-        currentOverBalls: ['1', '0', 'W', '4', '2'],
-        team1BattingOrder: xi('mum'), team2BattingOrder: xi('del'),
-    };
-}
-
-async function fetchStreamStateObs(matchId: string): Promise<StreamState> {
-    // TODO: GET /api/v1/stream/{matchId}/state
-    // Returns whichever banner the operator activated on the dashboard
-    // Replace with WebSocket: stompClient.subscribe(`/topic/stream/${matchId}`, ...)
-    await new Promise(r => setTimeout(r, 100));
-    // DEMO: cycle through banners so you can preview all of them
-    const banners: BannerType[] = ['main', 'playingXI_bat', 'playingXI_bowl', 'score'];
-    const idx = Math.floor(Date.now() / 8000) % banners.length;
-    return { activeBanner: banners[idx], templateId: null };
-}
 
 // ═══════════════════════════════════════════════════════════
 // STYLE HELPERS
@@ -102,14 +48,25 @@ async function fetchStreamStateObs(matchId: string): Promise<StreamState> {
 
 const initials = (n: string) => n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-function fmt12(t: string) {
+function fmt12(t: string | number[]) {
     if (!t) return '';
-    const [h, m] = t.split(':');
-    const hr = parseInt(h);
-    return `${hr % 12 || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+    let h: number, m: string | number;
+
+    if (Array.isArray(t)) {
+        h = t[0];
+        m = t[1] !== undefined ? t[1].toString().padStart(2, '0') : '00';
+    } else {
+        const parts = String(t).split(':'); // Safely cast to string
+        h = parseInt(parts[0]);
+        m = parts[1] || '00';
+    }
+    return `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
 }
-function fmtDate(d: string) {
-    return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function fmtDate(d: string | number[]) {
+    if (!d) return '';
+    const dateObj = Array.isArray(d) ? new Date(d[0], d[1] - 1, d[2]) : new Date(d);
+    return dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 function ballClr(b: string): string {
     if (b === 'W') return '#ef4444';
@@ -121,7 +78,7 @@ function ballClr(b: string): string {
 }
 function getBatTeam(s: MatchState): TeamDetails {
     if (!s.battingFirst) return s.team1;
-    return s.isFirstInnings
+    return s.firstInnings
         ? (s.battingFirst.name === s.team1.name ? s.team1 : s.team2)
         : (s.battingFirst.name === s.team1.name ? s.team2 : s.team1);
 }
@@ -185,7 +142,7 @@ function ScoreOverlay({ state }: { state: MatchState }) {
                     <div style={{ padding: '10px 18px', borderLeft: '1px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
                         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>CRR</div>
                         <div style={{ color: '#34B8FF', fontWeight: 900, fontSize: 20 }}>{crr}</div>
-                        {!state.isFirstInnings && (
+                        {!state.firstInnings && (
                             <>
                                 <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>Need</div>
                                 <div style={{ color: '#FF9F43', fontWeight: 900, fontSize: 14 }}>{runsNeeded} off {ballsLeft}</div>
@@ -302,16 +259,21 @@ function MainMatchBanner({ info, state }: { info: MatchInfo; state: MatchState }
 
                 {/* Meta row */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, padding: '14px 36px 22px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                    {[
-                        { e: '📍', t: info.venue },
-                        { e: '📅', t: fmtDate(info.matchDate) },
-                        { e: '🕐', t: fmt12(info.matchTime) },
-                        { e: '🪙', t: `${state.tossWinner} won toss · chose to ${state.choice}` },
-                    ].map((row, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: 600 }}>
-                            <span>{row.e}</span><span>{row.t}</span>
+                    {info.venue && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600 }}>
+                            <span>📍</span><span>{info.venue}</span>
                         </div>
-                    ))}
+                    )}
+                    {(info.matchDate || info.matchTime) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600 }}>
+                            <span>📅</span><span>{fmtDate(info.matchDate)} {info.matchTime ? `· ${fmt12(info.matchTime)}` : ''}</span>
+                        </div>
+                    )}
+                    {state.tossWinner && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600 }}>
+                            <span>🪙</span><span>{state.tossWinner} won toss & chose to {state.choice}</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -327,87 +289,36 @@ function PlayingXIBanner({ team, isBatting }: { team: TeamDetails; isBatting: bo
     const players = team.playingXI.slice(0, 11);
 
     return (
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 900, animation: 'scaleIn 0.55s cubic-bezier(0.16,1,0.3,1)' }}>
-            <div style={{ ...glass, borderRadius: 26, overflow: 'hidden' }}>
-                <div style={{ height: 4, background: `linear-gradient(90deg,${accent[0]},${accent[1]},${accent[0]})`, backgroundSize: '200%', animation: 'shimmer 4s linear infinite' }} />
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 800, animation: 'scaleIn 0.55s cubic-bezier(0.16,1,0.3,1)' }}>
+            <div style={{ ...glass, borderRadius: 20, overflow: 'hidden' }}>
+                <div style={{ height: 5, background: `linear-gradient(90deg,${accent[0]},${accent[1]},${accent[0]})`, backgroundSize: '200%', animation: 'shimmer 4s linear infinite' }} />
 
-                {/* Header */}
-                <div style={{ padding: '18px 28px 14px', display: 'flex', alignItems: 'center', gap: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ width: 46, height: 46, borderRadius: 12, background: `linear-gradient(135deg,${accent[0]},${accent[1]})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: 15 }}>{initials(team.name)}</div>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>{isBatting ? '🏏 Batting Team' : '🎳 Bowling Team'}</div>
-                        <div style={{ color: '#fff', fontWeight: 900, fontSize: 20 }}>{team.name} — Playing XI</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: accent[0], fontWeight: 900, fontSize: 28 }}>{team.score}/{team.wickets}</div>
-                        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>({team.overs} ov)</div>
+                <div style={{ padding: '20px 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div>
+                        <div style={{ color: accent[0], fontSize: 12, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>{isBatting ? 'Batting XI' : 'Bowling XI'}</div>
+                        <div style={{ color: '#fff', fontWeight: 900, fontSize: 24, textTransform: 'uppercase', letterSpacing: 1 }}>{team.name}</div>
                     </div>
                 </div>
 
-                {/* Players grid */}
-                <div style={{ padding: '14px 28px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 20px' }}>
-                    {players.map((p, i) => {
-                        const isOut = !!p.wicketDetails;
-                        const hasBowled = p.ballsBowled > 0 || p.wicketsTaken > 0;
-                        return (
-                            <div key={p.playerId} style={{
-                                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10,
-                                background: isOut ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.04)',
-                                border: `1px solid ${isOut ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.05)'}`,
-                                transition: 'all 0.3s',
-                            }}>
-                                {/* Number */}
-                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: isOut ? 'rgba(239,68,68,0.18)' : `rgba(${accent[0] === '#34B8FF' ? '52,184,255' : '142,84,233'},0.15)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: isOut ? '#ef4444' : accent[0], fontSize: 11, flexShrink: 0 }}>
-                                    {i + 1}
-                                </div>
-                                {/* Name + stats */}
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ color: isOut ? 'rgba(255,255,255,0.35)' : '#fff', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {p.name}
-                                    </div>
-                                    {isBatting && (
-                                        <div style={{ color: isOut ? '#f87171' : 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600, marginTop: 1 }}>
-                                            {isOut ? dismissalLabel(p) : `${p.runs}(${p.ballsFaced}) · SR ${p.strikeRate.toFixed(0)}`}
-                                        </div>
-                                    )}
-                                    {!isBatting && hasBowled && (
-                                        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600, marginTop: 1 }}>
-                                            {p.overs}ov · {p.wicketsTaken}w · {p.runsConceded}r · ER {p.economyRate.toFixed(1)}
-                                        </div>
-                                    )}
-                                </div>
-                                {/* Right stat */}
-                                {isBatting && !isOut && p.runs > 0 && (
-                                    <div style={{ color: accent[0], fontWeight: 900, fontSize: 16, flexShrink: 0 }}>{p.runs}</div>
-                                )}
-                                {!isBatting && p.wicketsTaken > 0 && (
-                                    <div style={{ color: '#ef4444', fontWeight: 900, fontSize: 15, flexShrink: 0 }}>{p.wicketsTaken}w</div>
-                                )}
-                                {isOut && isBatting && (
-                                    <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>OUT</div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
+                <div style={{ padding: '20px 30px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {players.map((p, i) => (
+                        <div key={p.playerId} style={{
+                            display: 'flex', alignItems: 'center', padding: '10px 16px', borderRadius: 8,
+                            background: 'rgba(255,255,255,0.05)',
+                            borderLeft: `4px solid ${accent[0]}`,
+                        }}>
+                            <div style={{ width: 30, color: 'rgba(255,255,255,0.4)', fontWeight: 800, fontSize: 14 }}>{i + 1}</div>
+                            <div style={{ flex: 1, color: '#fff', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: 1 }}>{p.name}</div>
 
-                {/* Extras footer */}
-                {isBatting && team.extras && (
-                    <div style={{ padding: '10px 28px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 16 }}>
-                        <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600 }}>Extras:</span>
-                        {[
-                            { l: 'W', v: team.extras.wide },
-                            { l: 'Nb', v: team.extras.noBall },
-                            { l: 'B', v: team.extras.bye },
-                            { l: 'LB', v: team.extras.legBye },
-                        ].map(e => (
-                            <span key={e.l} style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: 600 }}>{e.l}: {e.v}</span>
-                        ))}
-                        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: 600, marginLeft: 'auto' }}>
-                            Total Extras: {Object.values(team.extras).reduce((a, b) => a + b, 0)}
-                        </span>
-                    </div>
-                )}
+                            {isBatting && p.runs > 0 && (
+                                <div style={{ color: '#34B8FF', fontWeight: 900, fontSize: 16 }}>{p.runs} <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>({p.ballsFaced})</span></div>
+                            )}
+                            {!isBatting && p.wicketsTaken > 0 && (
+                                <div style={{ color: '#8E54E9', fontWeight: 900, fontSize: 16 }}>{p.wicketsTaken} <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>wkts</span></div>
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -424,20 +335,84 @@ export default function ObsOverlayPage() {
     const [info, setInfo] = useState<MatchInfo | null>(null);
     const [liveState, setLiveState] = useState<MatchState | null>(null);
     const [streamState, setStreamState] = useState<StreamState>({ activeBanner: 'none', templateId: null });
-    const pollRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (!matchId) return;
-        // Initial load
-        Promise.all([fetchMatchInfoObs(matchId), fetchMatchStateObs(matchId), fetchStreamStateObs(matchId)])
-            .then(([i, s, ss]) => { setInfo(i); setLiveState(s); setStreamState(ss); });
 
-        // Poll every 2s — replace both with WebSocket for production
-        pollRef.current = setInterval(async () => {
-            const [s, ss] = await Promise.all([fetchMatchStateObs(matchId), fetchStreamStateObs(matchId)]);
-            setLiveState(s); setStreamState(ss);
-        }, 2000);
-        return () => { if (pollRef.current) clearInterval(pollRef.current); };
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+        // 1. Fetch initial data
+        Promise.all([
+            fetchMatchById(matchId),
+            fetchMatchState(matchId),
+            fetchStreamState(matchId)
+        ]).then(([rawMatch, state, stream]) => {
+            const actualMatch = rawMatch?.data || rawMatch;
+            const actualState = state?.data || state;
+            const actualStream = stream;
+
+            // Map backend MatchResponse2 to OBS MatchInfo
+            setInfo({
+                id: actualMatch?.matchId || actualMatch?.id,
+                venue: actualMatch?.venue || 'Venue TBD',
+                matchDate: actualMatch?.matchDate,
+                matchTime: actualMatch?.matchTime,
+                stage: actualMatch?.stage,
+                overs: actualMatch?.overs || 0,
+                tournamentName: actualMatch?.tournamentResponse?.name || actualMatch?.tournamentName || null, // 🔥 Now it grabs the name!
+                team1: { name: actualState?.team1?.name || 'Team 1', logoPath: null },
+                team2: { name: actualState?.team2?.name || 'Team 2', logoPath: null }
+            });
+
+            // Set the live cricket state
+            setLiveState(actualState);
+
+            // Set the active OBS banner based on dashboard controls
+            setStreamState({
+                activeBanner: actualStream?.activeBanner || 'none',
+                templateId: actualStream?.activeTemplateId || null
+            });
+        }).catch(err => {
+            console.error("OBS Fetch Error:", err);
+        });
+
+        const stompClient = new Client({
+            webSocketFactory: () => new SockJS(`${API_URL}/ws`),
+            reconnectDelay: 5000,
+            onConnect: () => {
+
+                // A. Subscribe to Banner Toggles
+                stompClient.subscribe(`/topic/stream/${matchId}`, (msg) => {
+                    try {
+                        const data = JSON.parse(msg.body);
+                        setStreamState({ activeBanner: data.activeBanner, templateId: data.activeTemplateId });
+                    } catch (err) { console.error('Banner parsing error:', err); }
+                });
+
+                stompClient.subscribe(`/topic/match/${matchId}`, async (msg) => {
+                    try {
+                        const parsed = JSON.parse(msg.body);
+                        const data = parsed.payload ? parsed.payload : parsed;
+
+                        // Anti-Crash Check: Ensure we have the full MatchState
+                        if (data && data.team1 && data.team2) {
+                            setLiveState(data);
+                        } else {
+                            // Partial update received, fetch full state safely to prevent blank overlays
+                            console.log("OBS received partial update, fetching full state...");
+                            const fullState = await fetchMatchState(matchId);
+                            setLiveState(fullState.data || fullState);
+                        }
+                    } catch (err) { console.error('Score parsing error:', err); }
+                });
+            },
+        });
+
+        stompClient.activate();
+
+        return () => {
+            stompClient.deactivate();
+        };
     }, [matchId]);
 
     if (!info || !liveState) return null;
@@ -460,6 +435,9 @@ export default function ObsOverlayPage() {
                 {streamState.activeBanner === 'main' && <MainMatchBanner info={info} state={liveState} />}
                 {streamState.activeBanner === 'playingXI_bat' && <PlayingXIBanner team={batTeam} isBatting={true} />}
                 {streamState.activeBanner === 'playingXI_bowl' && <PlayingXIBanner team={bowlTeam} isBatting={false} />}
+                {streamState.activeBanner.startsWith('tpl-') && (
+                    <ScoreOverlay state={liveState} /> // fallback to score overlay until premium templates are built
+                )}
                 {/* 'none' → fully transparent, nothing rendered */}
             </div>
 

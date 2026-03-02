@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Pacifico } from "next/font/google";
 import "./globals.css";
 import AOSInitializer from './components/AOSInitializer';
+import Script from 'next/script';
 
 const pacifico = Pacifico({
   weight: '400',
@@ -22,18 +23,18 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CricsHub | The Ultimate Cricket App",
-  description:"CricsHub is the ultimate all-in-one cricket app for live scores, live streaming, and fantasy sports. Get real-time match updates, manage tournaments with powerful tools, and build your winning fantasy team. Your comprehensive cricket journey starts here!",
+  description: "CricsHub is the ultimate all-in-one cricket app for live scores, live streaming, and fantasy sports. Get real-time match updates, manage tournaments with powerful tools, and build your winning fantasy team. Your comprehensive cricket journey starts here!",
 
-  keywords: ["cricket","live scoring","local fantasy","stream", "live scores", "fantasy cricket", "cricket app", "live streaming", "cricket tournament", "cricket news", "IPL", "T20"],
+  keywords: ["cricket", "live scoring", "local fantasy", "stream", "live scores", "fantasy cricket", "cricket app", "live streaming", "cricket tournament", "cricket news", "IPL", "T20"],
   openGraph: {
     title: "CricsHub: Live Cricket Scores, Manage Tournament & Play Fantasy!",
     description: "Your all-in-one app for live scores, streaming, tournament tools, and fantasy cricket. Coming soon!",
-    
+
     url: "https://www.cricshub.com",
     siteName: "CricsHub",
     images: [
       {
-        url: "http://res.cloudinary.com/di4m8pzsa/image/upload/v1754663685/qqbx5oi2kzptbbwrbv4r.png", 
+        url: "http://res.cloudinary.com/di4m8pzsa/image/upload/v1754663685/qqbx5oi2kzptbbwrbv4r.png",
         width: 1200,
         height: 630,
         alt: "CricsHub | Live Cricket Scores, Manage Tournament & Play Fantasy!",
@@ -43,7 +44,7 @@ export const metadata: Metadata = {
     type: "website",
   },
   icons: {
-    icon: "images/favicon.ico", 
+    icon: "images/favicon.ico",
   },
 };
 
@@ -57,6 +58,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${pacifico.variable} antialiased`}
       >
+        <Script
+          src="https://checkout.razorpay.com/v1/checkout.js"
+          strategy="lazyOnload"
+        />
         <AOSInitializer />
         {children}
       </body>
