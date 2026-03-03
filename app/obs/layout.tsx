@@ -9,19 +9,19 @@ export default function ObsLayout({ children }: { children: React.ReactNode }) {
         <html lang="en">
             <head>
                 <style>{`
-          *, *::before, *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          html, body {
-            background: transparent !important;
-            background-color: transparent !important;
-            overflow: hidden;
-            width: 1920px;
-            height: 1080px;
-          }
-        `}</style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  html, body {
+    background: transparent !important;
+    background-color: transparent !important;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+  }
+`}</style>
             </head>
             <body style={{ background: 'transparent', backgroundColor: 'transparent' }}>
                 {children}
