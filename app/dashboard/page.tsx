@@ -302,8 +302,6 @@ function UpcomingMatchCard({ match }: { match: MatchWithRole }) {
 function PastMatchCard({ match }: { match: MatchWithRole }) {
   const team1Won = match.winner === match.team1.name;
   const team2Won = match.winner === match.team2.name;
-      const canStream = match.adminHasSubscription;
-
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
@@ -343,14 +341,6 @@ function PastMatchCard({ match }: { match: MatchWithRole }) {
           <span className="flex items-center gap-1"><i className="ri-calendar-line text-gray-300" />{fmtDate(match.matchDate)}</span>
           {match.venue && <span className="flex items-center gap-1 truncate"><i className="ri-map-pin-line text-gray-300" />{match.venue}</span>}
         </div>
-        {canStream && (
-                    <div className="mt-3">
-                        <Link href={`/stream/${match.id}`}
-                            className="flex items-center justify-center gap-1.5 w-full py-2 bg-gray-800 text-gray-300 text-xs font-bold rounded-xl hover:bg-gray-700 hover:text-white transition-all">
-                            <i className="ri-layout-line" />View Stream Dashboard
-                        </Link>
-                    </div>
-                )}
       </div>
     </div>
   );

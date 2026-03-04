@@ -26,11 +26,25 @@ import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 interface PlayerDetails { playerId: string; name: string; }
 interface PlayerStats { playerId: string; name: string; runs: number; ballsFaced: number; fours: number; sixes: number; strikeRate: number; wicketDetails: { dismissalType: string } | null; overs: number; ballsBowled: number; runsConceded: number; wicketsTaken: number; economyRate: number; }
 interface TeamDetails { name: string; logoUrl: string | null; playingXI: PlayerStats[]; score: number; wickets: number; overs: number; extras: { wide: number; noBall: number; bye: number; legBye: number; penalty: number } | null; }
-interface MatchState { matchId: string; team1: TeamDetails; team2: TeamDetails; tossWinner: string; choice: string; firstInnings: boolean; completedOvers: number; totalOvers: number; matchComplete: boolean; winner: string | null; battingFirst: TeamDetails | null; currentStriker: PlayerDetails | null; currentNonStriker: PlayerDetails | null; currentBowler: PlayerDetails | null; currentOverBalls: string[]; }
+interface MatchState {
+    matchId: string;
+    team1: TeamDetails; team2: TeamDetails;
+    tossWinner: string; choice: string;
+    firstInnings: boolean; completedOvers: number; totalOvers: number;
+    matchComplete: boolean; winner: string | null; winBy: string | null;
+    battingFirst: TeamDetails | null; battingSecond: TeamDetails | null;
+    currentStriker: PlayerDetails | null;
+    currentNonStriker: PlayerDetails | null;
+    currentBowler: PlayerDetails | null;
+    currentOverBalls: string[];
+    innings1BattingOrder?: PlayerStats[]; innings2BattingOrder?: PlayerStats[];
+    team1BowlingOrder?: PlayerStats[]; team2BowlingOrder?: PlayerStats[];
+}
 interface MatchInfo { id: string; venue: string; matchDate: string; matchTime: string; stage: string | null; status: string; overs: number; tournamentName: string | null; team1: { id: string; name: string; logoPath: string | null }; team2: { id: string; name: string; logoPath: string | null }; creatorId: string; matchOps: string[]; }
 interface StreamSession { isLocked: boolean; lockedByUserId: string | null; lockedByName: string | null; }
 
-export type BannerType = 'none' | 'main' | 'playingXI_bat' | 'playingXI_bowl' | 'score' | string;
+// ── 'summary' added as 5th included banner ──
+export type BannerType = 'none' | 'main' | 'playingXI_bat' | 'playingXI_bowl' | 'score' | 'summary' | string;
 type MatchRole = 'admin' | 'operator';
 
 interface MatchSubscription {
@@ -40,7 +54,7 @@ interface MatchSubscription {
 
 interface AddOnTemplate {
     id: string; name: string; tier: 'pro' | 'elite';
-    price: number; features: string[]; previewGradient?: string; // Gradient added client-side
+    price: number; features: string[]; previewGradient?: string;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -95,7 +109,9 @@ const getBowlTeam = (s: MatchState): TeamDetails | null => {
     if (!bat) return null;
     return bat.name === s.team1.name ? s.team2 : s.team1;
 };
-
+const fmtSR = (v: number) => v > 0 ? v.toFixed(1) : '—';
+const fmtEcon = (v: number) => v > 0 ? v.toFixed(2) : '—';
+const fmtOv = (v: number) => v > 0 ? v.toFixed(1) : '0.0';
 // ═══════════════════════════════════════════════════════════
 // COMPONENTS
 // ═══════════════════════════════════════════════════════════
@@ -112,6 +128,13 @@ function ScoreLive({ state }: { state: MatchState }) {
 
     const crr = bat.overs > 0 ? (bat.score / bat.overs).toFixed(2) : '—';
 
+    const isBatTeam1 = bat.name === state.team1.name;
+    const batOrder = isBatTeam1 ? state.innings1BattingOrder : state.innings2BattingOrder;
+    const isBowlTeam1 = bowl.name === state.team1.name;
+    const bowlOrder = isBowlTeam1 ? state.team1BowlingOrder : state.team2BowlingOrder;
+    const stS = state.currentStriker ? (batOrder?.find(p => p.playerId === state.currentStriker!.playerId) || bat.playingXI.find(p => p.playerId === state.currentStriker!.playerId)) : null;
+    const nsS = state.currentNonStriker ? (batOrder?.find(p => p.playerId === state.currentNonStriker!.playerId) || bat.playingXI.find(p => p.playerId === state.currentNonStriker!.playerId)) : null;
+    const bowS = state.currentBowler ? (bowlOrder?.find(p => p.playerId === state.currentBowler!.playerId) || bowl.playingXI.find(p => p.playerId === state.currentBowler!.playerId)) : null;
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50">
@@ -140,24 +163,21 @@ function ScoreLive({ state }: { state: MatchState }) {
 
                 {(state.currentStriker || state.currentNonStriker || state.currentBowler) && (
                     <div className="space-y-1 pt-2 border-t border-gray-50">
-                        {[state.currentStriker, state.currentNonStriker].filter(Boolean).map((p, i) => {
-                            const stats = bat.playingXI.find(ps => ps.playerId === p?.playerId);
-                            return (
-                                <div key={i} className="flex items-center justify-between text-xs">
-                                    <span className="text-gray-700 font-semibold">{i === 0 ? '🏏 ' : ''}{p?.name}</span>
-                                    {stats ? <span className="text-gray-500 font-mono">{stats.runs}({stats.ballsFaced})</span> : <span className="text-gray-500 font-mono">0(0)</span>}
-                                </div>
-                            );
-                        })}
+                        {[
+                            { p: state.currentStriker, s: stS },
+                            { p: state.currentNonStriker, s: nsS }
+                        ].filter(x => x.p).map((item, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                                <span className="text-gray-700 font-semibold">{i === 0 ? '🏏 ' : ''}{item.p?.name}</span>
+                                {item.s ? <span className="text-gray-500 font-mono">{item.s.runs}({item.s.ballsFaced})</span> : <span className="text-gray-500 font-mono">0(0)</span>}
+                            </div>
+                        ))}
                         {state.currentBowler && (
                             <div className="flex items-center justify-between text-xs pt-2 mt-2 border-t border-dashed border-gray-100">
                                 <span className="text-gray-700 font-semibold">⚾ {state.currentBowler.name}</span>
-                                {(() => {
-                                    const bStats = bowl.playingXI.find(ps => ps.playerId === state.currentBowler?.playerId);
-                                    return bStats ? (
-                                        <span className="text-gray-500 font-mono">{bStats.wicketsTaken}-{bStats.runsConceded} ({bStats.overs})</span>
-                                    ) : <span className="text-gray-500 font-mono">0-0 (0)</span>;
-                                })()}
+                                {bowS ? (
+                                    <span className="text-gray-500 font-mono">{bowS.wicketsTaken}-{bowS.runsConceded} ({fmtOv(bowS.overs)})</span>
+                                ) : <span className="text-gray-500 font-mono">0-0 (0)</span>}
                             </div>
                         )}
                     </div>
@@ -298,34 +318,24 @@ export default function StreamDashboard() {
     const [session, setSession] = useState<StreamSession>({ isLocked: false, lockedByUserId: null, lockedByName: null });
     const [matchSub, setMatchSub] = useState<MatchSubscription | null>(null);
     const [activeBanner, setActiveBanner] = useState<BannerType>('none');
-
-    const [templates, setTemplates] = useState<AddOnTemplate[]>([]); // Fetched from backend
-
+    const [templates, setTemplates] = useState<AddOnTemplate[]>([]);
     const [streaming, setStreaming] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isUnauthorized, setIsUnauthorized] = useState(false);
     const [claimBusy, setClaimBusy] = useState(false);
     const [bannerBusy, setBannerBusy] = useState(false);
     const [copied, setCopied] = useState(false);
-
-    // Add-on Checkout State
     const [paying, setPaying] = useState(false);
     const [successAddonId, setSuccessAddonId] = useState<string | null>(null);
 
     useEffect(() => {
         const userId = localStorage.getItem('userUUID');
-
-        // If no user is logged in, immediately redirect to home page
         if (!userId) {
             const returnUrl = encodeURIComponent(window.location.pathname);
             window.location.href = `/?login=true&redirect=${returnUrl}`;
             return;
         }
-
-        setCurrentUser({
-            id: userId,
-            name: localStorage.getItem('userName') ?? 'User',
-        });
+        setCurrentUser({ id: userId, name: localStorage.getItem('userName') ?? 'User' });
     }, []);
 
     const [obsUrl, setObsUrl] = useState('');
@@ -339,7 +349,6 @@ export default function StreamDashboard() {
     const streamLockReason = isAdmin ? 'Subscribe to unlock the streaming dashboard for your matches.' : 'The match admin needs an active subscription to enable streaming.';
 
     const { matchState: wsMatchState, activeBanner: wsActiveBanner } = useMatchWebSocket(matchId);
-
     useEffect(() => { if (wsMatchState) setMatchState(wsMatchState); }, [wsMatchState]);
     useEffect(() => { if (wsActiveBanner && wsActiveBanner !== activeBanner) setActiveBanner(wsActiveBanner as BannerType); }, [wsActiveBanner]);
 
@@ -350,7 +359,7 @@ export default function StreamDashboard() {
             fetchMatchState(matchId),
             fetchStreamSession(matchId),
             fetchMatchSubscription(matchId),
-            fetchAvailableTemplates() // Fetch backend templates
+            fetchAvailableTemplates()
         ]).then(([rawMatch, state, sess, sub, tpls]) => {
             const actualMatch = rawMatch?.data || rawMatch;
             const creatorId = actualMatch?.creatorId || actualMatch?.creatorName?.id;
@@ -359,7 +368,7 @@ export default function StreamDashboard() {
             if (currentUser.id !== creatorId && !opsArray.includes(currentUser.id)) {
                 setIsUnauthorized(true);
                 setLoading(false);
-                return; // Stop loading the rest of the dashboard
+                return;
             }
             const actualState = state?.data || state;
 
@@ -381,20 +390,11 @@ export default function StreamDashboard() {
             setMatchState(actualState);
             setSession({ isLocked: sess?.locked ?? false, lockedByUserId: sess?.lockedByUserId ?? null, lockedByName: sess?.lockedByName ?? null });
             setMatchSub(sub);
-
-            // Merge backend template data with frontend visual gradients
-            const mappedTemplates = (tpls || []).map((t: any) => ({
-                ...t,
-                previewGradient: VISUAL_MAP[t.id] || 'linear-gradient(135deg,#111,#333)'
-            }));
+            const mappedTemplates = (tpls || []).map((t: any) => ({ ...t, previewGradient: VISUAL_MAP[t.id] || 'linear-gradient(135deg,#111,#333)' }));
             setTemplates(mappedTemplates);
-
             if (sess?.locked && sess?.lockedByUserId === currentUser.id) setStreaming(true);
             setLoading(false);
-        }).catch(err => {
-            console.error("Failed to load match dashboard:", err);
-            setLoading(false);
-        });
+        }).catch(err => { console.error("Failed to load match dashboard:", err); setLoading(false); });
     }, [matchId, currentUser.id]);
 
     useEffect(() => {
@@ -433,77 +433,39 @@ export default function StreamDashboard() {
 
     const copyObs = () => { navigator.clipboard.writeText(obsUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
-    // ══ ADD-ON CHECKOUT FLOW ══
     const handleBuyTemplate = async (tpl: AddOnTemplate) => {
         setPaying(true);
         try {
-            const order = await createAddonOrder(matchId, {
-                userId: currentUser.id,
-                templateId: tpl.id,
-                templateName: tpl.name,
-                tier: tpl.tier,
-                amount: tpl.price,
-            });
-
+            const order = await createAddonOrder(matchId, { userId: currentUser.id, templateId: tpl.id, templateName: tpl.name, tier: tpl.tier, amount: tpl.price });
             const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-
-            // 🔥 DEV MODE BYPASS
             if (razorpayKey === 'rzp_test_dev_key') {
-                console.log("🛠️ DEV MODE: Simulating Add-on Checkout...");
                 setTimeout(async () => {
-                    await verifyAddonPayment(matchId, {
-                        userId: currentUser.id,
-                        razorpayOrderId: order.orderId,
-                        razorpayPaymentId: `pay_addon_mock_${Math.floor(Math.random() * 1000000)}`,
-                        razorpaySignature: "mock_signature",
-                        templateId: tpl.id,
-                    });
-
-                    // Instantly unlock in UI
+                    await verifyAddonPayment(matchId, { userId: currentUser.id, razorpayOrderId: order.orderId, razorpayPaymentId: `pay_addon_mock_${Math.floor(Math.random() * 1000000)}`, razorpaySignature: "mock_signature", templateId: tpl.id });
                     setMatchSub(prev => prev ? { ...prev, purchasedTemplateIds: [...prev.purchasedTemplateIds, tpl.id] } : prev);
                     setSuccessAddonId(tpl.id);
-                    setTimeout(() => setSuccessAddonId(null), 3000); // Hide success badge after 3s
+                    setTimeout(() => setSuccessAddonId(null), 3000);
                     setPaying(false);
                 }, 1500);
                 return;
             }
-
-            // ── REAL RAZORPAY FLOW ──
             const loaded = await loadRazorpay();
             if (!loaded) { alert('Could not load Razorpay.'); setPaying(false); return; }
-
             new (window as any).Razorpay({
-                key: razorpayKey,
-                amount: order.amount * 100,
-                currency: order.currency || 'INR',
-                name: 'Cricshub',
-                description: `Unlock ${tpl.name} Overlay`,
-                order_id: order.orderId,
+                key: razorpayKey, amount: order.amount * 100, currency: order.currency || 'INR',
+                name: 'Cricshub', description: `Unlock ${tpl.name} Overlay`, order_id: order.orderId,
                 theme: { color: '#34B8FF' },
                 handler: async (response: any) => {
                     try {
-                        await verifyAddonPayment(matchId, {
-                            userId: currentUser.id,
-                            razorpayOrderId: response.razorpay_order_id,
-                            razorpayPaymentId: response.razorpay_payment_id,
-                            razorpaySignature: response.razorpay_signature,
-                            templateId: tpl.id,
-                        });
+                        await verifyAddonPayment(matchId, { userId: currentUser.id, razorpayOrderId: response.razorpay_order_id, razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature, templateId: tpl.id });
                         setMatchSub(prev => prev ? { ...prev, purchasedTemplateIds: [...prev.purchasedTemplateIds, tpl.id] } : prev);
                         setSuccessAddonId(tpl.id);
                         setTimeout(() => setSuccessAddonId(null), 3000);
-                    } catch (err) {
-                        alert('Payment verification failed.');
-                    }
+                    } catch (err) { alert('Payment verification failed.'); }
                     setPaying(false);
                 },
                 modal: { ondismiss: () => setPaying(false) },
             }).open();
-
-        } catch (err: any) {
-            alert(err.message || 'Something went wrong.');
-            setPaying(false);
-        }
+        } catch (err: any) { alert(err.message || 'Something went wrong.'); setPaying(false); }
     };
 
     if (loading) return (
@@ -524,18 +486,34 @@ export default function StreamDashboard() {
                     <i className="ri-shield-keyhole-line text-4xl text-red-500" />
                 </div>
                 <h1 className="text-2xl font-black text-gray-900 mb-2">Access Denied</h1>
-                <p className="text-gray-500 text-sm mb-8 leading-relaxed">
-                    You do not have permission to view the streaming dashboard for this match. You must be the Match Admin or an assigned Match Operator.
-                </p>
-                <Link href="/dashboard" className="block w-full py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
-                    Back to My Dashboard
-                </Link>
+                <p className="text-gray-500 text-sm mb-8 leading-relaxed">You do not have permission to view the streaming dashboard for this match.</p>
+                <Link href="/dashboard" className="block w-full py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">Back to My Dashboard</Link>
             </div>
             <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />
         </div>
     );
 
     const purchasedTemplates = templates.filter(t => matchSub?.purchasedTemplateIds.includes(t.id));
+
+    // ── Helper: label for active banner status bar ──
+    const activeBannerLabel = () => {
+        if (activeBanner === 'none') return 'No banner active — OBS overlay is clear';
+        if (activeBanner === 'main') return '📺 Main Match Banner is live on OBS';
+        if (activeBanner === 'playingXI_bat') return '🏏 Batting XI Banner is live on OBS';
+        if (activeBanner === 'playingXI_bowl') return '🎳 Bowling XI Banner is live on OBS';
+        if (activeBanner === 'score') return '📊 Score Overlay is live on OBS';
+        if (activeBanner === 'summary') return '📋 Match Summary is live on OBS';
+        return `✨ ${templates.find(t => t.id === activeBanner)?.name ?? 'Premium Overlay'} is live on OBS`;
+    };
+
+    // ── Shared banner list for included banners ──
+    const INCLUDED_BANNERS_ADMIN = [
+        { icon: 'ri-layout-top-2-line', title: 'Main Match Banner', desc: 'Tournament, teams, venue, date and toss result.', key: 'main', previewBg: 'linear-gradient(135deg,#34B8FF,#1E88E5)' },
+        { icon: 'ri-group-line', title: 'Batting XI', desc: 'Full batting lineup with live runs and dismissal info.', key: 'playingXI_bat', previewBg: 'linear-gradient(135deg,#00b4d8,#0077b6)' },
+        { icon: 'ri-group-2-line', title: 'Bowling XI', desc: 'Bowling lineup with overs, wickets and economy.', key: 'playingXI_bowl', previewBg: 'linear-gradient(135deg,#8E54E9,#4776E6)' },
+        { icon: 'ri-bar-chart-line', title: 'Live Score Overlay', desc: 'Persistent bottom score bar, updates ball by ball.', key: 'score', previewBg: 'linear-gradient(135deg,#0a1628,#1E88E5)' },
+        { icon: 'ri-file-list-3-line', title: 'Match Summary', desc: 'Top batters & bowlers from both teams. Shows required or result at bottom.', key: 'summary', previewBg: 'linear-gradient(135deg,#E2B94B,#8B6914)' },
+    ];
 
     return (
         <div className="min-h-screen bg-[#F8F9FA]">
@@ -568,7 +546,6 @@ export default function StreamDashboard() {
                 </div>
             </nav>
 
-            {/* Paying Overlay */}
             {paying && (
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center">
                     <div className="bg-white rounded-3xl p-8 flex flex-col items-center shadow-2xl">
@@ -607,7 +584,7 @@ export default function StreamDashboard() {
                     {/* ══ MAIN PANEL ══ */}
                     <div className="space-y-6">
 
-                        {/* Active banner status */}
+                        {/* Active banner status bar */}
                         <div className={`rounded-2xl border-2 px-5 py-4 flex items-center justify-between gap-4 transition-all duration-300 ${activeBanner !== 'none' ? 'border-red-200 bg-red-50' : 'border-gray-100 bg-white'}`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${activeBanner !== 'none' ? 'bg-red-500' : 'bg-gray-100'}`}>
@@ -615,12 +592,7 @@ export default function StreamDashboard() {
                                 </div>
                                 <div>
                                     <p className={`font-bold text-sm ${activeBanner !== 'none' ? 'text-red-700' : 'text-gray-500'}`}>
-                                        {activeBanner === 'none' ? 'No banner active — OBS overlay is clear'
-                                            : activeBanner === 'main' ? '📺 Main Match Banner is live on OBS'
-                                                : activeBanner === 'playingXI_bat' ? '🏏 Batting XI Banner is live on OBS'
-                                                    : activeBanner === 'playingXI_bowl' ? '🎳 Bowling XI Banner is live on OBS'
-                                                        : activeBanner === 'score' ? '📊 Score Overlay is live on OBS'
-                                                            : `✨ ${templates.find(t => t.id === activeBanner)?.name ?? 'Premium Overlay'} is live on OBS`}
+                                        {activeBannerLabel()}
                                     </p>
                                     <p className="text-xs text-gray-400">{activeBanner !== 'none' ? 'Displaying in your OBS browser source' : 'Select a banner below to show it'}</p>
                                 </div>
@@ -641,7 +613,7 @@ export default function StreamDashboard() {
                                         <i className="ri-information-line text-amber-500 text-xl flex-shrink-0 mt-0.5" />
                                         <div className="flex-1">
                                             <p className="font-bold text-amber-800 text-sm">Subscribe to unlock all streaming features</p>
-                                            <p className="text-xs text-amber-700 mt-0.5 mb-3">As the match admin, you need an active subscription to use the streaming dashboard. Operators assigned to your match will also gain access.</p>
+                                            <p className="text-xs text-amber-700 mt-0.5 mb-3">As the match admin, you need an active subscription to use the streaming dashboard.</p>
                                             <Link href="/pricing" className="inline-flex items-center gap-2 bg-amber-500 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-amber-600 transition-colors">
                                                 <i className="ri-vip-crown-line" />View Plans
                                             </Link>
@@ -649,18 +621,27 @@ export default function StreamDashboard() {
                                     </div>
                                 )}
 
-                                {/* Included banners */}
+                                {/* ── Included banners (now 5) ── */}
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
                                         <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center"><i className="ri-gift-line text-[#34B8FF] text-sm" /></div>
                                         <p className="font-black text-gray-900">Included Banners</p>
                                         <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">With subscription</span>
                                     </div>
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        <BannerCard icon="ri-layout-top-2-line" title="Main Match Banner" desc="Tournament, teams, venue, date and toss result." active={activeBanner === 'main'} canActivate={iAmStreaming && (matchSub?.adminHasSubscription ?? false)} lockedReason={!matchSub?.adminHasSubscription ? 'Subscription required' : 'Start streaming first'} onToggle={() => handleBanner('main')} previewBg="linear-gradient(135deg,#34B8FF,#1E88E5)" />
-                                        <BannerCard icon="ri-group-line" title="Batting XI Banner" desc="Full batting lineup with live runs and dismissal info." active={activeBanner === 'playingXI_bat'} canActivate={iAmStreaming && (matchSub?.adminHasSubscription ?? false)} lockedReason={!matchSub?.adminHasSubscription ? 'Subscription required' : 'Start streaming first'} onToggle={() => handleBanner('playingXI_bat')} previewBg="linear-gradient(135deg,#00b4d8,#0077b6)" />
-                                        <BannerCard icon="ri-group-2-line" title="Bowling XI Banner" desc="Bowling lineup with overs, wickets and economy." active={activeBanner === 'playingXI_bowl'} canActivate={iAmStreaming && (matchSub?.adminHasSubscription ?? false)} lockedReason={!matchSub?.adminHasSubscription ? 'Subscription required' : 'Start streaming first'} onToggle={() => handleBanner('playingXI_bowl')} previewBg="linear-gradient(135deg,#8E54E9,#4776E6)" />
-                                        <BannerCard icon="ri-bar-chart-line" title="Live Score Overlay" desc="Persistent bottom score bar, updates ball by ball." active={activeBanner === 'score'} canActivate={iAmStreaming && (matchSub?.adminHasSubscription ?? false)} lockedReason={!matchSub?.adminHasSubscription ? 'Subscription required' : 'Start streaming first'} onToggle={() => handleBanner('score')} previewBg="linear-gradient(135deg,#0a1628,#1E88E5)" />
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {INCLUDED_BANNERS_ADMIN.map(b => (
+                                            <BannerCard
+                                                key={b.key}
+                                                icon={b.icon}
+                                                title={b.title}
+                                                desc={b.desc}
+                                                active={activeBanner === b.key}
+                                                canActivate={iAmStreaming && (matchSub?.adminHasSubscription ?? false)}
+                                                lockedReason={!matchSub?.adminHasSubscription ? 'Subscription required' : 'Start streaming first'}
+                                                onToggle={() => handleBanner(b.key as BannerType)}
+                                                previewBg={b.previewBg}
+                                            />
+                                        ))}
                                     </div>
                                 </div>
 
@@ -676,52 +657,34 @@ export default function StreamDashboard() {
                                             const isOwned = matchSub?.purchasedTemplateIds.includes(tpl.id) ?? false;
                                             const isActive = activeBanner === tpl.id;
                                             const justBought = successAddonId === tpl.id;
-
                                             return (
                                                 <div key={tpl.id} className={`rounded-2xl border-2 overflow-hidden transition-all duration-300 relative ${isActive ? 'border-[#34B8FF] shadow-xl shadow-blue-100' : isOwned ? 'border-gray-200 hover:border-blue-200 hover:shadow-md' : 'border-gray-100'}`}>
-
-                                                    {/* Success animation overlay */}
                                                     {justBought && (
                                                         <div className="absolute inset-0 z-10 bg-green-500/90 backdrop-blur-sm flex flex-col items-center justify-center text-white">
                                                             <i className="ri-checkbox-circle-fill text-4xl mb-1" />
                                                             <p className="font-black text-sm uppercase tracking-wider">Unlocked!</p>
                                                         </div>
                                                     )}
-
                                                     <div className="h-14 w-full relative" style={{ background: tpl.previewGradient }}>
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <span className="bg-black/25 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">OBS Overlay</span>
-                                                        </div>
-                                                        {isActive && (
-                                                            <div className="absolute top-1.5 left-2 flex items-center gap-1 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                                                                <span className="w-1 h-1 rounded-full bg-white animate-pulse" />ON AIR
-                                                            </div>
-                                                        )}
+                                                        <div className="absolute inset-0 flex items-center justify-center"><span className="bg-black/25 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">OBS Overlay</span></div>
+                                                        {isActive && <div className="absolute top-1.5 left-2 flex items-center gap-1 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full"><span className="w-1 h-1 rounded-full bg-white animate-pulse" />ON AIR</div>}
                                                     </div>
                                                     <div className="p-4 bg-white">
                                                         <div className="flex items-start justify-between gap-2 mb-2">
                                                             <div>
                                                                 <p className="font-black text-gray-900 text-sm">{tpl.name}</p>
-                                                                <span className={`text-[9px] font-black border px-2 py-0.5 rounded-full inline-block mt-0.5 ${tpl.tier === 'elite' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
-                                                                    {tpl.tier.toUpperCase()}
-                                                                </span>
+                                                                <span className={`text-[9px] font-black border px-2 py-0.5 rounded-full inline-block mt-0.5 ${tpl.tier === 'elite' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{tpl.tier.toUpperCase()}</span>
                                                             </div>
-                                                            {isOwned
-                                                                ? <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0">✓ Owned</span>
-                                                                : <span className="text-sm font-black text-gray-900 flex-shrink-0">₹{tpl.price}</span>
-                                                            }
+                                                            {isOwned ? <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0">✓ Owned</span> : <span className="text-sm font-black text-gray-900 flex-shrink-0">₹{tpl.price}</span>}
                                                         </div>
                                                         <ul className="space-y-0.5 mb-3">
                                                             {tpl.features.slice(0, 3).map((f, i) => (
-                                                                <li key={i} className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                                                                    <i className="ri-check-line text-[#34B8FF] flex-shrink-0" />{f}
-                                                                </li>
+                                                                <li key={i} className="flex items-center gap-1.5 text-[11px] text-gray-500"><i className="ri-check-line text-[#34B8FF] flex-shrink-0" />{f}</li>
                                                             ))}
                                                         </ul>
                                                         {isOwned ? (
                                                             <button onClick={() => handleBanner(tpl.id as any)} disabled={!iAmStreaming}
-                                                                className={`w-full py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed
-                                                                ${isActive ? 'bg-red-50 text-red-500 border border-red-200' : 'bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white hover:shadow-md'}`}>
+                                                                className={`w-full py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isActive ? 'bg-red-50 text-red-500 border border-red-200' : 'bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white hover:shadow-md'}`}>
                                                                 {isActive ? 'Hide Overlay' : !iAmStreaming ? 'Start streaming first' : 'Activate Overlay'}
                                                             </button>
                                                         ) : (
@@ -750,7 +713,7 @@ export default function StreamDashboard() {
                                 {!matchSub?.adminHasSubscription && (
                                     <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-start gap-3">
                                         <i className="ri-information-line text-amber-500 text-xl flex-shrink-0 mt-0.5" />
-                                        <div><p className="font-bold text-amber-800 text-sm">Streaming not available for this match</p><p className="text-xs text-amber-700 mt-0.5">The match admin hasn't subscribed yet. Ask them to upgrade to unlock the streaming dashboard.</p></div>
+                                        <div><p className="font-bold text-amber-800 text-sm">Streaming not available for this match</p><p className="text-xs text-amber-700 mt-0.5">The match admin hasn't subscribed yet.</p></div>
                                     </div>
                                 )}
 
@@ -761,11 +724,21 @@ export default function StreamDashboard() {
                                                 <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center"><i className="ri-gift-line text-[#34B8FF] text-sm" /></div>
                                                 <p className="font-black text-gray-900">Available Banners</p>
                                             </div>
-                                            <div className="grid md:grid-cols-2 gap-4">
-                                                <BannerCard icon="ri-layout-top-2-line" title="Main Match Banner" desc="Tournament, teams, venue, date and toss result." active={activeBanner === 'main'} canActivate={iAmStreaming} lockedReason="Start streaming first" onToggle={() => handleBanner('main')} previewBg="linear-gradient(135deg,#34B8FF,#1E88E5)" />
-                                                <BannerCard icon="ri-group-line" title="Batting XI Banner" desc="Full batting lineup with live runs and dismissal info." active={activeBanner === 'playingXI_bat'} canActivate={iAmStreaming} lockedReason="Start streaming first" onToggle={() => handleBanner('playingXI_bat')} previewBg="linear-gradient(135deg,#00b4d8,#0077b6)" />
-                                                <BannerCard icon="ri-group-2-line" title="Bowling XI Banner" desc="Bowling lineup with overs, wickets and economy." active={activeBanner === 'playingXI_bowl'} canActivate={iAmStreaming} lockedReason="Start streaming first" onToggle={() => handleBanner('playingXI_bowl')} previewBg="linear-gradient(135deg,#8E54E9,#4776E6)" />
-                                                <BannerCard icon="ri-bar-chart-line" title="Live Score Overlay" desc="Persistent bottom score bar, updates ball by ball." active={activeBanner === 'score'} canActivate={iAmStreaming} lockedReason="Start streaming first" onToggle={() => handleBanner('score')} previewBg="linear-gradient(135deg,#0a1628,#1E88E5)" />
+                                            {/* Operator sees same 5 banners */}
+                                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {INCLUDED_BANNERS_ADMIN.map(b => (
+                                                    <BannerCard
+                                                        key={b.key}
+                                                        icon={b.icon}
+                                                        title={b.title}
+                                                        desc={b.desc}
+                                                        active={activeBanner === b.key}
+                                                        canActivate={iAmStreaming}
+                                                        lockedReason="Start streaming first"
+                                                        onToggle={() => handleBanner(b.key as BannerType)}
+                                                        previewBg={b.previewBg}
+                                                    />
+                                                ))}
                                             </div>
                                         </div>
 
