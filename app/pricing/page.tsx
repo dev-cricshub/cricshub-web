@@ -135,15 +135,15 @@ const ADDON_TEMPLATES: AddOnTemplate[] = [
   },
   {
     id: "tpl-pro-2",
-    name: "Amber League",
+    name: "Inline Burst",
     tier: "pro",
-    price: 129,
+    price: 99,
     previewGradient: "linear-gradient(135deg,#F7971E,#FFD200)",
     features: [
-      "Gold gradient design",
-      "Animated wicket flash",
-      "Watermark-free",
-      "Sponsor slot",
+      "In-bar light beam animation on 4, 6, wicket, 50 & 100",
+      "Broadcast-style scorebar",
+      "No full-screen takeover",
+      "Player name & stat reveal",
     ],
   },
   {
