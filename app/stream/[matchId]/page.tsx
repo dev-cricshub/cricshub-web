@@ -15,7 +15,8 @@ import {
     streamHeartbeat,
     fetchAvailableTemplates,
     createAddonOrder,
-    verifyAddonPayment
+    verifyAddonPayment,
+    fetchStreamState
 } from '@/lib/api';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 
@@ -355,46 +356,81 @@ export default function StreamDashboard() {
     useEffect(() => {
         if (!matchId || !currentUser.id) return;
         Promise.all([
-            fetchMatchById(matchId),
-            fetchMatchState(matchId),
-            fetchStreamSession(matchId),
-            fetchMatchSubscription(matchId),
-            fetchAvailableTemplates()
-        ]).then(([rawMatch, state, sess, sub, tpls]) => {
+          fetchMatchById(matchId),
+          fetchMatchState(matchId),
+          fetchStreamSession(matchId),
+          fetchMatchSubscription(matchId),
+          fetchAvailableTemplates(),
+          fetchStreamState(matchId),
+        ])
+          .then(([rawMatch, state, sess, sub, tpls, streamState]) => {
             const actualMatch = rawMatch?.data || rawMatch;
-            const creatorId = actualMatch?.creatorId || actualMatch?.creatorName?.id;
+            const creatorId =
+              actualMatch?.creatorId || actualMatch?.creatorName?.id;
             const opsArray = actualMatch?.matchOps || [];
 
-            if (currentUser.id !== creatorId && !opsArray.includes(currentUser.id)) {
-                setIsUnauthorized(true);
-                setLoading(false);
-                return;
+            if (
+              currentUser.id !== creatorId &&
+              !opsArray.includes(currentUser.id)
+            ) {
+              setIsUnauthorized(true);
+              setLoading(false);
+              return;
             }
             const actualState = state?.data || state;
 
             setMatchInfo({
-                id: actualMatch?.matchId || actualMatch?.id,
-                venue: actualMatch?.venue || 'Venue TBD',
-                matchDate: actualMatch?.matchDate,
-                matchTime: actualMatch?.matchTime,
-                stage: actualMatch?.stage,
-                status: actualMatch?.status,
-                overs: actualMatch?.overs,
-                tournamentName: actualMatch?.tournamentResponse?.name || null,
-                team1: { id: actualMatch?.team1Id || 't1', name: actualState?.team1?.name || 'Team 1', logoPath: actualState?.team1?.logoUrl || null },
-                team2: { id: actualMatch?.team2Id || 't2', name: actualState?.team2?.name || 'Team 2', logoPath: actualState?.team2?.logoUrl || null },
-                creatorId: actualMatch?.creatorId || actualMatch?.creatorName?.id,
-                matchOps: actualMatch?.matchOps || []
+              id: actualMatch?.matchId || actualMatch?.id,
+              venue: actualMatch?.venue || "Venue TBD",
+              matchDate: actualMatch?.matchDate,
+              matchTime: actualMatch?.matchTime,
+              stage: actualMatch?.stage,
+              status: actualMatch?.status,
+              overs: actualMatch?.overs,
+              tournamentName: actualMatch?.tournamentResponse?.name || null,
+              team1: {
+                id: actualMatch?.team1Id || "t1",
+                name: actualState?.team1?.name || "Team 1",
+                logoPath: actualState?.team1?.logoUrl || null,
+              },
+              team2: {
+                id: actualMatch?.team2Id || "t2",
+                name: actualState?.team2?.name || "Team 2",
+                logoPath: actualState?.team2?.logoUrl || null,
+              },
+              creatorId: actualMatch?.creatorId || actualMatch?.creatorName?.id,
+              matchOps: actualMatch?.matchOps || [],
             });
 
             setMatchState(actualState);
-            setSession({ isLocked: sess?.locked ?? false, lockedByUserId: sess?.lockedByUserId ?? null, lockedByName: sess?.lockedByName ?? null });
+            setSession({
+              isLocked: sess?.locked ?? false,
+              lockedByUserId: sess?.lockedByUserId ?? null,
+              lockedByName: sess?.lockedByName ?? null,
+            });
             setMatchSub(sub);
-            const mappedTemplates = (tpls || []).map((t: any) => ({ ...t, previewGradient: VISUAL_MAP[t.id] || 'linear-gradient(135deg,#111,#333)' }));
+            const mappedTemplates = (tpls || []).map((t: any) => ({
+              ...t,
+              previewGradient:
+                VISUAL_MAP[t.id] || "linear-gradient(135deg,#111,#333)",
+            }));
             setTemplates(mappedTemplates);
-            if (sess?.locked && sess?.lockedByUserId === currentUser.id) setStreaming(true);
+            if (sess?.locked && sess?.lockedByUserId === currentUser.id)
+                setStreaming(true);
+              if (
+                streamState?.activeBanner &&
+                streamState.activeBanner !== "none"
+              ) {
+                const restored =
+                  streamState.activeTemplateId ?? streamState.activeBanner;
+                setActiveBanner(restored as BannerType);
+              }
             setLoading(false);
-        }).catch(err => { console.error("Failed to load match dashboard:", err); setLoading(false); });
+          })
+          .catch((err) => {
+            console.error("Failed to load match dashboard:", err);
+            setLoading(false);
+          });
     }, [matchId, currentUser.id]);
 
     useEffect(() => {
