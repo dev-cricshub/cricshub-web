@@ -6,6 +6,8 @@ import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { fetchMatchById, fetchMatchState, fetchStreamState } from "@/lib/api";
 import EventBurstOverlay from "@/app/overlays/premium/matchAddOn/EventBurstOverlay";
+import InlineBurstOverlay from "@/app/overlays/premium/matchAddOn/InlineBurstOverlay";
+import WinPredictorOverlay from "@/app/overlays/premium/matchAddOn/WinPredictorOverlay";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES — mirroring MatchState.java exactly
@@ -3002,16 +3004,18 @@ export default function ObsOverlayPage() {
             />
           )}
           {streamState.activeBanner === "tpl-pro-1" && (
-            <EventBurstOverlay
-              state={liveState}
-            />
+            <EventBurstOverlay state={liveState} />
           )}
-          {streamState.activeBanner.startsWith("tpl-") &&
+          {streamState.activeBanner === "tpl-pro-2" && (
+            <InlineBurstOverlay state={liveState} />
+          )}
+          {streamState.activeBanner === "tpl-pro-3" && (
+            <WinPredictorOverlay state={liveState} />
+          )}
+          {/* {streamState.activeBanner.startsWith("tpl-") &&
             streamState.activeBanner !== "tpl-pro-1" && (
-              <ScoreOverlay
-                state={liveState}
-              />
-            )}
+              <ScoreOverlay state={liveState} />
+            )} */}
         </div>
       </div>
 
