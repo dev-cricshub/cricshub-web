@@ -1666,27 +1666,7 @@ function BowlingCard({
   bowlingTeam: TeamDetails;
   state: MatchState;
   }) {
-  console.log(
-    "CURRENT_BOWLER_DEBUG",
-    JSON.stringify({
-      currentBowler: state.currentBowler,
-      firstInnings: state.firstInnings,
-      team1BowlingOrder: (state as any).team1BowlingOrder?.map((p: any) => ({
-        name: p.name,
-        balls: p.ballsBowled,
-        overs: p.overs,
-      })),
-      bowlTeam: getBowlTeam(state)?.name,
-      bowlTeamPlayingXI: getBowlTeam(state)
-        ?.playingXI?.filter((p: any) => p.ballsBowled > 0)
-        .map((p: any) => ({
-          name: p.name,
-          balls: p.ballsBowled,
-          overs: p.overs,
-        })),
-    }),
-  );
-    
+   
   const isTeam1 = team.name === state.team1.name;
   const bowlingOrderArr =
     (state.firstInnings
