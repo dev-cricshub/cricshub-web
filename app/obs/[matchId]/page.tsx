@@ -77,6 +77,8 @@ interface MatchState {
   innings2BattingOrder?: PlayerStats[];
   team1BowlingOrder?: PlayerStats[];
   team2BowlingOrder?: PlayerStats[];
+  innings1Overs?: { shortBallOutcome: string }[][];
+  innings2Overs?: { shortBallOutcome: string }[][];
 }
 interface MatchInfo {
   id: string;
@@ -275,6 +277,14 @@ function ScoreOverlay({ state }: { state: MatchState }) {
   const ballsLeft = Math.max(0, Math.round((state.totalOvers - bat.overs) * 6));
   const rrr = ballsLeft > 0 ? ((runsNeeded / ballsLeft) * 6).toFixed(2) : "—";
   const inning = state.firstInnings ? "1ST INN" : "2ND INN";
+  const displayBalls =
+    state.currentOverBalls?.length > 0
+      ? state.currentOverBalls
+      : ((state.firstInnings ? state.innings1Overs : state.innings2Overs)
+          ?.slice(-1)?.[0]
+          ?.map(
+            (b: any) => b.shortBallOutcome ?? b.getShortBallOutcome?.() ?? "",
+          ) ?? []);
 
   const isBatTeam1 = bat.name === state.team1.name;
   const batOrder = isBatTeam1
@@ -524,10 +534,10 @@ function ScoreOverlay({ state }: { state: MatchState }) {
               fontFamily: "'Barlow Condensed', sans-serif",
             }}
           >
-            Over {state.completedOvers + 1}
+            Over {Math.min(state.completedOvers + 1, state.totalOvers)}
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {(state.currentOverBalls ?? []).map((b, i) => {
+            {displayBalls.map((b: string, i: number) => {
               const s = ballStyle(b);
               return (
                 <div
@@ -551,20 +561,20 @@ function ScoreOverlay({ state }: { state: MatchState }) {
                 </div>
               );
             })}
-            {Array.from({
-              length: Math.max(0, 6 - (state.currentOverBalls?.length ?? 0)),
-            }).map((_, i) => (
-              <div
-                key={`ep${i}`}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: "50%",
-                  background: C.w04,
-                  border: `1px solid ${C.w10}`,
-                }}
-              />
-            ))}
+            {Array.from({ length: Math.max(0, 6 - displayBalls.length) }).map(
+              (_, i) => (
+                <div
+                  key={`ep${i}`}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: "50%",
+                    background: C.w04,
+                    border: `1px solid ${C.w10}`,
+                  }}
+                />
+              ),
+            )}
           </div>
         </div>
 
@@ -1655,11 +1665,33 @@ function BowlingCard({
   team: TeamDetails;
   bowlingTeam: TeamDetails;
   state: MatchState;
-    }) {
+  }) {
+  console.log(
+    "CURRENT_BOWLER_DEBUG",
+    JSON.stringify({
+      currentBowler: state.currentBowler,
+      firstInnings: state.firstInnings,
+      team1BowlingOrder: (state as any).team1BowlingOrder?.map((p: any) => ({
+        name: p.name,
+        balls: p.ballsBowled,
+        overs: p.overs,
+      })),
+      bowlTeam: getBowlTeam(state)?.name,
+      bowlTeamPlayingXI: getBowlTeam(state)
+        ?.playingXI?.filter((p: any) => p.ballsBowled > 0)
+        .map((p: any) => ({
+          name: p.name,
+          balls: p.ballsBowled,
+          overs: p.overs,
+        })),
+    }),
+  );
     
   const isTeam1 = team.name === state.team1.name;
   const bowlingOrderArr =
-    (isTeam1 ? state.team1BowlingOrder : state.team2BowlingOrder) || [];
+    (state.firstInnings
+      ? (state as any).team1BowlingOrder
+      : (state as any).team2BowlingOrder) || [];
 
   // 🔥 FIX: Force the active bowler into the list even if they haven't bowled a delivery yet
   const isActiveBowlTeam = team.name === getBowlTeam(state).name;
@@ -1670,7 +1702,7 @@ function BowlingCard({
   const placedIds = new Set<string>();
   const orderedBowlers: PlayerStats[] = [];
 
-  bowlingOrderArr.forEach((p) => {
+  bowlingOrderArr.forEach((p:any) => {
     if ((p.ballsBowled ?? 0) > 0 || (p.wicketsTaken ?? 0) > 0) {
       orderedBowlers.push(p);
       placedIds.add(p.playerId);
@@ -2496,6 +2528,54 @@ function MatchSummaryCard({ state }: { state: MatchState }) {
                   </div>
                 );
               })
+            )}
+
+            {/* Extras row */}
+            {batTeam.extras && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "6px 20px",
+                  borderTop: `1px solid rgba(255,255,255,0.05)`,
+                  background: "rgba(0,0,0,0.2)",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    color: C.w35,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Extras
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    color: C.w55,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  <span
+                    style={{ color: C.w80, fontWeight: 900, marginRight: 8 }}
+                  >
+                    {batTeam.extras.wide +
+                      batTeam.extras.noBall +
+                      batTeam.extras.bye +
+                      batTeam.extras.legBye +
+                      batTeam.extras.penalty}
+                  </span>
+                  (W:{batTeam.extras.wide} NB:{batTeam.extras.noBall} B:
+                  {batTeam.extras.bye} LB:{batTeam.extras.legBye})
+                </span>
+              </div>
             )}
           </div>
 
