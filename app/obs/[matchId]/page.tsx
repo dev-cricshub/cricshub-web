@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { fetchMatchById, fetchMatchState, fetchStreamState } from "@/lib/api";
+import EventBurstOverlay from "@/app/overlays/premium/matchAddOn/EventBurstOverlay";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES — mirroring MatchState.java exactly
@@ -2847,7 +2848,7 @@ export default function ObsOverlayPage() {
     activeBanner: "none",
     templateId: null,
   });
-
+  
   // Scale the 1920×1080 canvas to fit whatever the actual browser viewport is.
   // This is the reliable way to handle OBS browser source at any configured size.
   const [scale, setScale] = useState(1);
@@ -2905,7 +2906,10 @@ export default function ObsOverlayPage() {
           try {
             const d = JSON.parse(msg.body);
             setStreamState({
-              activeBanner: d.activeBanner,
+              activeBanner:
+                d.activeBanner === "premium" && d.activeTemplateId
+                  ? d.activeTemplateId
+                  : d.activeBanner,
               templateId: d.activeTemplateId,
             });
           } catch (e) {
@@ -2994,12 +2998,19 @@ export default function ObsOverlayPage() {
               key={`${liveState.team1.score}-${liveState.team2.score}-${liveState.team1.wickets}-${liveState.team2.wickets}`}
             />
           )}
-          {streamState.activeBanner.startsWith("tpl-") && (
-            <ScoreOverlay
+          {streamState.activeBanner === "tpl-pro-1" && (
+            <EventBurstOverlay
               state={liveState}
               key={`${liveState.team1.score}-${liveState.team2.score}-${liveState.team1.wickets}-${liveState.team2.wickets}`}
             />
           )}
+          {streamState.activeBanner.startsWith("tpl-") &&
+            streamState.activeBanner !== "tpl-pro-1" && (
+              <ScoreOverlay
+                state={liveState}
+                key={`${liveState.team1.score}-${liveState.team2.score}-${liveState.team1.wickets}-${liveState.team2.wickets}`}
+              />
+            )}
         </div>
       </div>
 
