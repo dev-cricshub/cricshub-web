@@ -2892,7 +2892,10 @@ export default function ObsOverlayPage() {
 
         setLiveState(s);
         setStreamState({
-          activeBanner: st?.activeBanner || "none",
+          activeBanner:
+            st?.activeBanner === "premium" && st?.activeTemplateId
+              ? st.activeTemplateId
+              : st?.activeBanner || "none",
           templateId: st?.activeTemplateId || null,
         });
       })
@@ -3001,14 +3004,12 @@ export default function ObsOverlayPage() {
           {streamState.activeBanner === "tpl-pro-1" && (
             <EventBurstOverlay
               state={liveState}
-              key={`${liveState.team1.score}-${liveState.team2.score}-${liveState.team1.wickets}-${liveState.team2.wickets}`}
             />
           )}
           {streamState.activeBanner.startsWith("tpl-") &&
             streamState.activeBanner !== "tpl-pro-1" && (
               <ScoreOverlay
                 state={liveState}
-                key={`${liveState.team1.score}-${liveState.team2.score}-${liveState.team1.wickets}-${liveState.team2.wickets}`}
               />
             )}
         </div>
