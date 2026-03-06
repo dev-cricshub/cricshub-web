@@ -348,3 +348,122 @@ export async function fetchAvailableTemplates() {
   const json = await res.json();
   return json.data || [];
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MANUAL UPI PAYMENT FLOW — add these to lib/api.ts
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Get UPI QR info — NO DB write. Call when modal opens. */
+export async function getSubscriptionQrInfo(plan: "MONTHLY" | "SIX_MONTH") {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/subscription/qr-info?plan=${plan}`,
+    { headers: authHeaders() }
+  );
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to get QR info.");
+  return json.data as { upiString: string; upiId: string; amount: number; amountWithGst: number };
+}
+
+export async function getAddonQrInfo(amount: number) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/addon/qr-info?amount=${amount}`,
+    { headers: authHeaders() }
+  );
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to get QR info.");
+  return json.data as { upiString: string; upiId: string; amount: number; amountWithGst: number };
+}
+
+/**
+ * Create payment intent — called when user clicks "I've Paid".
+ * Creates PENDING_UTR record so refresh resumes on UTR entry screen.
+ * Idempotent — returns existing record if already pending.
+ */
+export async function createSubscriptionIntent(userId: string, plan: "MONTHLY" | "SIX_MONTH") {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/subscription/intent`,
+    { method: "POST", headers: authHeaders(), body: JSON.stringify({ userId, plan }) }
+  );
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to create intent.");
+  return json.data as { paymentId: string; status: string; amount: number };
+}
+
+export async function createAddonIntent(
+  matchId: string,
+  payload: { userId: string; templateId: string; templateName: string; tier: string; amount: number }
+) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/addon/intent`,
+    { method: "POST", headers: authHeaders(), body: JSON.stringify({ matchId, ...payload }) }
+  );
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to create intent.");
+  return json.data as { paymentId: string; status: string; amount: number };
+}
+
+/**
+ * Submit UTR — transitions PENDING_UTR → PENDING_VERIFICATION, emails owner.
+ */
+export async function submitUtr(paymentId: string, utrNumber: string) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/${paymentId}/submit-utr`,
+    { method: "POST", headers: authHeaders(), body: JSON.stringify({ utrNumber }) }
+  );
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to submit UTR.");
+  return json.data as { paymentId: string; status: string; message: string };
+}
+
+/** Poll payment status every ~8s after UTR submission. */
+export async function pollManualPaymentStatus(paymentId: string) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/${paymentId}/status`,
+    { headers: authHeaders() }
+  );
+  const json = await res.json();
+  return json.data as {
+    paymentId: string;
+    status: "PENDING_UTR" | "PENDING_VERIFICATION" | "CONFIRMED" | "REJECTED" | "CANCELLED";
+    paymentType: "SUBSCRIPTION" | "ADDON";
+    amount: number;
+    utrNumber: string | null;
+    confirmedAt: string | null;
+    plan?: string;
+    templateId?: string;
+    templateName?: string;
+    matchId?: string;
+  };
+}
+
+/** Check for any pending payment on checkout open — returns PENDING_UTR or PENDING_VERIFICATION record. */
+export async function checkPendingSubscription(userId: string, plan: string) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/subscription/pending?userId=${userId}&plan=${plan}`,
+    { headers: authHeaders() }
+  );
+  if (res.status === 404) return null;
+  const json = await res.json();
+  return json.data as { paymentId: string; status: string; utrNumber: string | null; amount: number } | null;
+}
+
+export async function checkPendingAddon(userId: string, matchId: string, templateId: string) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/addon/pending?userId=${userId}&matchId=${matchId}&templateId=${templateId}`,
+    { headers: authHeaders() }
+  );
+  if (res.status === 404) return null;
+  const json = await res.json();
+  return json.data as { paymentId: string; status: string; utrNumber: string | null; amount: number; templateName: string } | null;
+}
+
+/** Cancel a pending payment — user chose to start over. */
+export async function cancelManualPayment(paymentId: string, userId: string) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/${paymentId}/cancel`,
+    { method: "POST", headers: authHeaders(), body: JSON.stringify({ userId }) }
+  );
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to cancel payment.");
+  return json.data as { paymentId: string; status: string; message: string };
+}

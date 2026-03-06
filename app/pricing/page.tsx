@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { createSubscriptionOrder, verifySubscriptionPayment } from "@/lib/api";
+import UpiCheckoutModal from "@/app/components/UpiCheckoutModal";
+import { fetchMatchSubscription } from "@/lib/api";
 
-// ═══════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES  (unchanged)
+// ═══════════════════════════════════════════════════════════════════════════
 
 type BillingCycle = "monthly" | "sixmonth";
 type AddOnTier = "pro" | "elite";
-type PageStep = "plans" | "processing" | "success";
+type PageStep = "plans" | "checkout" | "success";
 
 interface SubscriptionPlan {
   id: string;
@@ -45,21 +46,9 @@ interface CartItem {
   meta?: string;
 }
 
-function loadRazorpay(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (typeof window === "undefined") return resolve(false);
-    if ((window as any).Razorpay) return resolve(true);
-    const s = document.createElement("script");
-    s.src = "https://checkout.razorpay.com/v1/checkout.js";
-    s.onload = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
-}
-
-// ═══════════════════════════════════════════════════════════
-// DATA
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA  (unchanged from original)
+// ═══════════════════════════════════════════════════════════════════════════
 
 const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
@@ -205,18 +194,18 @@ const ADDON_TEMPLATES: AddOnTemplate[] = [
   },
 ];
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 
 const GST = 0.18;
 const addGst = (n: number) => n + Math.round(n * GST);
 const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 const cartTotal = (cart: CartItem[]) => cart.reduce((s, i) => s + i.price, 0);
 
-// ═══════════════════════════════════════════════════════════
-// SMALL COMPONENTS
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// SMALL COMPONENTS  (unchanged)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function Check({ text, muted }: { text: string; muted?: boolean }) {
   return (
@@ -255,149 +244,9 @@ function SectionLabel({
   );
 }
 
-// ═══════════════════════════════════════════════════════════
-// CART DRAWER
-// ═══════════════════════════════════════════════════════════
-
-function CartDrawer({
-  cart,
-  onRemove,
-  onClose,
-  onCheckout,
-  paying,
-}: {
-  cart: CartItem[];
-  onRemove: (id: string) => void;
-  onClose: () => void;
-  onCheckout: () => void;
-  paying: boolean;
-}) {
-  const sub = cartTotal(cart);
-  const gstAmt = Math.round(sub * GST);
-  const total = sub + gstAmt;
-
-  return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="w-full max-w-md bg-white h-full flex flex-col shadow-2xl"
-        style={{ animation: "slideInRight .32s cubic-bezier(.16,1,.3,1)" }}
-      >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#34B8FF] to-[#1E88E5] flex items-center justify-center shadow-md">
-              <i className="ri-shopping-cart-2-line text-white text-lg" />
-            </div>
-            <div>
-              <p className="font-black text-gray-900">Your Cart</p>
-              <p className="text-xs text-gray-400">
-                {cart.length} item{cart.length !== 1 ? "s" : ""}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-400"
-          >
-            <i className="ri-close-line text-xl" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-          {cart.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
-                <i className="ri-shopping-cart-2-line text-gray-200 text-3xl" />
-              </div>
-              <p className="font-bold text-gray-400">Cart is empty</p>
-              <p className="text-xs text-gray-300 mt-1">
-                Add a subscription to continue
-              </p>
-            </div>
-          )}
-          {cart.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3 group"
-            >
-              <div
-                className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#34B8FF] to-[#1E88E5]`}
-              >
-                <i className="ri-vip-crown-line text-white text-sm" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 text-sm truncate">
-                  {item.name}
-                </p>
-                {item.meta && (
-                  <p className="text-xs text-gray-400">{item.meta}</p>
-                )}
-              </div>
-              <span className="font-black text-gray-900 text-sm">
-                {fmt(item.price)}
-              </span>
-              <button
-                onClick={() => onRemove(item.id)}
-                className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100"
-              >
-                <i className="ri-delete-bin-line text-red-400 text-xs" />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {cart.length > 0 && (
-          <div className="border-t border-gray-100 px-6 py-5 space-y-4">
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between text-gray-500">
-                <span>Subtotal</span>
-                <span className="font-semibold text-gray-800">{fmt(sub)}</span>
-              </div>
-              <div className="flex justify-between text-gray-500">
-                <span>GST (18%)</span>
-                <span className="font-semibold text-gray-800">
-                  {fmt(gstAmt)}
-                </span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-gray-100">
-                <span className="font-black text-gray-900">Total</span>
-                <span className="font-black text-gray-900 text-lg">
-                  {fmt(total)}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={onCheckout}
-              disabled={paying}
-              className="w-full h-14 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white font-black text-base rounded-2xl hover:shadow-xl hover:shadow-blue-200 disabled:opacity-60 transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
-            >
-              {paying ? (
-                <>
-                  <i className="ri-loader-4-line animate-spin text-xl" />
-                  Processing…
-                </>
-              ) : (
-                <>
-                  <i className="ri-secure-payment-line text-xl" />
-                  Pay {fmt(total)} via Razorpay
-                </>
-              )}
-            </button>
-            <p className="text-center text-[11px] text-gray-300">
-              <i className="ri-lock-line mr-1" />
-              Secured by Razorpay · 256-bit SSL
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-// SUBSCRIPTION PLAN CARD
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// PLAN CARD  (unchanged)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function PlanCard({
   plan,
@@ -409,36 +258,26 @@ function PlanCard({
   onToggle: () => void;
 }) {
   const savings = plan.originalPrice ? plan.originalPrice - plan.price : 0;
-
   return (
     <div
       onClick={onToggle}
       className={`relative cursor-pointer rounded-3xl overflow-hidden border-2 transition-all duration-300 select-none
-        ${
-          inCart
-            ? "border-[#34B8FF] shadow-2xl shadow-blue-100 scale-[1.01]"
-            : plan.highlight
-              ? "border-[#34B8FF]/40 shadow-xl hover:border-[#34B8FF] hover:shadow-2xl hover:shadow-blue-100"
-              : "border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-md"
-        }`}
+        ${inCart ? "border-[#34B8FF] shadow-2xl shadow-blue-100 scale-[1.01]" : plan.highlight ? "border-[#34B8FF]/40 shadow-xl hover:border-[#34B8FF] hover:shadow-2xl hover:shadow-blue-100" : "border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-md"}`}
     >
       {plan.highlight && (
         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#34B8FF] via-purple-400 to-[#34B8FF]" />
       )}
-
       <div
         className={`px-7 pt-7 pb-6 relative overflow-hidden ${plan.highlight ? "bg-gradient-to-br from-[#0f2744] to-[#1a3a6e]" : "bg-gradient-to-br from-[#34B8FF] to-[#1E88E5]"}`}
       >
         <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white/5" />
         <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
-
         <div className="relative z-10">
           {plan.badge && (
             <span className="inline-block bg-white/20 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-4">
               {plan.badge}
             </span>
           )}
-
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-white font-black text-2xl">{plan.name}</h3>
@@ -462,10 +301,8 @@ function PlanCard({
                 </div>
               )}
             </div>
-
             <div
-              className={`w-10 h-10 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200
-              ${inCart ? "bg-white border-white shadow-lg" : "bg-white/15 border-white/40"}`}
+              className={`w-10 h-10 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${inCart ? "bg-white border-white shadow-lg" : "bg-white/15 border-white/40"}`}
             >
               {inCart ? (
                 <i className="ri-check-line text-[#1E88E5] font-black text-lg" />
@@ -476,7 +313,6 @@ function PlanCard({
           </div>
         </div>
       </div>
-
       <div className="bg-white px-7 py-6 space-y-5">
         <div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
@@ -510,31 +346,23 @@ function PlanCard({
             ))}
           </ul>
         </div>
-
         <div
-          className={`w-full py-3 rounded-2xl text-sm font-black text-center transition-all duration-200
-          ${
-            inCart
-              ? "bg-[#34B8FF]/10 text-[#1E88E5] border-2 border-[#34B8FF]/30"
-              : plan.highlight
-                ? "bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white shadow-md shadow-blue-200"
-                : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100"
-          }`}
+          className={`w-full py-3 rounded-2xl text-sm font-black text-center transition-all duration-200 ${inCart ? "bg-[#34B8FF]/10 text-[#1E88E5] border-2 border-[#34B8FF]/30" : plan.highlight ? "bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white shadow-md shadow-blue-200" : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100"}`}
         >
           {inCart
-            ? "✓ Added to cart"
+            ? "✓ Selected"
             : plan.highlight
               ? "⚡ Get Best Value"
-              : "Add to Cart"}
+              : "Select Plan"}
         </div>
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════
-// ADD-ON SHOWCASE CARD (View only on this page)
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// ADD-ON SHOWCASE (view-only on this page — unchanged)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function AddOnShowcaseCard({ tpl }: { tpl: AddOnTemplate }) {
   const tierStyle =
@@ -559,7 +387,6 @@ function AddOnShowcaseCard({ tpl }: { tpl: AddOnTemplate }) {
           </div>
         )}
       </div>
-
       <div className="p-5">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div>
@@ -575,7 +402,6 @@ function AddOnShowcaseCard({ tpl }: { tpl: AddOnTemplate }) {
             <p className="text-[10px] text-gray-400">per match</p>
           </div>
         </div>
-
         <ul className="space-y-1 mb-4">
           {tpl.features.map((f, i) => (
             <li
@@ -587,7 +413,6 @@ function AddOnShowcaseCard({ tpl }: { tpl: AddOnTemplate }) {
             </li>
           ))}
         </ul>
-
         <div className="w-full py-2.5 rounded-xl bg-gray-50 text-gray-500 text-xs font-bold text-center border border-gray-100 flex items-center justify-center gap-1.5">
           <i className="ri-broadcast-line" />
           Available in Dashboard
@@ -597,22 +422,17 @@ function AddOnShowcaseCard({ tpl }: { tpl: AddOnTemplate }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 // SUCCESS SCREEN
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 
 function SuccessScreen({
-  transactionId,
-  items,
-  totalPaid,
+  plan,
   onDone,
 }: {
-  transactionId: string;
-  items: CartItem[];
-  totalPaid: number;
+  plan: SubscriptionPlan;
   onDone: () => void;
 }) {
-  const subtotal = cartTotal(items);
   return (
     <div className="max-w-lg mx-auto text-center py-12 px-4">
       <div className="relative w-28 h-28 mx-auto mb-8">
@@ -626,44 +446,9 @@ function SuccessScreen({
       </div>
       <h2 className="text-4xl font-black text-gray-900 mb-2">All set! 🎉</h2>
       <p className="text-gray-500 mb-10">
-        Your plan is active. Head to the streaming dashboard to go live.
+        Your <strong>{plan.name}</strong> plan is active once the owner confirms
+        your payment. Head to the streaming dashboard to get started.
       </p>
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl text-left overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] px-6 py-4 flex items-center justify-between">
-          <p className="text-white font-black text-lg">Receipt</p>
-          <i className="ri-receipt-line text-white/70 text-xl" />
-        </div>
-        <div className="px-6 py-4 divide-y divide-gray-50">
-          {items.map((item) => (
-            <div key={item.id} className="flex justify-between py-2.5 text-sm">
-              <span className="text-gray-600">{item.name}</span>
-              <span className="font-semibold text-gray-900">
-                {fmt(item.price)}
-              </span>
-            </div>
-          ))}
-          <div className="flex justify-between py-2.5 text-sm">
-            <span className="text-gray-500">GST (18%)</span>
-            <span className="font-semibold text-gray-900">
-              {fmt(Math.round(subtotal * GST))}
-            </span>
-          </div>
-          <div className="flex justify-between py-3">
-            <span className="font-black text-gray-900">Total Paid</span>
-            <span className="font-black text-gray-900 text-base">
-              {fmt(totalPaid)}
-            </span>
-          </div>
-          <div className="flex justify-between py-2.5 text-xs">
-            <span className="text-gray-400">Transaction ID</span>
-            <span className="font-mono text-gray-500 bg-gray-50 px-2 py-0.5 rounded">
-              {transactionId}
-            </span>
-          </div>
-        </div>
-      </div>
-
       <div className="flex gap-3">
         <button
           onClick={onDone}
@@ -683,20 +468,17 @@ function SuccessScreen({
   );
 }
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 
 export default function PricingPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
   const [step, setStep] = useState<PageStep>("plans");
-  const [paying, setPaying] = useState(false);
-  const [successData, setSuccessData] = useState<{
-    transactionId: string;
-    items: CartItem[];
-    totalPaid: number;
-  } | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
+    null,
+  );
+  const [showCheckout, setShowCheckout] = useState(false);
   const [tierFilter, setTierFilter] = useState<"all" | "pro" | "elite">("all");
 
   const isInCart = (id: string) => cart.some((c) => c.id === id);
@@ -705,7 +487,8 @@ export default function PricingPage() {
 
   const togglePlan = (plan: SubscriptionPlan) => {
     if (isInCart(plan.id)) {
-      setCart((prev) => prev.filter((c) => c.id !== plan.id));
+      setCart([]);
+      setSelectedPlan(null);
     } else {
       setCart([
         {
@@ -716,103 +499,24 @@ export default function PricingPage() {
           meta: plan.cycle === "monthly" ? "₹499/month" : "6-month bundle",
         },
       ]);
+      setSelectedPlan(plan);
     }
   };
 
-  const handleCheckout = async () => {
-    if (cart.length === 0) return;
+  const handleCheckout = () => {
     const userId = localStorage.getItem("userUUID");
     if (!userId) {
       alert("You must be logged in to purchase a plan.");
       return;
     }
+    if (!selectedPlan) return;
+    setShowCheckout(true);
+  };
 
-    setPaying(true);
-    try {
-      const subItem = cart[0];
-      const planEnum = subItem.id === "sub-monthly" ? "MONTHLY" : "SIX_MONTH";
-      const order = await createSubscriptionOrder(userId, planEnum);
-      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-
-      if (razorpayKey === "rzp_test_dev_key") {
-        setCartOpen(false);
-        setStep("processing");
-        setTimeout(async () => {
-          try {
-            const mockPaymentId = `pay_mock_${Math.floor(Math.random() * 1000000)}`;
-            await verifySubscriptionPayment({
-              userId,
-              razorpayOrderId: order.orderId,
-              razorpayPaymentId: mockPaymentId,
-              razorpaySignature: "mock_dev_signature",
-              plan: planEnum,
-            });
-            localStorage.setItem("hasSubscription", "true");
-            setSuccessData({
-              transactionId: mockPaymentId,
-              items: [...cart],
-              totalPaid: total,
-            });
-            setCart([]);
-            setStep("success");
-          } catch (err) {
-            alert("Mock Verification failed on backend.");
-            setStep("plans");
-          }
-          setPaying(false);
-        }, 2000);
-        return;
-      }
-
-      const loaded = await loadRazorpay();
-      if (!loaded) {
-        alert(
-          "Could not load Razorpay. Please check your internet connection.",
-        );
-        setPaying(false);
-        return;
-      }
-
-      new (window as any).Razorpay({
-        key: razorpayKey,
-        amount: order.amount * 100,
-        currency: order.currency || "INR",
-        name: "Cricshub",
-        description: subItem.name,
-        order_id: order.orderId,
-        image: "/images/iconLogo.png",
-        theme: { color: "#34B8FF" },
-        handler: async (response: any) => {
-          setCartOpen(false);
-          setStep("processing");
-          try {
-            await verifySubscriptionPayment({
-              userId,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              plan: planEnum,
-            });
-            localStorage.setItem("hasSubscription", "true");
-            setSuccessData({
-              transactionId: response.razorpay_payment_id,
-              items: [...cart],
-              totalPaid: total,
-            });
-            setCart([]);
-            setStep("success");
-          } catch (err) {
-            alert("Payment verification failed.");
-            setStep("plans");
-          }
-          setPaying(false);
-        },
-        modal: { ondismiss: () => setPaying(false) },
-      }).open();
-    } catch (err) {
-      alert("Something went wrong initiating the payment.");
-      setPaying(false);
-    }
+  const handlePaymentConfirmed = () => {
+    setShowCheckout(false);
+    localStorage.setItem("hasSubscription", "true");
+    setStep("success");
   };
 
   const filteredAddons =
@@ -820,18 +524,25 @@ export default function PricingPage() {
       ? ADDON_TEMPLATES
       : ADDON_TEMPLATES.filter((t) => t.tier === tierFilter);
 
+  const userId =
+    typeof window !== "undefined"
+      ? (localStorage.getItem("userUUID") ?? "")
+      : "";
+  const planEnum = selectedPlan?.id === "sub-monthly" ? "MONTHLY" : "SIX_MONTH";
+
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
-      {cartOpen && (
-        <CartDrawer
-          cart={cart}
-          onRemove={(id) => setCart((prev) => prev.filter((c) => c.id !== id))}
-          onClose={() => setCartOpen(false)}
-          onCheckout={handleCheckout}
-          paying={paying}
+      {/* UPI Checkout Modal */}
+      {showCheckout && selectedPlan && (
+        <UpiCheckoutModal
+          userId={userId}
+          subscriptionPlan={planEnum as "MONTHLY" | "SIX_MONTH"}
+          onClose={() => setShowCheckout(false)}
+          onConfirmed={handlePaymentConfirmed}
         />
       )}
 
+      {/* Navbar */}
       <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
@@ -859,14 +570,11 @@ export default function PricingPage() {
             </Link>
             {cart.length > 0 && (
               <button
-                onClick={() => setCartOpen(true)}
+                onClick={handleCheckout}
                 className="flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-sm font-bold px-4 py-2 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all"
               >
-                <i className="ri-shopping-cart-2-line" />
-                Cart
-                <span className="bg-white text-[#1E88E5] text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
-                  {cart.length}
-                </span>
+                <i className="ri-qr-code-line" />
+                Pay via UPI
               </button>
             )}
           </div>
@@ -874,28 +582,20 @@ export default function PricingPage() {
       </nav>
 
       <div className="container mx-auto px-6 py-12 max-w-6xl">
-        {step === "processing" && (
-          <div className="flex flex-col items-center justify-center py-40 gap-5">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#34B8FF] to-[#1E88E5] flex items-center justify-center shadow-2xl shadow-blue-200 animate-pulse">
-              <i className="ri-loader-4-line text-4xl text-white animate-spin" />
-            </div>
-            <p className="text-xl font-black text-gray-700">
-              Verifying payment…
-            </p>
-            <p className="text-sm text-gray-400">Please don't close this tab</p>
-          </div>
-        )}
-        {step === "success" && successData && (
+        {step === "success" && selectedPlan && (
           <SuccessScreen
-            {...successData}
+            plan={selectedPlan}
             onDone={() => {
               setStep("plans");
-              setSuccessData(null);
+              setCart([]);
+              setSelectedPlan(null);
             }}
           />
         )}
+
         {step === "plans" && (
           <div className="space-y-16">
+            {/* Hero */}
             <div className="text-center">
               <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-[#1E88E5] text-xs font-black px-4 py-2 rounded-full mb-5 uppercase tracking-widest">
                 <i className="ri-live-line text-red-500 animate-pulse" />
@@ -910,12 +610,17 @@ export default function PricingPage() {
               </h1>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
                 Subscribe to unlock the web streaming dashboard with live OBS
-                overlays. Enhance specific matches with premium custom
-                templates.
+                overlays. Pay securely via UPI — verified within minutes.
               </p>
+
+              {/* UPI payment badge */}
+              <div className="inline-flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-bold px-4 py-2 rounded-full mt-4">
+                <i className="ri-bank-line" />
+                Pay via UPI · PhonePe · GPay · Paytm · BHIM
+              </div>
             </div>
 
-            {/* ── SUBSCRIPTION PLANS ── */}
+            {/* Subscription Plans */}
             <div>
               <SectionLabel
                 icon="ri-vip-crown-line"
@@ -934,14 +639,13 @@ export default function PricingPage() {
               </div>
             </div>
 
-            {/* ── SHOWCASE ADDONS (No Cart logic) ── */}
+            {/* Add-on Showcase */}
             <div>
               <SectionLabel
                 icon="ri-layout-top-2-line"
                 label="Premium Overlays (Add-ons)"
                 sub="Per-match upgrades. Purchase these directly from your Stream Dashboard once you have an active subscription."
               />
-
               <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 py-4 flex items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#1E88E5] font-black shadow-sm">
@@ -970,7 +674,6 @@ export default function PricingPage() {
                   </p>
                 </div>
               </div>
-
               <div className="flex items-center gap-2 mb-6">
                 {(
                   [
@@ -988,138 +691,26 @@ export default function PricingPage() {
                   </button>
                 ))}
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredAddons.map((tpl) => (
                   <AddOnShowcaseCard key={tpl.id} tpl={tpl} />
                 ))}
               </div>
             </div>
-
-            {/* ── NEW COMPARISON TABLE ── */}
-            <div>
-              <SectionLabel
-                icon="ri-table-line"
-                label="What's Included"
-                sub="Understand the difference between the Free App, Subscriptions, and Premium Add-ons."
-              />
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="grid grid-cols-4 text-sm">
-                  {/* Header Row */}
-                  <div className="px-6 py-5 border-b border-gray-100 font-black text-gray-400 text-xs uppercase tracking-widest bg-gray-50/50">
-                    Feature Breakdown
-                  </div>
-                  <div className="px-4 py-5 border-b border-gray-100 text-center bg-gray-50/50">
-                    <p className="font-black text-sm text-gray-600">Free App</p>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">
-                      Mobile Only
-                    </p>
-                  </div>
-                  <div className="px-4 py-5 border-b border-[#34B8FF]/30 text-center bg-blue-50/50">
-                    <p className="font-black text-sm text-[#1E88E5]">
-                      Base Subscription
-                    </p>
-                    <p className="text-[10px] text-[#34B8FF] uppercase tracking-widest mt-1">
-                      Starts ₹499/mo
-                    </p>
-                  </div>
-                  <div className="px-4 py-5 border-b border-purple-200 text-center bg-purple-50/50">
-                    <p className="font-black text-sm text-purple-700">
-                      + Premium Add-ons
-                    </p>
-                    <p className="text-[10px] text-purple-500 uppercase tracking-widest mt-1">
-                      Starts ₹99/match
-                    </p>
-                  </div>
-
-                  {/* Matrix Rows */}
-                  {[
-                    {
-                      feature: "Live Score Updates via App",
-                      vals: [true, true, true],
-                    },
-                    {
-                      feature: "Match & Tournament Management",
-                      vals: [true, true, true],
-                    },
-                    {
-                      feature: "Web Streaming Dashboard Access",
-                      vals: [false, true, true],
-                    },
-                    {
-                      feature: "OBS Browser Source URL",
-                      vals: [false, true, true],
-                    },
-                    {
-                      feature: "Live Score Overlay (Standard)",
-                      vals: [false, true, true],
-                    },
-                    {
-                      feature: "Main & Playing XI Banners",
-                      vals: [false, true, true],
-                    },
-                    {
-                      feature: "Custom Designed Overlays (Neon, Cinematic)",
-                      vals: [false, false, true],
-                    },
-                    {
-                      feature: "Wagon Wheel & Advanced Stats Panel",
-                      vals: [false, false, true],
-                    },
-                    {
-                      feature: "Watermark-free Broadcasting",
-                      vals: [false, false, true],
-                    },
-                  ].map((row, ri) => (
-                    <div key={`row-${ri}`} className="contents">
-                      <div
-                        className={`px-6 py-4 text-gray-700 font-medium text-sm border-b border-gray-50 flex items-center ${ri % 2 === 0 ? "bg-white" : "bg-gray-50/30"}`}
-                      >
-                        {row.feature}
-                      </div>
-                      {row.vals.map((v, vi) => (
-                        <div
-                          key={`v${ri}${vi}`}
-                          className={`px-4 py-4 text-center border-b border-gray-50 flex items-center justify-center
-                          ${vi === 1 ? "bg-blue-50/30" : vi === 2 ? "bg-purple-50/30" : ""} 
-                          ${ri % 2 !== 0 && vi === 0 ? "bg-gray-50/30" : ""}`}
-                        >
-                          {v ? (
-                            <i
-                              className={`ri-check-line text-xl ${vi === 1 ? "text-[#34B8FF]" : vi === 2 ? "text-purple-500" : "text-gray-400"}`}
-                            />
-                          ) : (
-                            <i className="ri-subtract-line text-gray-200 text-xl" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>
 
+      {/* Sticky bottom checkout bar */}
       {step === "plans" && cart.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-2xl">
           <div className="container mx-auto px-6 py-3.5 flex items-center justify-between max-w-6xl gap-4">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="flex -space-x-2">
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`w-9 h-9 rounded-xl border-2 border-white flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#34B8FF] to-[#1E88E5]`}
-                  >
-                    <i className="ri-vip-crown-line text-white text-xs" />
-                  </div>
-                ))}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl border-2 border-white flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#34B8FF] to-[#1E88E5] shadow-md">
+                <i className="ri-vip-crown-line text-white text-xs" />
               </div>
               <div className="hidden sm:block">
-                <p className="text-xs text-gray-400">
-                  {cart.length} item{cart.length > 1 ? "s" : ""}
-                </p>
+                <p className="text-xs text-gray-400">{cart[0].name}</p>
                 <p className="font-black text-gray-900 text-sm">
                   {fmt(total)}{" "}
                   <span className="text-gray-400 font-normal text-xs">
@@ -1128,19 +719,18 @@ export default function PricingPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <button
-                onClick={() => setCartOpen(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white font-black px-7 py-3.5 rounded-xl hover:shadow-xl hover:shadow-blue-200 transition-all hover:scale-105 active:scale-95"
-              >
-                <i className="ri-shopping-cart-2-line text-lg" />
-                View Cart & Pay
-              </button>
-            </div>
+            <button
+              onClick={handleCheckout}
+              className="flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white font-black px-7 py-3.5 rounded-xl hover:shadow-xl hover:shadow-blue-200 transition-all hover:scale-105 active:scale-95"
+            >
+              <i className="ri-qr-code-line text-lg" />
+              Pay via UPI
+            </button>
           </div>
         </div>
       )}
       {cart.length > 0 && step === "plans" && <div className="h-24" />}
+
       <link
         href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
         rel="stylesheet"
