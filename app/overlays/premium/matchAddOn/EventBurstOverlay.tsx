@@ -1385,20 +1385,13 @@ export default function EventBurstOverlay({ state }: { state: MatchState }) {
     const currBalls = state.currentOverBalls ?? [];
     const lastBallScored = currBalls[currBalls.length - 1];
 
-    console.log("BURST_DEBUG: [UPDATE RECEIVED]", {
-      prevBalls: JSON.stringify(prevBalls),
-      currBalls: JSON.stringify(currBalls),
-      prevOvers: prev.completedOvers,
-      currOvers: state.completedOvers,
-      lastBallDetected: lastBallScored,
-      battingScore: getBatTeam(state).score,
-    });
+    
 
     // 2. Run the detection logic
     const event = detectEvent(prev, state);
 
     if (event) {
-      console.log("BURST_DEBUG: 🎯 [EVENT FIRED!]", event);
+      
       setShowBar(false);
       setTimeout(() => setBurstEvent(event), 350);
     } else {
