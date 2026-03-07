@@ -485,3 +485,63 @@ export async function cancelManualPayment(paymentId: string, userId: string) {
   if (!json.success) throw new Error(json.message || "Failed to cancel payment.");
   return json.data as { paymentId: string; status: string; message: string };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MEDIA REEL (tpl-pro-5)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface MediaAsset {
+  id: string;
+  url: string;
+  type: "IMAGE" | "VIDEO";
+  fileName: string;
+  createdAt: string;
+}
+
+export async function uploadMediaAsset(file: File, userId: string): Promise<MediaAsset> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userId", userId);
+  const token = authToken();
+  const res = await fetch(`${API_BASE}/api/v1/media/upload`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Upload failed.");
+  return json.data as MediaAsset;
+}
+
+export async function fetchMediaLibrary(userId: string): Promise<MediaAsset[]> {
+  const res = await fetch(`${API_BASE}/api/v1/media/library?userId=${userId}`, {
+    headers: authHeaders(),
+  });
+  const json = await res.json();
+  return (json.data ?? []) as MediaAsset[];
+}
+
+export async function deleteMediaAsset(id: string, userId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/media/${id}?userId=${userId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Delete failed.");
+}
+
+export async function fetchMatchPlaylist(matchId: string): Promise<MediaAsset[]> {
+  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/playlist`);
+  const json = await res.json();
+  return (json.data ?? []) as MediaAsset[];
+}
+
+export async function saveMatchPlaylist(matchId: string, userId: string, assets: MediaAsset[]): Promise<boolean> {
+  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/playlist`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, assets }),
+  });
+  const json = await res.json();
+  return json.success === true;
+}

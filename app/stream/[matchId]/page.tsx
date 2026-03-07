@@ -19,6 +19,7 @@ import {
 import { useMatchWebSocket } from "@/hooks/useMatchWebSocket";
 import UpiCheckoutModal from "@/app/components/UpiCheckoutModal";
 import BrandingConfigPanel from "@/app/components/overlays/BrandingConfigPanel";
+import MediaAssetsPanel from "@/app/components/overlays/MediaAssetsPanel";
 import { fetchBrandingConfig, saveBrandingConfig } from "@/lib/brandingConfig";
 import { DEFAULT_BRANDING_CONFIG } from "@/app/overlays/premium/matchAddOn/BrandingOverlay";
 
@@ -589,6 +590,9 @@ export default function StreamDashboard() {
   });
   const [matchSub, setMatchSub] = useState<MatchSubscription | null>(null);
   const [activeBanner, setActiveBanner] = useState<BannerType>("none");
+  const [previousBanner, setPreviousBanner] = useState<BannerType>("none");
+  const [brandingOpen, setBrandingOpen] = useState(true);
+  const [mediaReelOpen, setMediaReelOpen] = useState(true);
   const [templates, setTemplates] = useState<AddOnTemplate[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -763,7 +767,22 @@ export default function StreamDashboard() {
   const handleBanner = async (banner: BannerType) => {
     if (!iAmStreaming || bannerBusy) return;
     setBannerBusy(true);
-    const next = activeBanner === banner ? "none" : banner;
+    let next: BannerType;
+    if (activeBanner === banner) {
+      // Hiding — for ad overlay, restore the previous template instead of going blank
+      if (banner === "tpl-pro-5" && previousBanner !== "none") {
+        next = previousBanner;
+      } else {
+        next = "none";
+      }
+      setPreviousBanner("none");
+    } else {
+      // Activating — save current banner so we can restore it when ad overlay hides
+      if (banner === "tpl-pro-5") {
+        setPreviousBanner(activeBanner);
+      }
+      next = banner;
+    }
     const isPremium = next.startsWith("tpl-");
     await pushActiveBanner(
       matchId,
@@ -1023,17 +1042,42 @@ export default function StreamDashboard() {
             />
             {matchState && <ScoreLive state={matchState} />}
             {matchSub?.purchasedTemplateIds.includes("tpl-pro-4") && (
-              <BrandingConfigPanel
-                config={brandingConfig}
-                onChange={setBrandingConfig}
-                onSave={async (cfg) => {
-                  const ok = await saveBrandingConfig(matchId, cfg);
-                  if (!ok)
-                    alert(
-                      "Failed to save branding config. Make sure you are the match admin or active streamer.",
-                    );
-                }}
-              />
+              <div className="rounded-2xl border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => setBrandingOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-sm font-semibold text-gray-700">Branding Config</span>
+                  <i className={`ri-arrow-${brandingOpen ? "up" : "down"}-s-line text-gray-400 text-lg`} />
+                </button>
+                {brandingOpen && (
+                  <BrandingConfigPanel
+                    config={brandingConfig}
+                    onChange={setBrandingConfig}
+                    onSave={async (cfg) => {
+                      const ok = await saveBrandingConfig(matchId, cfg);
+                      if (!ok)
+                        alert(
+                          "Failed to save branding config. Make sure you are the match admin or active streamer.",
+                        );
+                    }}
+                  />
+                )}
+              </div>
+            )}
+            {matchSub?.purchasedTemplateIds.includes("tpl-pro-5") && (
+              <div className="rounded-2xl border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => setMediaReelOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-sm font-semibold text-gray-700">Media Reel</span>
+                  <i className={`ri-arrow-${mediaReelOpen ? "up" : "down"}-s-line text-gray-400 text-lg`} />
+                </button>
+                {mediaReelOpen && (
+                  <MediaAssetsPanel matchId={matchId} userId={currentUser.id} />
+                )}
+              </div>
             )}
           </div>
 

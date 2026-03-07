@@ -357,31 +357,14 @@ export default function BrandingConfigPanel({ config, onChange, onSave }: Props)
         boxSizing: "border-box",
       }}
     >
-      {/* ── Header ── */}
+      {/* ── Top separator ── */}
       <div
         style={{
           padding: "14px 20px",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           background: "rgba(255,255,255,0.02)",
         }}
-      >
-        <div
-          style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 17,
-            fontWeight: 900,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-            color: "#F9FAFB",
-            lineHeight: "22px",
-          }}
-        >
-          Stream Branding
-        </div>
-        <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, marginTop: 1 }}>
-          Persistent overlay · always visible
-        </div>
-      </div>
+      />
 
       {/* ── Scrollable body ── */}
       <div
