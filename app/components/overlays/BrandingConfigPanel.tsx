@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { BrandingConfig, DEFAULT_BRANDING_CONFIG } from "../../overlays/premium/matchAddOn/BrandingOverlay";
+import { uploadFile } from "../../../lib/api";
 
 // ═══════════════════════════════════════════════════════════
 // BRANDING CONFIG PANEL
@@ -142,13 +143,26 @@ function LogoUpload({
   hint: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onChange(reader.result as string);
-    reader.readAsDataURL(file);
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File is too large. Maximum size is 2MB.");
+      e.target.value = "";
+      return;
+    }
+    setUploading(true);
+    try {
+      const url = await uploadFile(file);
+      onChange(url);
+    } catch {
+      alert("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   return (
@@ -214,6 +228,7 @@ function LogoUpload({
           <div style={{ display: "flex", gap: 6 }}>
             <button
               onClick={() => fileRef.current?.click()}
+              disabled={uploading}
               style={{
                 flex: 1,
                 background: "rgba(255,255,255,0.07)",
@@ -222,11 +237,12 @@ function LogoUpload({
                 padding: "6px 0",
                 color: "rgba(255,255,255,0.65)",
                 fontSize: 11,
-                cursor: "pointer",
+                cursor: uploading ? "not-allowed" : "pointer",
                 fontFamily: "inherit",
+                opacity: uploading ? 0.5 : 1,
               }}
             >
-              Replace
+              {uploading ? "Uploading…" : "Replace"}
             </button>
             <button
               onClick={() => onChange(null)}
@@ -275,8 +291,8 @@ function LogoUpload({
             (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.03)";
           }}
         >
-          <span style={{ fontSize: 18, lineHeight: 1 }}>↑</span>
-          <span>Click to upload {label.toLowerCase()}</span>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>{uploading ? "…" : "↑"}</span>
+          <span>{uploading ? "Uploading…" : `Click to upload ${label.toLowerCase()}`}</span>
           <span style={{ fontSize: 10, opacity: 0.55 }}>{hint}</span>
         </button>
       )}

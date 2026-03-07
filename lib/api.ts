@@ -9,6 +9,24 @@ function authHeaders() {
   };
 }
 
+function authToken() {
+  return typeof window !== "undefined" ? localStorage.getItem("jwtToken") : null;
+}
+
+export async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const token = authToken();
+  const res = await fetch(`${API_BASE}/api/v1/upload`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) throw new Error("File upload failed");
+  const json = await res.json();
+  return json.url as string;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MATCHES
 // ═══════════════════════════════════════════════════════════════════════════
