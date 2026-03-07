@@ -8,6 +8,8 @@ import { fetchMatchById, fetchMatchState, fetchStreamState } from "@/lib/api";
 import EventBurstOverlay from "@/app/overlays/premium/matchAddOn/EventBurstOverlay";
 import InlineBurstOverlay from "@/app/overlays/premium/matchAddOn/InlineBurstOverlay";
 import WinPredictorOverlay from "@/app/overlays/premium/matchAddOn/WinPredictorOverlay";
+import BrandingOverlay, { BrandingConfig, DEFAULT_BRANDING_CONFIG } from "@/app/overlays/premium/matchAddOn/BrandingOverlay";
+import { fetchBrandingConfig } from "@/lib/brandingConfig";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES — mirroring MatchState.java exactly
@@ -2850,6 +2852,12 @@ export default function ObsOverlayPage() {
     activeBanner: "none",
     templateId: null,
   });
+  const [brandingConfig, setBrandingConfig] = useState<BrandingConfig>(
+    DEFAULT_BRANDING_CONFIG,
+  );
+    const [purchasedTemplateIds, setPurchasedTemplateIds] = useState<string[]>(
+      [],
+    );
   
   // Scale the 1920×1080 canvas to fit whatever the actual browser viewport is.
   // This is the reliable way to handle OBS browser source at any configured size.
@@ -2873,11 +2881,36 @@ export default function ObsOverlayPage() {
       fetchMatchById(matchId),
       fetchMatchState(matchId),
       fetchStreamState(matchId),
+      fetchBrandingConfig(matchId),
+      
     ])
-      .then(([rawMatch, state, stream]) => {
+      .then(([rawMatch, state, stream, branding]) => {
         const m = rawMatch?.data || rawMatch;
         const s = state?.data || state;
         const st = stream;
+        if (!s?.team1 || !s?.team2) {
+          console.warn(
+            "fetchMatchState returned invalid state — waiting for WebSocket",
+          );
+          // Still set info so OBS page doesn't hang forever
+          if (m) {
+            setInfo({
+              id: m?.matchId || m?.id,
+              venue: m?.venue || "",
+              matchDate: m?.matchDate,
+              matchTime: m?.matchTime,
+              stage: m?.stage,
+              overs: m?.overs || 0,
+              tournamentName:
+                m?.tournamentResponse?.name || m?.tournamentName || null,
+              team1: { name: m?.team1?.name || "Team 1", logoPath: null },
+              team2: { name: m?.team2?.name || "Team 2", logoPath: null },
+            });
+          }
+          return;
+        }
+        setBrandingConfig(branding);
+        
 
         setInfo({
           id: m?.matchId || m?.id,
@@ -2935,6 +2968,15 @@ export default function ObsOverlayPage() {
             console.error("Score parse:", e);
           }
         });
+        stompClient.subscribe(`/topic/branding/${matchId}`, async () => {
+          try {
+            console.log("Branding ping received, fetching fresh config...");
+            const freshConfig = await fetchBrandingConfig(matchId);
+            setBrandingConfig(freshConfig);
+          } catch (e) {
+            console.error("Branding fetch failed:", e);
+          }
+        });
       },
     });
     stompClient.activate();
@@ -2943,7 +2985,8 @@ export default function ObsOverlayPage() {
     };
   }, [matchId]);
 
-  if (!info || !liveState) return null;
+    if (!info || !liveState || !liveState.team1 || !liveState.team2)
+      return null;
 
   const batTeam = getBatTeam(liveState);
   const bowlTeam = getBowlTeam(liveState);
@@ -2981,6 +3024,7 @@ export default function ObsOverlayPage() {
             MozOsxFontSmoothing: "grayscale",
           }}
         >
+          <BrandingOverlay config={brandingConfig} />
           {streamState.activeBanner === "score" && (
             <ScoreOverlay state={liveState} />
           )}

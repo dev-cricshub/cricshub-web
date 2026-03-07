@@ -18,6 +18,9 @@ import {
 } from "@/lib/api";
 import { useMatchWebSocket } from "@/hooks/useMatchWebSocket";
 import UpiCheckoutModal from "@/app/components/UpiCheckoutModal";
+import BrandingConfigPanel from "@/app/components/overlays/BrandingConfigPanel";
+import { fetchBrandingConfig, saveBrandingConfig } from "@/lib/brandingConfig";
+import { DEFAULT_BRANDING_CONFIG } from "@/app/overlays/premium/matchAddOn/BrandingOverlay";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -597,6 +600,11 @@ export default function StreamDashboard() {
     null,
   );
   const [successAddonId, setSuccessAddonId] = useState<string | null>(null);
+  const [brandingConfig, setBrandingConfig] = useState(DEFAULT_BRANDING_CONFIG);
+  // Load on branding overlay config on mount
+  useEffect(() => {
+    fetchBrandingConfig(matchId).then(setBrandingConfig);
+  }, [matchId]);
 
   useEffect(() => {
     const userId = localStorage.getItem("userUUID");
@@ -1014,6 +1022,19 @@ export default function StreamDashboard() {
               currentUserId={currentUser.id}
             />
             {matchState && <ScoreLive state={matchState} />}
+            {matchSub?.purchasedTemplateIds.includes("tpl-pro-4") && (
+              <BrandingConfigPanel
+                config={brandingConfig}
+                onChange={setBrandingConfig}
+                onSave={async (cfg) => {
+                  const ok = await saveBrandingConfig(matchId, cfg);
+                  if (!ok)
+                    alert(
+                      "Failed to save branding config. Make sure you are the match admin or active streamer.",
+                    );
+                }}
+              />
+            )}
           </div>
 
           {/* ══ MAIN PANEL ══ */}
@@ -1195,7 +1216,14 @@ export default function StreamDashboard() {
                                 </li>
                               ))}
                             </ul>
-                            {isOwned ? (
+                            {isOwned && tpl.id === "tpl-pro-4" ? (
+                              <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                                <span className="text-amber-500 text-sm flex-shrink-0">⬡</span>
+                                <p className="text-[11px] text-amber-700 font-medium leading-tight">
+                                  Persistent overlay — configure in the branding panel.
+                                </p>
+                              </div>
+                            ) : isOwned ? (
                               <button
                                 onClick={() => handleBanner(tpl.id as any)}
                                 disabled={!iAmStreaming}
@@ -1331,21 +1359,36 @@ export default function StreamDashboard() {
                                       {tpl.tier.toUpperCase()}
                                     </span>
                                   </div>
-                                  <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                                    ✓ Available
-                                  </span>
+                                  {tpl.id === "tpl-pro-4" ? (
+                                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                      ⬡ Always On
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                                      ✓ Available
+                                    </span>
+                                  )}
                                 </div>
-                                <button
-                                  onClick={() => handleBanner(tpl.id as any)}
-                                  disabled={!iAmStreaming}
-                                  className={`w-full py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-2 ${activeBanner === tpl.id ? "bg-red-50 text-red-500 border border-red-200" : "bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white hover:shadow-md"}`}
-                                >
-                                  {activeBanner === tpl.id
-                                    ? "Hide Overlay"
-                                    : !iAmStreaming
-                                      ? "Start streaming first"
-                                      : "Activate Overlay"}
-                                </button>
+                                {tpl.id === "tpl-pro-4" ? (
+                                  <div className="mt-2 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                                    <span className="text-amber-500 text-sm">⬡</span>
+                                    <p className="text-[11px] text-amber-700 font-medium leading-tight">
+                                      Persistent overlay — always visible on stream. Configure it in the branding panel above.
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleBanner(tpl.id as any)}
+                                    disabled={!iAmStreaming}
+                                    className={`w-full py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-2 ${activeBanner === tpl.id ? "bg-red-50 text-red-500 border border-red-200" : "bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white hover:shadow-md"}`}
+                                  >
+                                    {activeBanner === tpl.id
+                                      ? "Hide Overlay"
+                                      : !iAmStreaming
+                                        ? "Start streaming first"
+                                        : "Activate Overlay"}
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))}
