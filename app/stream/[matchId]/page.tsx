@@ -357,38 +357,36 @@ function BannerCard({
   return (
     <div
       onClick={() => canActivate && onToggle()}
-      className={`relative rounded-2xl border-2 overflow-hidden transition-all duration-300 select-none
-        ${active ? "border-[#34B8FF] shadow-xl shadow-blue-100 bg-blue-50 cursor-pointer" : ""}
-        ${!active && canActivate ? "border-gray-100 bg-white cursor-pointer hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5" : ""}
-        ${!canActivate ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed" : ""}`}
+      className={`relative rounded-2xl border overflow-hidden transition-all duration-300 select-none flex flex-col
+        ${active ? "border-[#34B8FF] shadow-lg shadow-blue-100 bg-blue-50 cursor-pointer" : ""}
+        ${!active && canActivate ? "border-gray-200 bg-white cursor-pointer hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5" : ""}
+        ${!canActivate ? "border-gray-200 bg-gray-50 cursor-not-allowed" : ""}`}
     >
-      {active && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#34B8FF] via-blue-300 to-[#34B8FF] animate-pulse" />
-      )}
+      {/* Preview colour bar */}
       {previewBg && (
-        <div className="h-10 w-full relative" style={{ background: previewBg }}>
+        <div className="h-12 w-full relative flex-shrink-0" style={{ background: previewBg }}>
           {active && (
-            <div className="absolute top-1.5 left-2 flex items-center gap-1 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-              <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+            <div className="absolute top-2 left-2.5 flex items-center gap-1 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               ON AIR
             </div>
           )}
+          {active && (
+            <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-[#34B8FF] via-blue-300 to-[#34B8FF] animate-pulse" />
+          )}
         </div>
       )}
-      <div className="p-4">
-        <div className="flex items-start gap-3 mb-3">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? "bg-gradient-to-br from-[#34B8FF] to-[#1E88E5]" : "bg-gray-100"}`}
-          >
-            <i
-              className={`${icon} text-lg ${active ? "text-white" : "text-gray-500"}`}
-            />
+
+      {/* Body */}
+      <div className="p-4 flex flex-col flex-1 gap-3">
+        {/* Icon + text */}
+        <div className="flex items-start gap-3">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? "bg-gradient-to-br from-[#34B8FF] to-[#1E88E5]" : "bg-gray-100"}`}>
+            <i className={`${icon} text-base ${active ? "text-white" : "text-gray-500"}`} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p
-                className={`font-bold text-xs uppercase tracking-wide ${active ? "text-[#1E88E5]" : "text-gray-400"}`}
-              >
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className={`font-semibold text-[11px] uppercase tracking-widest ${active ? "text-[#1E88E5]" : "text-gray-500"}`}>
                 {title}
               </p>
               {badge && (
@@ -398,31 +396,35 @@ function BannerCard({
               )}
             </div>
             {teamName && (
-              <p className={`font-extrabold text-sm leading-tight mt-0.5 truncate ${active ? "text-[#1565C0]" : "text-gray-900"}`}>
+              <p className={`font-bold text-sm leading-tight mt-0.5 truncate ${active ? "text-[#1565C0]" : "text-gray-800"}`}>
                 {teamName}
               </p>
             )}
-            <p className="text-xs text-gray-400 leading-relaxed mt-0.5">
+            <p className={`text-xs leading-relaxed mt-1 ${active ? "text-blue-600" : "text-gray-500"}`}>
               {desc}
             </p>
           </div>
         </div>
-        {!canActivate ? (
-          <div className="w-full py-2 rounded-xl bg-gray-100 text-gray-400 text-xs font-bold text-center flex items-center justify-center gap-1.5">
-            <i className="ri-lock-line" />
-            {lockedReason ?? "Unavailable"}
-          </div>
-        ) : active ? (
-          <div className="w-full py-2 rounded-xl bg-red-50 text-red-500 border border-red-200 text-xs font-bold text-center">
-            <i className="ri-stop-circle-line mr-1.5" />
-            Hide Banner
-          </div>
-        ) : (
-          <div className="w-full py-2 rounded-xl bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold text-center">
-            <i className="ri-play-circle-line mr-1.5" />
-            Show Banner
-          </div>
-        )}
+
+        {/* Action button — always pinned to bottom */}
+        <div className="mt-auto">
+          {!canActivate ? (
+            <div className="w-full py-2 rounded-xl bg-gray-100 text-gray-400 text-xs font-bold text-center flex items-center justify-center gap-1.5">
+              <i className="ri-lock-line" />
+              {lockedReason ?? "Unavailable"}
+            </div>
+          ) : active ? (
+            <div className="w-full py-2 rounded-xl bg-red-50 text-red-500 border border-red-200 text-xs font-bold text-center">
+              <i className="ri-stop-circle-line mr-1.5" />
+              Hide Banner
+            </div>
+          ) : (
+            <div className="w-full py-2 rounded-xl bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold text-center">
+              <i className="ri-play-circle-line mr-1.5" />
+              Show Banner
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
