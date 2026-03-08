@@ -349,22 +349,11 @@ export default function BrandingConfigPanel({ config, onChange, onSave }: Props)
     <div
       style={{
         background: "rgba(8,10,24,0.97)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: 12,
         fontFamily: "'DM Sans', sans-serif",
         color: "#FFFFFF",
-        overflow: "hidden",
         boxSizing: "border-box",
       }}
     >
-      {/* ── Top separator ── */}
-      <div
-        style={{
-          padding: "14px 20px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(255,255,255,0.02)",
-        }}
-      />
 
       {/* ── Scrollable body ── */}
       <div

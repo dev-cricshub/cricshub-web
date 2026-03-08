@@ -25,12 +25,14 @@ interface Props {
 }
 
 export default function MediaAssetsPanel({ matchId, userId }: Props) {
-  const [library,    setLibrary]    = useState<MediaAsset[]>([]);
-  const [playlist,   setPlaylist]   = useState<MediaAsset[]>([]);
-  const [uploading,  setUploading]  = useState(false);
-  const [saving,     setSaving]     = useState(false);
-  const [saved,      setSaved]      = useState(false);
-  const [dragIndex,  setDragIndex]  = useState<number | null>(null);
+  const [library,      setLibrary]      = useState<MediaAsset[]>([]);
+  const [playlist,     setPlaylist]     = useState<MediaAsset[]>([]);
+  const [uploading,    setUploading]    = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [saved,        setSaved]        = useState(false);
+  const [dragIndex,    setDragIndex]    = useState<number | null>(null);
+  const [libraryOpen,  setLibraryOpen]  = useState(true);
+  const [sequenceOpen, setSequenceOpen] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Load library + current playlist on mount
@@ -128,32 +130,32 @@ export default function MediaAssetsPanel({ matchId, userId }: Props) {
     <div
       style={{
         background: "rgba(8,10,24,0.97)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: 12,
         fontFamily: "'DM Sans', sans-serif",
         color: "#fff",
-        overflow: "hidden",
       }}
     >
-      {/* ── Top separator ── */}
+      {/* ── Scrollable body ── */}
       <div
-        style={{
-          padding: "14px 20px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(255,255,255,0.02)",
-        }}
-      />
-
-      <div style={{ padding: 20 }}>
+        className="media-panel-scroll"
+        style={{ padding: 20, overflowY: "auto", maxHeight: 480, boxSizing: "border-box" }}
+      >
 
         {/* ── LIBRARY ─────────────────────────── */}
-        <div style={{ marginBottom: 20 }}>
-          <div
+        <div style={{ marginBottom: 16 }}>
+          <button
+            onClick={() => setLibraryOpen((v) => !v)}
             style={{
+              width: "100%",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 10,
+              background: "none",
+              border: "none",
+              borderBottom: "1px solid rgba(217,119,6,0.18)",
+              padding: "0 0 6px 0",
+              marginBottom: libraryOpen ? 10 : 0,
+              cursor: "pointer",
+              fontFamily: "inherit",
             }}
           >
             <span
@@ -167,12 +169,17 @@ export default function MediaAssetsPanel({ matchId, userId }: Props) {
             >
               Your Library
             </span>
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
-              {library.length} / {MAX_ASSETS}
-            </span>
-          </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
+                {library.length} / {MAX_ASSETS}
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
+                {libraryOpen ? "▲" : "▼"}
+              </span>
+            </div>
+          </button>
 
-          {library.length === 0 && !uploading && (
+          {libraryOpen && library.length === 0 && !uploading && (
             <div
               style={{
                 color: "rgba(255,255,255,0.25)",
@@ -185,7 +192,7 @@ export default function MediaAssetsPanel({ matchId, userId }: Props) {
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {libraryOpen && <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {library.map((asset) => {
               const inPlaylist = !!playlist.find((a) => a.id === asset.id);
               return (
@@ -283,10 +290,10 @@ export default function MediaAssetsPanel({ matchId, userId }: Props) {
                 </div>
               );
             })}
-          </div>
+          </div>}
 
           {/* Upload button */}
-          {library.length < MAX_ASSETS && (
+          {libraryOpen && library.length < MAX_ASSETS && (
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
@@ -323,22 +330,39 @@ export default function MediaAssetsPanel({ matchId, userId }: Props) {
 
         {/* ── SEQUENCE ────────────────────────── */}
         <div>
-          <div
+          <button
+            onClick={() => setSequenceOpen((v) => !v)}
             style={{
-              color: "#D97706",
-              fontSize: 9,
-              fontWeight: 800,
-              letterSpacing: 2.5,
-              textTransform: "uppercase",
-              marginBottom: 10,
-              paddingBottom: 6,
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "none",
+              border: "none",
               borderBottom: "1px solid rgba(217,119,6,0.18)",
+              padding: "0 0 6px 0",
+              marginBottom: sequenceOpen ? 10 : 0,
+              cursor: "pointer",
+              fontFamily: "inherit",
             }}
           >
-            Playback Sequence
-          </div>
+            <span
+              style={{
+                color: "#D97706",
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: 2.5,
+                textTransform: "uppercase",
+              }}
+            >
+              Playback Sequence
+            </span>
+            <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
+              {sequenceOpen ? "▲" : "▼"}
+            </span>
+          </button>
 
-          {playlist.length === 0 ? (
+          {sequenceOpen && (playlist.length === 0 ? (
             <div
               style={{
                 color: "rgba(255,255,255,0.2)",
@@ -442,9 +466,16 @@ export default function MediaAssetsPanel({ matchId, userId }: Props) {
                 </div>
               ))}
             </div>
-          )}
+          ))}
         </div>
       </div>
+
+      <style>{`
+        .media-panel-scroll::-webkit-scrollbar { width: 4px; }
+        .media-panel-scroll::-webkit-scrollbar-track { background: transparent; }
+        .media-panel-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .media-panel-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+      `}</style>
 
       {/* Footer */}
       <div

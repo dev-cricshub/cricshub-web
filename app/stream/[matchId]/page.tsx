@@ -1042,13 +1042,24 @@ export default function StreamDashboard() {
             />
             {matchState && <ScoreLive state={matchState} />}
             {matchSub?.purchasedTemplateIds.includes("tpl-pro-4") && (
-              <div className="rounded-2xl border border-gray-200 overflow-hidden">
+              <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden", fontFamily: "'DM Sans', sans-serif" }}>
                 <button
                   onClick={() => setBrandingOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors"
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "13px 20px",
+                    background: "rgba(8,10,24,0.97)",
+                    border: "none",
+                    borderBottom: brandingOpen ? "1px solid rgba(255,255,255,0.06)" : "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
                 >
-                  <span className="text-sm font-semibold text-gray-700">Branding Config</span>
-                  <i className={`ri-arrow-${brandingOpen ? "up" : "down"}-s-line text-gray-400 text-lg`} />
+                  <span style={{ color: "#F3F4F6", fontSize: 13, fontWeight: 600 }}>Branding Config</span>
+                  <i className={`ri-arrow-${brandingOpen ? "up" : "down"}-s-line`} style={{ color: "rgba(255,255,255,0.35)", fontSize: 18 }} />
                 </button>
                 {brandingOpen && (
                   <BrandingConfigPanel
@@ -1066,13 +1077,24 @@ export default function StreamDashboard() {
               </div>
             )}
             {matchSub?.purchasedTemplateIds.includes("tpl-pro-5") && (
-              <div className="rounded-2xl border border-gray-200 overflow-hidden">
+              <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden", fontFamily: "'DM Sans', sans-serif" }}>
                 <button
                   onClick={() => setMediaReelOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors"
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "13px 20px",
+                    background: "rgba(8,10,24,0.97)",
+                    border: "none",
+                    borderBottom: mediaReelOpen ? "1px solid rgba(255,255,255,0.06)" : "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
                 >
-                  <span className="text-sm font-semibold text-gray-700">Media Reel</span>
-                  <i className={`ri-arrow-${mediaReelOpen ? "up" : "down"}-s-line text-gray-400 text-lg`} />
+                  <span style={{ color: "#F3F4F6", fontSize: 13, fontWeight: 600 }}>Media Reel</span>
+                  <i className={`ri-arrow-${mediaReelOpen ? "up" : "down"}-s-line`} style={{ color: "rgba(255,255,255,0.35)", fontSize: 18 }} />
                 </button>
                 {mediaReelOpen && (
                   <MediaAssetsPanel matchId={matchId} userId={currentUser.id} />
