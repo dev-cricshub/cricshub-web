@@ -112,6 +112,7 @@ export type BannerType =
   | "playingXI_bat_team2"
   | "playingXI_bowl_team1"
   | "playingXI_bowl_team2"
+  | "playingXI_combined"
   | "score"
   | "summary"
   | string;
@@ -866,6 +867,7 @@ export default function StreamDashboard() {
       return `🎳 Bowling XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
     if (activeBanner === "playingXI_bowl_team2")
       return `🎳 Bowling XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
+    if (activeBanner === "playingXI_combined") return "👥 Playing XI — Both Teams is live on OBS";
     if (activeBanner === "score") return "📊 Score Overlay is live on OBS";
     if (activeBanner === "summary") return "📋 Match Summary is live on OBS";
     return `✨ ${templates.find((t) => t.id === activeBanner)?.name ?? "Premium Overlay"} is live on OBS`;
@@ -879,6 +881,13 @@ export default function StreamDashboard() {
       desc: "Tournament, teams, venue, date and toss result.",
       key: "main",
       previewBg: "linear-gradient(135deg,#34B8FF,#1E88E5)",
+    },
+    {
+      icon: "ri-team-line",
+      title: "Playing XI — Both Teams",
+      desc: "Side-by-side lineup with player roles, captain badge and live match footer.",
+      key: "playingXI_combined",
+      previewBg: "linear-gradient(135deg,#4A9EF5,#A855F7)",
     },
     {
       icon: "ri-group-line",

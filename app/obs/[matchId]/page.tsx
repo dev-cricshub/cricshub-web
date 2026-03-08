@@ -38,6 +38,7 @@ interface Extras {
 interface PlayerStats {
   playerId: string;
   name: string;
+  role?: string; // "BAT" | "BWL" | "AR" | "WK"
   runs: number;
   ballsFaced: number;
   fours: number;
@@ -104,6 +105,7 @@ type BannerType =
   | "playingXI_bat_team2"
   | "playingXI_bowl_team1"
   | "playingXI_bowl_team2"
+  | "playingXI_combined"
   | "score"
   | "summary"
   | string;
@@ -1653,6 +1655,232 @@ function BattingCard({
 }
 
 // ═══════════════════════════════════════════════════════════
+// OVERLAY: PLAYING XI BOTH TEAMS — two-column lineup card
+// ═══════════════════════════════════════════════════════════
+
+const ROLE_META: Record<string, { label: string; color: string; bg: string }> = {
+  // short codes
+  BAT:            { label: "Batsman",       color: "#60A5FA", bg: "rgba(96,165,250,0.12)" },
+  BWL:            { label: "Bowler",        color: "#C084FC", bg: "rgba(192,132,252,0.12)" },
+  AR:             { label: "All-rounder",   color: "#34D399", bg: "rgba(52,211,153,0.12)" },
+  WK:             { label: "Wicket-keeper", color: "#FCD34D", bg: "rgba(252,211,77,0.12)"  },
+  // full names from DB
+  BATSMAN:        { label: "Batsman",       color: "#60A5FA", bg: "rgba(96,165,250,0.12)" },
+  BOWLER:         { label: "Bowler",        color: "#C084FC", bg: "rgba(192,132,252,0.12)" },
+  "ALL-ROUNDER":  { label: "All-rounder",   color: "#34D399", bg: "rgba(52,211,153,0.12)" },
+  "WICKET-KEEPER":{ label: "Wicket-keeper", color: "#FCD34D", bg: "rgba(252,211,77,0.12)"  },
+};
+
+function PlayingXIBothTeamsCard({ state }: { state: MatchState }) {
+  const { team1, team2 } = state;
+
+  const tossSet = !!state.battingFirst;
+  const inProgress = tossSet && (team1.score > 0 || team2.score > 0 ||
+    !!state.currentStriker || !!state.currentBowler);
+
+  function TeamColumn({ team, accent }: { team: TeamDetails; accent: string }) {
+    const captainId = team.captainId?.toString();
+    return (
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Team header */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "12px 20px",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
+          background: `linear-gradient(135deg, ${accent}18 0%, transparent 60%)`,
+        }}>
+          <TeamBadge name={team.name} logoUrl={team.logoUrl} size={42} accent={accent} accentBg={`${accent}22`} />
+          <div style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            color: C.white, fontWeight: 800, fontSize: 22,
+            textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1,
+          }}>
+            {team.name}
+          </div>
+        </div>
+
+        {/* Player rows */}
+        <div>
+          {team.playingXI.slice(0, 11).map((p, idx) => {
+            const isCaptain = captainId && p.playerId?.toString() === captainId;
+            const roleMeta = p.role ? (ROLE_META[p.role.toUpperCase()] ?? null) : null;
+            return (
+              <div key={p.playerId} style={{
+                display: "flex", alignItems: "center",
+                padding: "0 18px",
+                height: 46,
+                borderBottom: "1px solid rgba(255,255,255,0.045)",
+                background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.025)",
+              }}>
+                {/* Number */}
+                <div style={{
+                  width: 24, flexShrink: 0,
+                  color: C.w35, fontSize: 13,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 700, textAlign: "right", marginRight: 12,
+                }}>
+                  {idx + 1}
+                </div>
+                {/* Name + captain inline */}
+                <div style={{
+                  flex: 1, minWidth: 0,
+                  display: "flex", alignItems: "center", gap: 7, overflow: "hidden",
+                }}>
+                  <span style={{
+                    color: C.w80, fontSize: 16, fontWeight: 600,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}>
+                    {p.name}
+                  </span>
+                  {isCaptain && (
+                    <div style={{
+                      flexShrink: 0,
+                      background: "rgba(217,119,6,0.15)",
+                      border: "1px solid rgba(217,119,6,0.5)",
+                      borderRadius: 4, padding: "1px 6px",
+                      color: C.gold, fontSize: 11, fontWeight: 800,
+                      fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1,
+                    }}>C</div>
+                  )}
+                </div>
+                {/* Role badge */}
+                {roleMeta && (
+                  <div style={{
+                    marginLeft: 8, flexShrink: 0,
+                    background: roleMeta.bg,
+                    borderRadius: 4, padding: "2px 9px",
+                    color: roleMeta.color, fontSize: 12, fontWeight: 800,
+                    fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
+                  }}>
+                    {roleMeta.label}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: "absolute",
+      top: "50%", left: "50%",
+      transform: "translate(-50%, -50%)",
+      width: 1200,
+      animation: "scaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
+      fontFamily: "'DM Sans', sans-serif",
+    }}>
+      <div style={{
+        background: "rgba(6,8,16,0.98)",
+        border: "1px solid rgba(255,255,255,0.10)",
+        borderRadius: 10,
+        overflow: "hidden",
+        boxShadow: "0 40px 100px rgba(0,0,0,0.9)",
+      }}>
+        {/* Top accent bar */}
+        <div style={{ height: 4, background: `linear-gradient(90deg, ${C.blue}, ${C.gold} 50%, ${C.purple})` }} />
+
+        {/* Card header */}
+        <div style={{
+          padding: "10px 22px",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
+          background: "linear-gradient(135deg, rgba(74,158,245,0.08) 0%, transparent 50%)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            color: C.blue, fontSize: 12, fontWeight: 800,
+            letterSpacing: 4, textTransform: "uppercase",
+          }}>
+            Playing XI
+          </div>
+        </div>
+
+        {/* Two-column body */}
+        <div style={{ display: "flex" }}>
+          <TeamColumn team={team1} accent={C.blue} />
+          <div style={{ width: 1, background: "rgba(255,255,255,0.07)", flexShrink: 0 }} />
+          <TeamColumn team={team2} accent={C.purple} />
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "10px 22px",
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+          background: "rgba(0,0,0,0.4)",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+        }}>
+          {/* Left: toss info */}
+          <span style={{
+            color: C.w55, fontSize: "clamp(13px, 1.3vw, 18px)",
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontWeight: 600, letterSpacing: 1,
+          }}>
+            {state.matchComplete && state.winner
+              ? `${state.winner} won${state.winBy ? ` — ${state.winBy}` : ""}`
+              : tossSet
+                ? `Toss: ${state.tossWinner} won — elected to ${state.choice}`
+                : "Toss Pending"}
+          </span>
+
+          {/* Right: live score */}
+          {inProgress && !state.matchComplete && (() => {
+            const bat = getBatTeam(state);
+            const bowl = getBowlTeam(state);
+            return (
+              <div style={{ display: "flex", alignItems: "center", gap: "clamp(10px, 1.2vw, 20px)" }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: "50%",
+                  background: "#EF4444",
+                  animation: "reelPing 1.4s ease-in-out infinite",
+                  flexShrink: 0,
+                }} />
+                {/* Batting team name */}
+                <span style={{
+                  color: C.blue, fontSize: "clamp(16px, 1.7vw, 24px)",
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
+                }}>
+                  {bat.name}
+                </span>
+                {/* Score */}
+                <span style={{
+                  color: "#FFFFFF", fontSize: "clamp(22px, 2.4vw, 34px)",
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 900, letterSpacing: 1, lineHeight: 1,
+                }}>
+                  {bat.score}/{bat.wickets}
+                </span>
+                {/* Overs */}
+                <span style={{
+                  color: C.w55, fontSize: "clamp(13px, 1.3vw, 18px)",
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 600, letterSpacing: 0.5,
+                }}>
+                  ({bat.overs} ov)
+                </span>
+                {/* Separator */}
+                <span style={{ color: C.w35, fontSize: "clamp(14px, 1.4vw, 20px)", fontWeight: 700 }}>vs</span>
+                {/* Bowling team name */}
+                <span style={{
+                  color: C.purple, fontSize: "clamp(16px, 1.7vw, 24px)",
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
+                }}>
+                  {bowl.name}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // OVERLAY 4: BOWLING CARD — broadcast scorecard style
 // ═══════════════════════════════════════════════════════════
 //
@@ -2859,9 +3087,6 @@ export default function ObsOverlayPage() {
     DEFAULT_BRANDING_CONFIG,
   );
   const [playlistRefreshKey, setPlaylistRefreshKey] = useState(0);
-    const [purchasedTemplateIds, setPurchasedTemplateIds] = useState<string[]>(
-      [],
-    );
   
   // Scale the 1920×1080 canvas to fit whatever the actual browser viewport is.
   // This is the reliable way to handle OBS browser source at any configured size.
@@ -2995,9 +3220,6 @@ export default function ObsOverlayPage() {
     if (!info || !liveState || !liveState.team1 || !liveState.team2)
       return null;
 
-  const batTeam = getBatTeam(liveState);
-  const bowlTeam = getBowlTeam(liveState);
-
   return (
     <>
       {/*
@@ -3049,6 +3271,9 @@ export default function ObsOverlayPage() {
           )}
           {streamState.activeBanner === "playingXI_bowl_team2" && (
             <BowlingCard team={liveState.team2} state={liveState} />
+          )}
+          {streamState.activeBanner === "playingXI_combined" && (
+            <PlayingXIBothTeamsCard state={liveState} />
           )}
           {streamState.activeBanner === "summary" && (
             <MatchSummaryCard
