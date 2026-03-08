@@ -108,8 +108,10 @@ interface StreamSession {
 export type BannerType =
   | "none"
   | "main"
-  | "playingXI_bat"
-  | "playingXI_bowl"
+  | "playingXI_bat_team1"
+  | "playingXI_bat_team2"
+  | "playingXI_bowl_team1"
+  | "playingXI_bowl_team2"
   | "score"
   | "summary"
   | string;
@@ -331,6 +333,7 @@ function ScoreLive({ state }: { state: MatchState }) {
 function BannerCard({
   icon,
   title,
+  teamName,
   desc,
   active,
   canActivate,
@@ -341,6 +344,7 @@ function BannerCard({
 }: {
   icon: string;
   title: string;
+  teamName?: string;
   desc: string;
   active: boolean;
   canActivate: boolean;
@@ -382,7 +386,7 @@ function BannerCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <p
-                className={`font-bold text-sm ${active ? "text-[#1E88E5]" : "text-gray-900"}`}
+                className={`font-bold text-xs uppercase tracking-wide ${active ? "text-[#1E88E5]" : "text-gray-400"}`}
               >
                 {title}
               </p>
@@ -392,6 +396,11 @@ function BannerCard({
                 </span>
               )}
             </div>
+            {teamName && (
+              <p className={`font-extrabold text-sm leading-tight mt-0.5 truncate ${active ? "text-[#1565C0]" : "text-gray-900"}`}>
+                {teamName}
+              </p>
+            )}
             <p className="text-xs text-gray-400 leading-relaxed mt-0.5">
               {desc}
             </p>
@@ -849,10 +858,14 @@ export default function StreamDashboard() {
     if (activeBanner === "none")
       return "No banner active — OBS overlay is clear";
     if (activeBanner === "main") return "📺 Main Match Banner is live on OBS";
-    if (activeBanner === "playingXI_bat")
-      return "🏏 Batting XI Banner is live on OBS";
-    if (activeBanner === "playingXI_bowl")
-      return "🎳 Bowling XI Banner is live on OBS";
+    if (activeBanner === "playingXI_bat_team1")
+      return `🏏 Batting XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
+    if (activeBanner === "playingXI_bat_team2")
+      return `🏏 Batting XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
+    if (activeBanner === "playingXI_bowl_team1")
+      return `🎳 Bowling XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
+    if (activeBanner === "playingXI_bowl_team2")
+      return `🎳 Bowling XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
     if (activeBanner === "score") return "📊 Score Overlay is live on OBS";
     if (activeBanner === "summary") return "📋 Match Summary is live on OBS";
     return `✨ ${templates.find((t) => t.id === activeBanner)?.name ?? "Premium Overlay"} is live on OBS`;
@@ -870,15 +883,33 @@ export default function StreamDashboard() {
     {
       icon: "ri-group-line",
       title: "Batting XI",
+      teamName: matchState?.team1?.name ?? "Team 1",
       desc: "Full batting lineup with live runs and dismissal info.",
-      key: "playingXI_bat",
+      key: "playingXI_bat_team1",
+      previewBg: "linear-gradient(135deg,#00b4d8,#0077b6)",
+    },
+    {
+      icon: "ri-group-line",
+      title: "Batting XI",
+      teamName: matchState?.team2?.name ?? "Team 2",
+      desc: "Full batting lineup with live runs and dismissal info.",
+      key: "playingXI_bat_team2",
       previewBg: "linear-gradient(135deg,#00b4d8,#0077b6)",
     },
     {
       icon: "ri-group-2-line",
       title: "Bowling XI",
+      teamName: matchState?.team1?.name ?? "Team 1",
       desc: "Bowling lineup with overs, wickets and economy.",
-      key: "playingXI_bowl",
+      key: "playingXI_bowl_team1",
+      previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)",
+    },
+    {
+      icon: "ri-group-2-line",
+      title: "Bowling XI",
+      teamName: matchState?.team2?.name ?? "Team 2",
+      desc: "Bowling lineup with overs, wickets and economy.",
+      key: "playingXI_bowl_team2",
       previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)",
     },
     {
@@ -1184,6 +1215,7 @@ export default function StreamDashboard() {
                         key={b.key}
                         icon={b.icon}
                         title={b.title}
+                        teamName={(b as any).teamName}
                         desc={b.desc}
                         active={activeBanner === b.key}
                         canActivate={
@@ -1367,6 +1399,7 @@ export default function StreamDashboard() {
                             key={b.key}
                             icon={b.icon}
                             title={b.title}
+                            teamName={(b as any).teamName}
                             desc={b.desc}
                             active={activeBanner === b.key}
                             canActivate={iAmStreaming}

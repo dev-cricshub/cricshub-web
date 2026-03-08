@@ -100,8 +100,10 @@ interface MatchInfo {
 type BannerType =
   | "none"
   | "main"
-  | "playingXI_bat"
-  | "playingXI_bowl"
+  | "playingXI_bat_team1"
+  | "playingXI_bat_team2"
+  | "playingXI_bowl_team1"
+  | "playingXI_bowl_team2"
   | "score"
   | "summary"
   | string;
@@ -1665,19 +1667,23 @@ function BattingCard({
 
 function BowlingCard({
   team,
-  bowlingTeam,
   state,
 }: {
   team: TeamDetails;
-  bowlingTeam: TeamDetails;
   state: MatchState;
-  }) {
-   
-  const isTeam1 = team.name === state.team1.name;
-  const bowlingOrderArr =
-    (state.firstInnings
-      ? (state as any).team1BowlingOrder
-      : (state as any).team2BowlingOrder) || [];
+}) {
+  // Select the innings in which this team bowled:
+  // team1BowlingOrder = innings-1 bowlers = the team that did NOT bat first
+  // team2BowlingOrder = innings-2 bowlers = the team that batted first
+  const isPassedTeamBatFirst = team.name === state.battingFirst?.name;
+  const bowlingOrderArr = (isPassedTeamBatFirst
+    ? (state as any).team2BowlingOrder
+    : (state as any).team1BowlingOrder) || [];
+
+  // The team being bowled against (opponent) — used for score/overs/extras context.
+  // Using the fixed opposite of the passed team so that showing innings-1 bowling
+  // during innings 2 still displays the innings-1 batting team's score, not innings-2.
+  const opponent = team.name === state.team1.name ? state.team2 : state.team1;
 
   // 🔥 FIX: Force the active bowler into the list even if they haven't bowled a delivery yet
   const isActiveBowlTeam = team.name === getBowlTeam(state).name;
@@ -1795,40 +1801,37 @@ function BowlingCard({
               </div>
             </div>
           </div>
-          {(() => {
-            const batTeam = getBatTeam(state);
-            return batTeam.score > 0 || batTeam.wickets > 0 ? (
-              <div style={{ textAlign: "right" }}>
-                <div
-                  style={{
-                    color: C.w35,
-                    fontSize: 11,
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    fontWeight: 700,
-                    letterSpacing: 2,
-                    textTransform: "uppercase",
-                    marginBottom: 2,
-                  }}
-                >
-                  {batTeam.name}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: C.w80,
-                    fontWeight: 900,
-                    fontSize: 28,
-                    lineHeight: 1,
-                  }}
-                >
-                  {batTeam.score}/{batTeam.wickets}{" "}
-                  <span style={{ color: C.w35, fontSize: 15, fontWeight: 600 }}>
-                    ({batTeam.overs})
-                  </span>
-                </div>
+          {(opponent.score > 0 || opponent.wickets > 0) && (
+            <div style={{ textAlign: "right" }}>
+              <div
+                style={{
+                  color: C.w35,
+                  fontSize: 11,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  marginBottom: 2,
+                }}
+              >
+                {opponent.name}
               </div>
-            ) : null;
-          })()}
+              <div
+                style={{
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  color: C.w80,
+                  fontWeight: 900,
+                  fontSize: 28,
+                  lineHeight: 1,
+                }}
+              >
+                {opponent.score}/{opponent.wickets}{" "}
+                <span style={{ color: C.w35, fontSize: 15, fontWeight: 600 }}>
+                  ({opponent.overs})
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div
@@ -2064,12 +2067,11 @@ function BowlingCard({
                 fontWeight: 900,
               }}
             >
-              {getBatTeam(state).overs} / {state.totalOvers}
+              {opponent.overs} / {state.totalOvers}
             </span>
           </div>
           {(() => {
-            const batTeam = getBatTeam(state);
-            const extras = batTeam.extras;
+            const extras = opponent.extras;
             const total = extras
               ? extras.wide +
                 extras.noBall +
@@ -3036,15 +3038,17 @@ export default function ObsOverlayPage() {
           {streamState.activeBanner === "main" && (
             <MainMatchBanner info={info} state={liveState} />
           )}
-          {streamState.activeBanner === "playingXI_bat" && (
-            <BattingCard team={batTeam} state={liveState} />
+          {streamState.activeBanner === "playingXI_bat_team1" && (
+            <BattingCard team={liveState.team1} state={liveState} />
           )}
-          {streamState.activeBanner === "playingXI_bowl" && (
-            <BowlingCard
-              team={bowlTeam}
-              bowlingTeam={bowlTeam}
-              state={liveState}
-            />
+          {streamState.activeBanner === "playingXI_bat_team2" && (
+            <BattingCard team={liveState.team2} state={liveState} />
+          )}
+          {streamState.activeBanner === "playingXI_bowl_team1" && (
+            <BowlingCard team={liveState.team1} state={liveState} />
+          )}
+          {streamState.activeBanner === "playingXI_bowl_team2" && (
+            <BowlingCard team={liveState.team2} state={liveState} />
           )}
           {streamState.activeBanner === "summary" && (
             <MatchSummaryCard
