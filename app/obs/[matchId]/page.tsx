@@ -36,6 +36,14 @@ import { GlassBowlingCard } from "@/app/overlays/bundles/glass/GlassBowlingCard"
 import { GlassPlayingXIBothTeamsCard } from "@/app/overlays/bundles/glass/GlassPlayingXIBothTeamsCard";
 import { GlassMatchSummaryCard } from "@/app/overlays/bundles/glass/GlassMatchSummaryCard";
 
+// Material bundle overlays
+import { MaterialScoreOverlay } from "@/app/overlays/bundles/material/MaterialScoreOverlay";
+import { MaterialMainMatchBanner } from "@/app/overlays/bundles/material/MaterialMainMatchBanner";
+import { MaterialBattingCard } from "@/app/overlays/bundles/material/MaterialBattingCard";
+import { MaterialBowlingCard } from "@/app/overlays/bundles/material/MaterialBowlingCard";
+import { MaterialPlayingXIBothTeamsCard } from "@/app/overlays/bundles/material/MaterialPlayingXIBothTeamsCard";
+import { MaterialMatchSummaryCard } from "@/app/overlays/bundles/material/MaterialMatchSummaryCard";
+
 // Shared types
 import { MatchState, MatchInfo, BannerType } from "@/app/overlays/bundles/types";
 
@@ -291,6 +299,35 @@ export default function ObsOverlayPage() {
             />
           )}
 
+          {/* ── Material bundle ── */}
+          {ab === "material_score" && (
+            <MaterialScoreOverlay state={liveState} />
+          )}
+          {ab === "material_main" && (
+            <MaterialMainMatchBanner info={info} state={liveState} />
+          )}
+          {ab === "material_bat_team1" && (
+            <MaterialBattingCard team={liveState.team1} state={liveState} />
+          )}
+          {ab === "material_bat_team2" && (
+            <MaterialBattingCard team={liveState.team2} state={liveState} />
+          )}
+          {ab === "material_bowl_team1" && (
+            <MaterialBowlingCard team={liveState.team1} state={liveState} />
+          )}
+          {ab === "material_bowl_team2" && (
+            <MaterialBowlingCard team={liveState.team2} state={liveState} />
+          )}
+          {ab === "material_xi_combined" && (
+            <MaterialPlayingXIBothTeamsCard state={liveState} />
+          )}
+          {ab === "material_summary" && (
+            <MaterialMatchSummaryCard
+              state={liveState}
+              key={`ms-${liveState.team1.score}-${liveState.team2.score}-${liveState.team1.wickets}-${liveState.team2.wickets}`}
+            />
+          )}
+
           {/* ── Premium add-ons ── */}
           {ab === "tpl-pro-1" && <EventBurstOverlay state={liveState} />}
           {ab === "tpl-pro-2" && <InlineBurstOverlay state={liveState} />}
@@ -335,6 +372,16 @@ export default function ObsOverlayPage() {
         @keyframes glassScaleIn {
           from { opacity: 0; transform: translate(-50%, calc(-50% + 16px)) scale(0.96); filter: blur(3px); }
           to   { opacity: 1; transform: translate(-50%, -50%) scale(1);               filter: blur(0); }
+        }
+
+        /* ── Material bundle animations ── */
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeScaleIn {
+          from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)) scale(0.98); }
+          to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
 
         /* ── Shared: pulsing live dot used in PlayingXI ── */
