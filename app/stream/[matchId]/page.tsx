@@ -600,6 +600,7 @@ function StreamControlPanel({
 // ═══════════════════════════════════════════════════════════
 
 const BUNDLE_OVERLAY_DETAILS: Record<string, { icon: string; title: string; desc: string; previewBg: string; teamLabel?: string }> = {
+  // ── Basic bundle ──
   main:                 { icon: "ri-layout-top-2-line",  title: "Main Match Banner",       desc: "Tournament name, both teams, venue, date and toss result. Perfect opening graphic.",  previewBg: "linear-gradient(135deg,#34B8FF,#1E88E5)" },
   score:                { icon: "ri-bar-chart-line",      title: "Live Score Overlay",      desc: "Always-on bottom bar — live score, batters, bowler and ball-by-ball over tracker.",    previewBg: "linear-gradient(135deg,#0a1628,#1E88E5)" },
   summary:              { icon: "ri-file-list-3-line",    title: "Match Summary",           desc: "Top batters & bowlers from both teams. Shows required rate or final result at bottom.", previewBg: "linear-gradient(135deg,#E2B94B,#8B6914)" },
@@ -608,6 +609,15 @@ const BUNDLE_OVERLAY_DETAILS: Record<string, { icon: string; title: string; desc
   playingXI_bat_team2:  { icon: "ri-group-line",          title: "Batting XI",              desc: "Full batting lineup for Team 2 — live runs, strike rate and dismissal info.",          previewBg: "linear-gradient(135deg,#00b4d8,#0077b6)", teamLabel: "Team 2" },
   playingXI_bowl_team1: { icon: "ri-group-2-line",        title: "Bowling XI",              desc: "Bowling lineup for Team 1 — overs bowled, wickets taken and economy rate.",            previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)", teamLabel: "Team 1" },
   playingXI_bowl_team2: { icon: "ri-group-2-line",        title: "Bowling XI",              desc: "Bowling lineup for Team 2 — overs bowled, wickets taken and economy rate.",            previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)", teamLabel: "Team 2" },
+  // ── Glass bundle ──
+  glass_main:           { icon: "ri-layout-top-2-line",  title: "Glass Match Banner",      desc: "Tournament, teams, venue and toss — frosted-glass panel with teal glow accents.",     previewBg: "linear-gradient(135deg,#00D4AA,#22D3EE)" },
+  glass_score:          { icon: "ri-bar-chart-line",      title: "Glass Score Overlay",     desc: "Bottom score bar with backdrop blur, teal glow border and per-ball outcome dots.",     previewBg: "linear-gradient(135deg,#00D4AA,#0a1628)" },
+  glass_summary:        { icon: "ri-file-list-3-line",    title: "Glass Match Summary",     desc: "Frosted-glass innings panels — top batters & bowlers with cyan/pink accents.",         previewBg: "linear-gradient(135deg,#0a1628,#22D3EE)" },
+  glass_xi_combined:    { icon: "ri-team-line",           title: "Glass Playing XI",        desc: "Two-column glassmorphism lineup card with role badges and live match footer.",         previewBg: "linear-gradient(135deg,#22D3EE,#F472B6)" },
+  glass_bat_team1:      { icon: "ri-group-line",          title: "Glass Batting XI",        desc: "Frosted batting lineup for Team 1 — live runs, balls faced and dismissal info.",       previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)", teamLabel: "Team 1" },
+  glass_bat_team2:      { icon: "ri-group-line",          title: "Glass Batting XI",        desc: "Frosted batting lineup for Team 2 — live runs, balls faced and dismissal info.",       previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)", teamLabel: "Team 2" },
+  glass_bowl_team1:     { icon: "ri-group-2-line",        title: "Glass Bowling XI",        desc: "Frosted bowling lineup for Team 1 — overs, wickets and economy with pink glow.",       previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)", teamLabel: "Team 1" },
+  glass_bowl_team2:     { icon: "ri-group-2-line",        title: "Glass Bowling XI",        desc: "Frosted bowling lineup for Team 2 — overs, wickets and economy with pink glow.",       previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)", teamLabel: "Team 2" },
 };
 
 function BundleInfoModal({ bundle, onClose }: { bundle: Bundle; onClose: () => void }) {
@@ -740,6 +750,14 @@ export default function StreamDashboard() {
   const [successBundleId, setSuccessBundleId] = useState<string | null>(null);
   const [infoBundleId, setInfoBundleId] = useState<string | null>(null);
   const [brandingConfig, setBrandingConfig] = useState(DEFAULT_BRANDING_CONFIG);
+  const [overlayTab, setOverlayTab] = useState<"basic" | "glass">("basic");
+  // Auto-switch to whichever tab is actually unlocked when subscription data loads
+  useEffect(() => {
+    const basic = (matchSub?.adminHasSubscription ?? false) || (matchSub?.purchasedBundleIds ?? []).includes("bundle-basic");
+    const glass = (matchSub?.purchasedBundleIds ?? []).includes("bundle-glass");
+    if (!basic && glass) setOverlayTab("glass");
+    else if (basic) setOverlayTab("basic");
+  }, [matchSub]);
   // Load on branding overlay config on mount
   useEffect(() => {
     fetchBrandingConfig(matchId).then(setBrandingConfig);
@@ -780,8 +798,9 @@ export default function StreamDashboard() {
   const hasBasicBundle =
     (matchSub?.adminHasSubscription ?? false) ||
     (matchSub?.purchasedBundleIds ?? []).includes("bundle-basic");
+  const hasGlassBundle = (matchSub?.purchasedBundleIds ?? []).includes("bundle-glass");
   const hasAnyBundle =
-    hasBasicBundle || (matchSub?.purchasedBundleIds ?? []).length > 0;
+    hasBasicBundle || hasGlassBundle || (matchSub?.purchasedBundleIds ?? []).length > 0;
 
   const { matchState: wsMatchState, activeBanner: wsActiveBanner } =
     useMatchWebSocket(matchId);
@@ -1005,6 +1024,18 @@ export default function StreamDashboard() {
     if (activeBanner === "playingXI_combined") return "👥 Playing XI — Both Teams is live on OBS";
     if (activeBanner === "score") return "📊 Score Overlay is live on OBS";
     if (activeBanner === "summary") return "📋 Match Summary is live on OBS";
+    if (activeBanner === "glass_score") return "🔷 Glass Score Overlay is live on OBS";
+    if (activeBanner === "glass_main") return "🔷 Glass Match Banner is live on OBS";
+    if (activeBanner === "glass_bat_team1")
+      return `🔷 Glass Batting XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
+    if (activeBanner === "glass_bat_team2")
+      return `🔷 Glass Batting XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
+    if (activeBanner === "glass_bowl_team1")
+      return `🔷 Glass Bowling XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
+    if (activeBanner === "glass_bowl_team2")
+      return `🔷 Glass Bowling XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
+    if (activeBanner === "glass_xi_combined") return "🔷 Glass Playing XI — Both Teams is live on OBS";
+    if (activeBanner === "glass_summary") return "🔷 Glass Match Summary is live on OBS";
     return `✨ ${templates.find((t) => t.id === activeBanner)?.name ?? "Premium Overlay"} is live on OBS`;
   };
 
@@ -1069,6 +1100,69 @@ export default function StreamDashboard() {
       desc: "Top batters & bowlers from both teams. Shows required or result at bottom.",
       key: "summary",
       previewBg: "linear-gradient(135deg,#E2B94B,#8B6914)",
+    },
+  ];
+
+  const GLASS_BUNDLE_BANNERS = [
+    {
+      icon: "ri-layout-top-2-line",
+      title: "Main Match Banner",
+      desc: "Tournament, teams, venue, date and toss result — frosted glass style.",
+      key: "glass_main",
+      previewBg: "linear-gradient(135deg,#00D4AA,#22D3EE)",
+    },
+    {
+      icon: "ri-team-line",
+      title: "Playing XI — Both Teams",
+      desc: "Side-by-side lineup with role badges and live footer — glass style.",
+      key: "glass_xi_combined",
+      previewBg: "linear-gradient(135deg,#22D3EE,#F472B6)",
+    },
+    {
+      icon: "ri-group-line",
+      title: "Batting XI",
+      teamName: matchState?.team1?.name ?? "Team 1",
+      desc: "Full batting lineup with live runs and dismissal info — frosted glass.",
+      key: "glass_bat_team1",
+      previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)",
+    },
+    {
+      icon: "ri-group-line",
+      title: "Batting XI",
+      teamName: matchState?.team2?.name ?? "Team 2",
+      desc: "Full batting lineup with live runs and dismissal info — frosted glass.",
+      key: "glass_bat_team2",
+      previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)",
+    },
+    {
+      icon: "ri-group-2-line",
+      title: "Bowling XI",
+      teamName: matchState?.team1?.name ?? "Team 1",
+      desc: "Bowling lineup with overs, wickets and economy — glass style.",
+      key: "glass_bowl_team1",
+      previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)",
+    },
+    {
+      icon: "ri-group-2-line",
+      title: "Bowling XI",
+      teamName: matchState?.team2?.name ?? "Team 2",
+      desc: "Bowling lineup with overs, wickets and economy — glass style.",
+      key: "glass_bowl_team2",
+      previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)",
+    },
+    {
+      icon: "ri-bar-chart-line",
+      title: "Live Score Overlay",
+      desc: "Persistent bottom score bar with frosted glass and teal glow.",
+      key: "glass_score",
+      previewBg: "linear-gradient(135deg,#00D4AA,#0a1628)",
+    },
+    {
+      icon: "ri-file-list-3-line",
+      title: "Match Summary",
+      desc: "Top batters & bowlers from both teams — glassmorphism card.",
+      key: "glass_summary",
+      previewBg: "linear-gradient(135deg,#0a1628,#22D3EE)",
     },
   ];
 
@@ -1380,34 +1474,93 @@ export default function StreamDashboard() {
                   </div>
                 )}
 
-                {/* ── Basic bundle banners (shown when premium or basic bundle purchased) ── */}
-                {hasBasicBundle && (
+                {/* ── Bundle overlay tabs (Basic + Glass) ── */}
+                {(hasBasicBundle || hasGlassBundle) && (
                   <div>
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
-                        <i className="ri-gift-line text-[#34B8FF] text-sm" />
+                    {/* Tab headers */}
+                    <div className="flex items-center gap-2 mb-4 flex-wrap">
+                      <button
+                        onClick={() => setOverlayTab("basic")}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "basic" ? "bg-[#1E88E5] text-white border-[#1E88E5] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#34B8FF] hover:text-[#1E88E5]"}`}
+                      >
+                        <i className="ri-gift-line" />
+                        Basic Bundle
+                        {hasBasicBundle && (
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "basic" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-500"}`}>
+                            {matchSub?.adminHasSubscription ? "FREE" : "OWNED"}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setOverlayTab("glass")}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "glass" ? "text-white border-[#00D4AA] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#00D4AA] hover:text-[#00D4AA]"}`}
+                        style={overlayTab === "glass" ? { background: "linear-gradient(135deg,#00D4AA,#22D3EE)" } : {}}
+                      >
+                        <i className="ri-contrast-2-line" />
+                        Glass Bundle
+                        {hasGlassBundle && (
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "glass" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-600"}`}>
+                            OWNED
+                          </span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Basic tab content */}
+                    {overlayTab === "basic" && hasBasicBundle && (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {INCLUDED_BANNERS_ADMIN.map((b) => (
+                          <BannerCard
+                            key={b.key}
+                            icon={b.icon}
+                            title={b.title}
+                            teamName={(b as any).teamName}
+                            desc={b.desc}
+                            active={activeBanner === b.key}
+                            canActivate={iAmStreaming}
+                            lockedReason="Start streaming first"
+                            onToggle={() => handleBanner(b.key as BannerType)}
+                            previewBg={b.previewBg}
+                          />
+                        ))}
                       </div>
-                      <p className="font-black text-gray-900">Basic Bundle Overlays</p>
-                      <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                        {matchSub?.adminHasSubscription ? "Included with subscription" : "Purchased"}
-                      </span>
-                    </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {INCLUDED_BANNERS_ADMIN.map((b) => (
-                        <BannerCard
-                          key={b.key}
-                          icon={b.icon}
-                          title={b.title}
-                          teamName={(b as any).teamName}
-                          desc={b.desc}
-                          active={activeBanner === b.key}
-                          canActivate={iAmStreaming}
-                          lockedReason="Start streaming first"
-                          onToggle={() => handleBanner(b.key as BannerType)}
-                          previewBg={b.previewBg}
-                        />
-                      ))}
-                    </div>
+                    )}
+
+                    {/* Glass tab content */}
+                    {overlayTab === "glass" && hasGlassBundle && (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {GLASS_BUNDLE_BANNERS.map((b) => (
+                          <BannerCard
+                            key={b.key}
+                            icon={b.icon}
+                            title={b.title}
+                            teamName={(b as any).teamName}
+                            desc={b.desc}
+                            active={activeBanner === b.key}
+                            canActivate={iAmStreaming}
+                            lockedReason="Start streaming first"
+                            onToggle={() => handleBanner(b.key as BannerType)}
+                            previewBg={b.previewBg}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Locked state — selected tab not purchased */}
+                    {overlayTab === "basic" && !hasBasicBundle && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
+                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
+                        <p className="font-bold text-gray-400 text-sm">Basic Bundle not purchased</p>
+                        <p className="text-xs text-gray-300 mt-1">Purchase it from the Bundles section below to unlock these overlays.</p>
+                      </div>
+                    )}
+                    {overlayTab === "glass" && !hasGlassBundle && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
+                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
+                        <p className="font-bold text-gray-400 text-sm">Glass Bundle not purchased</p>
+                        <p className="text-xs text-gray-300 mt-1">Purchase it from the Bundles section below to unlock these frosted-glass overlays.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1667,31 +1820,76 @@ export default function StreamDashboard() {
                   </div>
                 )}
 
-                {/* Basic bundle banners */}
-                {hasBasicBundle && (
+                {/* Bundle overlay tabs (Basic + Glass) */}
+                {(hasBasicBundle || hasGlassBundle) && (
                   <div>
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
-                        <i className="ri-gift-line text-[#34B8FF] text-sm" />
+                    <div className="flex items-center gap-2 mb-4 flex-wrap">
+                      <button
+                        onClick={() => setOverlayTab("basic")}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "basic" ? "bg-[#1E88E5] text-white border-[#1E88E5] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#34B8FF] hover:text-[#1E88E5]"}`}
+                      >
+                        <i className="ri-gift-line" />
+                        Basic Bundle
+                      </button>
+                      <button
+                        onClick={() => setOverlayTab("glass")}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "glass" ? "text-white border-[#00D4AA] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#00D4AA] hover:text-[#00D4AA]"}`}
+                        style={overlayTab === "glass" ? { background: "linear-gradient(135deg,#00D4AA,#22D3EE)" } : {}}
+                      >
+                        <i className="ri-contrast-2-line" />
+                        Glass Bundle
+                      </button>
+                    </div>
+                    {overlayTab === "basic" && hasBasicBundle && (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {INCLUDED_BANNERS_ADMIN.map((b) => (
+                          <BannerCard
+                            key={b.key}
+                            icon={b.icon}
+                            title={b.title}
+                            teamName={(b as any).teamName}
+                            desc={b.desc}
+                            active={activeBanner === b.key}
+                            canActivate={iAmStreaming}
+                            lockedReason="Start streaming first"
+                            onToggle={() => handleBanner(b.key as BannerType)}
+                            previewBg={b.previewBg}
+                          />
+                        ))}
                       </div>
-                      <p className="font-black text-gray-900">Available Banners</p>
-                    </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {INCLUDED_BANNERS_ADMIN.map((b) => (
-                        <BannerCard
-                          key={b.key}
-                          icon={b.icon}
-                          title={b.title}
-                          teamName={(b as any).teamName}
-                          desc={b.desc}
-                          active={activeBanner === b.key}
-                          canActivate={iAmStreaming}
-                          lockedReason="Start streaming first"
-                          onToggle={() => handleBanner(b.key as BannerType)}
-                          previewBg={b.previewBg}
-                        />
-                      ))}
-                    </div>
+                    )}
+                    {overlayTab === "glass" && hasGlassBundle && (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {GLASS_BUNDLE_BANNERS.map((b) => (
+                          <BannerCard
+                            key={b.key}
+                            icon={b.icon}
+                            title={b.title}
+                            teamName={(b as any).teamName}
+                            desc={b.desc}
+                            active={activeBanner === b.key}
+                            canActivate={iAmStreaming}
+                            lockedReason="Start streaming first"
+                            onToggle={() => handleBanner(b.key as BannerType)}
+                            previewBg={b.previewBg}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {overlayTab === "basic" && !hasBasicBundle && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
+                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
+                        <p className="font-bold text-gray-400 text-sm">Basic Bundle not available for this match</p>
+                        <p className="text-xs text-gray-300 mt-1">The match admin has not purchased this bundle.</p>
+                      </div>
+                    )}
+                    {overlayTab === "glass" && !hasGlassBundle && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
+                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
+                        <p className="font-bold text-gray-400 text-sm">Glass Bundle not available for this match</p>
+                        <p className="text-xs text-gray-300 mt-1">The match admin has not purchased this bundle.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1777,7 +1975,7 @@ export default function StreamDashboard() {
                           ))}
                         </div>
                       </div>
-                    ) : (
+                    ) : !hasAnyBundle ? (
                       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-8 text-center">
                         <i className="ri-layout-top-2-line text-gray-200 text-4xl block mb-3" />
                         <p className="font-bold text-gray-400 text-sm">
@@ -1788,7 +1986,7 @@ export default function StreamDashboard() {
                           from their streaming dashboard.
                         </p>
                       </div>
-                    )}
+                    ) : null}
               </div>
             )}
           </div>
