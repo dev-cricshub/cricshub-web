@@ -44,8 +44,20 @@ import { MaterialBowlingCard } from "@/app/overlays/bundles/material/MaterialBow
 import { MaterialPlayingXIBothTeamsCard } from "@/app/overlays/bundles/material/MaterialPlayingXIBothTeamsCard";
 import { MaterialMatchSummaryCard } from "@/app/overlays/bundles/material/MaterialMatchSummaryCard";
 
+// Aero bundle overlays
+import { AeroScoreOverlay } from "@/app/overlays/bundles/aero/AeroScoreOverlay";
+import { AeroMainMatchBanner } from "@/app/overlays/bundles/aero/AeroMainMatchBanner";
+import { AeroBattingCard } from "@/app/overlays/bundles/aero/AeroBattingCard";
+import { AeroBowlingCard } from "@/app/overlays/bundles/aero/AeroBowlingCard";
+import { AeroPlayingXIBothTeamsCard } from "@/app/overlays/bundles/aero/AeroPlayingXIBothTeamsCard";
+import { AeroMatchSummaryCard } from "@/app/overlays/bundles/aero/AeroMatchSummaryCard";
+
 // Shared types
-import { MatchState, MatchInfo, BannerType } from "@/app/overlays/bundles/types";
+import {
+  MatchState,
+  MatchInfo,
+  BannerType,
+} from "@/app/overlays/bundles/types";
 
 // ═══════════════════════════════════════════════════════════
 // STREAM STATE
@@ -328,6 +340,33 @@ export default function ObsOverlayPage() {
             />
           )}
 
+          {/* ── Aero Light bundle ── */}
+          {ab === "aero_score" && <AeroScoreOverlay state={liveState} />}
+          {ab === "aero_main" && (
+            <AeroMainMatchBanner info={info} state={liveState} />
+          )}
+          {ab === "aero_bat_team1" && (
+            <AeroBattingCard team={liveState.team1} state={liveState} />
+          )}
+          {ab === "aero_bat_team2" && (
+            <AeroBattingCard team={liveState.team2} state={liveState} />
+          )}
+          {ab === "aero_bowl_team1" && (
+            <AeroBowlingCard team={liveState.team1} state={liveState} />
+          )}
+          {ab === "aero_bowl_team2" && (
+            <AeroBowlingCard team={liveState.team2} state={liveState} />
+          )}
+          {ab === "aero_xi_combined" && (
+            <AeroPlayingXIBothTeamsCard state={liveState} />
+          )}
+          {ab === "aero_summary" && (
+            <AeroMatchSummaryCard
+              state={liveState}
+              key={`as-${liveState.team1.score}-${liveState.team2.score}-${liveState.team1.wickets}-${liveState.team2.wickets}`}
+            />
+          )}
+
           {/* ── Premium add-ons ── */}
           {ab === "tpl-pro-1" && <EventBurstOverlay state={liveState} />}
           {ab === "tpl-pro-2" && <InlineBurstOverlay state={liveState} />}
@@ -382,6 +421,28 @@ export default function ObsOverlayPage() {
         @keyframes fadeScaleIn {
           from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)) scale(0.98); }
           to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* ── Aero bundle animations ── */
+        @keyframes aeroSlideUp {
+          from { 
+            opacity: 0; 
+            transform: translate(-50%, 40px); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translate(-50%, 0); 
+          }
+        }
+        @keyframes aeroScaleIn {
+          from { 
+            opacity: 0; 
+            transform: translate(-50%, -45%) scale(0.92); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translate(-50%, -50%) scale(1); 
+          }
         }
 
         /* ── Shared: pulsing live dot used in PlayingXI ── */

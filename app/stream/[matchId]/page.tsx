@@ -133,6 +133,14 @@ export type BannerType =
   | "material_bat_team2"
   | "material_bowl_team1"
   | "material_bowl_team2"
+  | "aero_main"
+  | "aero_score"
+  | "aero_summary"
+  | "aero_xi_combined"
+  | "aero_bat_team1"
+  | "aero_bat_team2"
+  | "aero_bowl_team1"
+  | "aero_bowl_team2"
   | string;
 type MatchRole = "admin" | "operator";
 
@@ -797,6 +805,58 @@ const BUNDLE_OVERLAY_DETAILS: Record<
     previewBg: "#E91E63",
     teamLabel: "Team 2",
   },
+  aero_main: {
+    icon: "ri-layout-top-2-line",
+    title: "Aero Match Banner",
+    desc: "Premium modular stack with floating tournament pill and team islands.",
+    previewBg: "#F3F4F6",
+  },
+  aero_score: {
+    icon: "ri-bar-chart-line",
+    title: "Aero Score Stack",
+    desc: "Decoupled modular floating islands — separate score, over tracker, and player stats.",
+    previewBg: "#FFFFFF",
+  },
+  aero_summary: {
+    icon: "ri-file-list-3-line",
+    title: "Aero Match Summary",
+    desc: "Elegant light-mode panels with soft gray backgrounds and pill-shaped data badges.",
+    previewBg: "#F3F4F6",
+  },
+  aero_xi_combined: {
+    icon: "ri-team-line",
+    title: "Aero Playing XI",
+    desc: "Clean side-by-side floating lineup with role pills and premium Apple-style shadows.",
+    previewBg: "#FFFFFF",
+  },
+  aero_bat_team1: {
+    icon: "ri-group-line",
+    title: "Aero Batting XI",
+    desc: "Light-themed batting card with soft-tinted blue pair highlights and pill status tags.",
+    previewBg: "#E0F2FE",
+    teamLabel: "Team 1",
+  },
+  aero_bat_team2: {
+    icon: "ri-group-line",
+    title: "Aero Batting XI",
+    desc: "Light-themed batting card with soft-tinted blue pair highlights and pill status tags.",
+    previewBg: "#E0F2FE",
+    teamLabel: "Team 2",
+  },
+  aero_bowl_team1: {
+    icon: "ri-group-2-line",
+    title: "Aero Bowling XI",
+    desc: "Minimalist bowling lineup with soft gray rows and rose-tinted active bowler pills.",
+    previewBg: "#FFE4E6",
+    teamLabel: "Team 1",
+  },
+  aero_bowl_team2: {
+    icon: "ri-group-2-line",
+    title: "Aero Bowling XI",
+    desc: "Minimalist bowling lineup with soft gray rows and rose-tinted active bowler pills.",
+    previewBg: "#FFE4E6",
+    teamLabel: "Team 2",
+  },
 };
 
 function BundleInfoModal({
@@ -948,9 +1008,9 @@ export default function StreamDashboard() {
   const [successBundleId, setSuccessBundleId] = useState<string | null>(null);
   const [infoBundleId, setInfoBundleId] = useState<string | null>(null);
   const [brandingConfig, setBrandingConfig] = useState(DEFAULT_BRANDING_CONFIG);
-  const [overlayTab, setOverlayTab] = useState<"basic" | "glass" | "material">(
-    "basic",
-  ); // Auto-switch to whichever tab is actually unlocked when subscription data loads
+  const [overlayTab, setOverlayTab] = useState<
+    "basic" | "glass" | "material" | "aero"
+  >("basic"); // Auto-switch to whichever tab is actually unlocked when subscription data loads
 
   useEffect(() => {
     const basic =
@@ -960,10 +1020,13 @@ export default function StreamDashboard() {
     const material = (matchSub?.purchasedBundleIds ?? []).includes(
       "bundle-material",
     );
+    const aero = (matchSub?.purchasedBundleIds ?? []).includes("bundle-aero");
 
-    if (!basic && !glass && material) setOverlayTab("material");
-    else if (!basic && glass) setOverlayTab("glass");
-    else if (basic) setOverlayTab("basic");
+    // Priority logic: switch to the first one owned in this order
+    if (basic) setOverlayTab("basic");
+    else if (glass) setOverlayTab("glass");
+    else if (material) setOverlayTab("material");
+    else if (aero) setOverlayTab("aero");
   }, [matchSub]);
 
   // Load on branding overlay config on mount
@@ -1012,10 +1075,15 @@ export default function StreamDashboard() {
   const hasMaterialBundle = (matchSub?.purchasedBundleIds ?? []).includes(
     "bundle-material",
   );
+  const hasAeroBundle = (matchSub?.purchasedBundleIds ?? []).includes(
+    "bundle-aero",
+  );
+
   const hasAnyBundle =
     hasBasicBundle ||
     hasGlassBundle ||
     hasMaterialBundle ||
+    hasAeroBundle ||
     (matchSub?.purchasedBundleIds ?? []).length > 0;
 
   const { matchState: wsMatchState, activeBanner: wsActiveBanner } =
@@ -1467,6 +1535,70 @@ export default function StreamDashboard() {
     },
   ];
 
+  // ... right after MATERIAL_BUNDLE_BANNERS
+  const AERO_BUNDLE_BANNERS = [
+    {
+      icon: "ri-layout-top-2-line",
+      title: "Aero Match Banner",
+      desc: "Floating modular stack with tournament pill and team islands.",
+      key: "aero_main",
+      previewBg: "#F3F4F6",
+    },
+    {
+      icon: "ri-team-line",
+      title: "Aero Playing XI",
+      desc: "Clean side-by-side floating lineup card with pill badges.",
+      key: "aero_xi_combined",
+      previewBg: "#FFFFFF",
+    },
+    {
+      icon: "ri-group-line",
+      title: "Aero Batting XI",
+      teamName: matchState?.team1?.name ?? "Team 1",
+      desc: "Light-mode batting stats with soft pair highlights.",
+      key: "aero_bat_team1",
+      previewBg: "#E0F2FE",
+    },
+    {
+      icon: "ri-group-line",
+      title: "Aero Batting XI",
+      teamName: matchState?.team2?.name ?? "Team 2",
+      desc: "Light-mode batting stats with soft pair highlights.",
+      key: "aero_bat_team2",
+      previewBg: "#E0F2FE",
+    },
+    {
+      icon: "ri-group-2-line",
+      title: "Aero Bowling XI",
+      teamName: matchState?.team1?.name ?? "Team 1",
+      desc: "Minimalist bowling lineup with premium soft shadows.",
+      key: "aero_bowl_team1",
+      previewBg: "#FFE4E6",
+    },
+    {
+      icon: "ri-group-2-line",
+      title: "Aero Bowling XI",
+      teamName: matchState?.team2?.name ?? "Team 2",
+      desc: "Minimalist bowling lineup with premium soft shadows.",
+      key: "aero_bowl_team2",
+      previewBg: "#FFE4E6",
+    },
+    {
+      icon: "ri-bar-chart-line",
+      title: "Aero Score Stack",
+      desc: "Decoupled modular floating islands for a high-end tech look.",
+      key: "aero_score",
+      previewBg: "#FFFFFF",
+    },
+    {
+      icon: "ri-file-list-3-line",
+      title: "Aero Match Summary",
+      desc: "Elegant light-mode summary with soft pill-shaped data badges.",
+      key: "aero_summary",
+      previewBg: "#F3F4F6",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
       {checkoutAddon && (
@@ -1866,6 +1998,20 @@ export default function StreamDashboard() {
                           </span>
                         )}
                       </button>
+                      <button
+                        onClick={() => setOverlayTab("aero")}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "aero" ? "text-white border-[#0D9488] bg-[#0D9488] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#0D9488] hover:text-[#0D9488]"}`}
+                      >
+                        <i className="ri-cloud-line" />
+                        Aero Light
+                        {hasAeroBundle && (
+                          <span
+                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "aero" ? "bg-white/20 text-white" : "bg-teal-50 text-teal-600"}`}
+                          >
+                            OWNED
+                          </span>
+                        )}
+                      </button>
                     </div>
 
                     {/* Basic tab content */}
@@ -1943,6 +2089,41 @@ export default function StreamDashboard() {
                       </div>
                     )}
 
+                    {/* Aero tab content */}
+                    {overlayTab === "aero" && hasAeroBundle && (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {AERO_BUNDLE_BANNERS.map((b) => (
+                          <BannerCard
+                            key={b.key}
+                            icon={b.icon}
+                            title={b.title}
+                            teamName={(b as any).teamName}
+                            desc={b.desc}
+                            active={activeBanner === b.key}
+                            canActivate={iAmStreaming}
+                            lockedReason="Start streaming first"
+                            onToggle={() => handleBanner(b.key as BannerType)}
+                            previewBg={b.previewBg}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Aero Locked State */}
+                    {overlayTab === "aero" && !hasAeroBundle && (
+                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
+                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
+                        <p className="font-bold text-gray-400 text-sm">
+                          Aero Light Bundle not{" "}
+                          {isAdmin ? "purchased" : "available"}
+                        </p>
+                        <p className="text-xs text-gray-300 mt-1">
+                          {isAdmin
+                            ? "Purchase it from the Bundles section to unlock these modular islands."
+                            : "The match admin has not purchased this bundle."}
+                        </p>
+                      </div>
+                    )}
                     {/* Locked state — selected tab not purchased */}
                     {overlayTab === "basic" && !hasBasicBundle && (
                       <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
