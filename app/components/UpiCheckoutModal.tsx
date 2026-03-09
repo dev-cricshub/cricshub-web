@@ -5,12 +5,15 @@ import QRCode from "qrcode";
 import {
   getSubscriptionQrInfo,
   getAddonQrInfo,
+  getBundleQrInfo,
   createSubscriptionIntent,
   createAddonIntent,
+  createBundleManualIntent,
   submitUtr,
   pollManualPaymentStatus,
   checkPendingSubscription,
   checkPendingAddon,
+  checkPendingBundle,
   cancelManualPayment,
 } from "@/lib/api";
 
@@ -37,6 +40,12 @@ interface UpiCheckoutModalProps {
     tier: string;
     amount: number;
   };
+  bundlePayload?: {
+    matchId: string;
+    bundleId: string;
+    bundleName: string;
+    amount: number;
+  };
   userId: string;
 }
 
@@ -47,6 +56,7 @@ export default function UpiCheckoutModal({
   onConfirmed,
   subscriptionPlan,
   addonPayload,
+  bundlePayload,
   userId,
 }: UpiCheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>("loading");
@@ -79,6 +89,12 @@ export default function UpiCheckoutModal({
             userId,
             addonPayload.matchId,
             addonPayload.templateId,
+          );
+        } else if (bundlePayload) {
+          pending = await checkPendingBundle(
+            userId,
+            bundlePayload.matchId,
+            bundlePayload.bundleId,
           );
         }
 
@@ -114,6 +130,8 @@ export default function UpiCheckoutModal({
       data = await getSubscriptionQrInfo(subscriptionPlan);
     } else if (addonPayload) {
       data = await getAddonQrInfo(addonPayload.amount);
+    } else if (bundlePayload) {
+      data = await getBundleQrInfo(bundlePayload.amount);
     } else {
       throw new Error("No payment target provided.");
     }
@@ -162,6 +180,11 @@ export default function UpiCheckoutModal({
         result = await createAddonIntent(addonPayload.matchId, {
           userId,
           ...addonPayload,
+        });
+      } else if (bundlePayload) {
+        result = await createBundleManualIntent({
+          userId,
+          ...bundlePayload,
         });
       } else {
         throw new Error("No payment target.");
@@ -219,6 +242,8 @@ export default function UpiCheckoutModal({
     ? subscriptionPlan === "MONTHLY"
       ? "Monthly Subscription"
       : "6-Month Bundle"
+    : bundlePayload
+    ? bundlePayload.bundleName
     : (addonPayload?.templateName ?? "Premium Overlay");
   const canDismiss = [
     "qr",
@@ -594,6 +619,8 @@ export default function UpiCheckoutModal({
                 <p className="text-sm text-gray-500 mt-1">
                   {subscriptionPlan
                     ? "Your subscription is now active."
+                    : bundlePayload
+                    ? `${bundlePayload.bundleName} has been unlocked for this match.`
                     : `${addonPayload?.templateName} overlay has been unlocked.`}
                 </p>
               </div>

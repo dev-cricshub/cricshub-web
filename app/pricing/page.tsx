@@ -4,7 +4,6 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import UpiCheckoutModal from "@/app/components/UpiCheckoutModal";
-import { fetchMatchSubscription } from "@/lib/api";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES  (unchanged)
@@ -60,27 +59,27 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     badge: "Most Flexible",
     highlight: false,
     includedFeatures: [
-      "Web streaming dashboard access",
       "OBS browser source URL generation",
       "Stream lock & operator handover",
       "Real-time score sync (auto)",
+      "Priority support access",
     ],
     dashboardFeatures: [
-      "Live score overlay (always-on)",
-      "Main match banner",
-      "Batting XI banner",
-      "Bowling XI banner",
+      "Basic Bundle auto-unlocked for ALL your matches",
+      "No more ₹99/match for standard overlays",
+      "Score, Main, Playing XI & Summary banners included",
+      "Unlimited matches covered",
     ],
     overlayFeatures: [
-      "Extras & toss result display",
-      "Ball-by-ball ticker",
-      "Current batters & bowler panel",
+      "Live score ticker (always-on)",
+      "Ball-by-ball over tracker",
+      "Match summary & playing XI banners",
     ],
   },
   {
     id: "sub-6month",
     cycle: "sixmonth",
-    name: "6-Month Bundle",
+    name: "6-Month Plan",
     price: 2499,
     originalPrice: 2994,
     perMonth: 416,
@@ -93,12 +92,13 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       "Usage analytics dashboard",
     ],
     dashboardFeatures: [
-      "All Monthly dashboard features",
+      "All Monthly benefits",
+      "Saves vs buying bundles per match",
       "Extended match history",
       "Multi-match management view",
     ],
     overlayFeatures: [
-      "All Monthly overlays",
+      "All standard overlays included",
       "Watermark-free banners",
       "Custom colour accent (coming soon)",
     ],
@@ -602,15 +602,16 @@ export default function PricingPage() {
                 Streaming Plans
               </div>
               <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 leading-tight">
-                Professional cricket streaming.
+                Stream for free.
                 <br />
                 <span className="bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] bg-clip-text text-transparent">
-                  Built for operators.
+                  Upgrade per match.
                 </span>
               </h1>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-                Subscribe to unlock the web streaming dashboard with live OBS
-                overlays. Pay securely via UPI — verified within minutes.
+                The streaming dashboard is free for all match admins. Buy a
+                Basic Bundle (₹99/match) for polished overlays, or subscribe to
+                auto-unlock them for every match you run.
               </p>
 
               {/* UPI payment badge */}
@@ -620,12 +621,52 @@ export default function PricingPage() {
               </div>
             </div>
 
+            {/* Free tier callout */}
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                <i className="ri-bar-chart-2-line text-gray-400 text-lg" />
+              </div>
+              <div className="flex-1">
+                <p className="font-black text-gray-900">Free — always</p>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Every match admin gets the streaming dashboard and a plain
+                  score overlay (live score, batters, bowler) at no cost.
+                </p>
+              </div>
+              <span className="text-xs font-black text-gray-400 bg-white border border-gray-200 px-3 py-1.5 rounded-full flex-shrink-0">
+                ₹0
+              </span>
+            </div>
+
+            {/* Basic Bundle callout */}
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white border border-blue-100 flex items-center justify-center flex-shrink-0">
+                <i className="ri-gift-line text-[#34B8FF] text-lg" />
+              </div>
+              <div className="flex-1">
+                <p className="font-black text-gray-900">
+                  Basic Bundle{" "}
+                  <span className="text-xs font-bold text-[#1E88E5] bg-blue-100 px-2 py-0.5 rounded-full ml-1">
+                    per match
+                  </span>
+                </p>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Unlock 8 polished overlays for one match — Score, Main, Match
+                  Summary, and Playing XI banners. Buy directly from the Stream
+                  Dashboard.
+                </p>
+              </div>
+              <span className="text-xs font-black text-[#1E88E5] bg-blue-100 px-3 py-1.5 rounded-full flex-shrink-0">
+                ₹99 / match
+              </span>
+            </div>
+
             {/* Subscription Plans */}
             <div>
               <SectionLabel
                 icon="ri-vip-crown-line"
-                label="Base Subscriptions"
-                sub="Unlocks the web dashboard, OBS browser source, and all standard overlays."
+                label="Subscription Plans"
+                sub="Auto-unlock the Basic Bundle for every match you run — no per-match fee."
               />
               <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
                 {SUBSCRIPTION_PLANS.map((plan) => (
@@ -644,7 +685,7 @@ export default function PricingPage() {
               <SectionLabel
                 icon="ri-layout-top-2-line"
                 label="Premium Overlays (Add-ons)"
-                sub="Per-match upgrades. Purchase these directly from your Stream Dashboard once you have an active subscription."
+                sub="Per-match animated templates. No subscription required — buy from your Stream Dashboard."
               />
               <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 py-4 flex items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">
@@ -652,7 +693,7 @@ export default function PricingPage() {
                     1
                   </div>
                   <p className="text-sm font-semibold text-blue-900">
-                    Subscribe to a plan above.
+                    Open your Match Dashboard.
                   </p>
                 </div>
                 <i className="ri-arrow-right-line text-blue-300 hidden md:block" />
@@ -661,7 +702,7 @@ export default function PricingPage() {
                     2
                   </div>
                   <p className="text-sm font-semibold text-blue-900">
-                    Open your Match Dashboard.
+                    Browse &amp; buy a premium template.
                   </p>
                 </div>
                 <i className="ri-arrow-right-line text-blue-300 hidden md:block" />
@@ -670,7 +711,7 @@ export default function PricingPage() {
                     3
                   </div>
                   <p className="text-sm font-semibold text-blue-900">
-                    Unlock Overlays Per Match.
+                    Activate overlay on your stream.
                   </p>
                 </div>
               </div>

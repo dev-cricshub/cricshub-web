@@ -367,6 +367,51 @@ export async function fetchAvailableTemplates() {
   return json.data || [];
 }
 
+export async function fetchAvailableBundles() {
+  const res = await fetch(`${API_BASE}/api/v1/stream/bundles`, {
+    headers: authHeaders(),
+  });
+  const json = await res.json();
+  return json.data || [];
+}
+
+export async function createBundleOrder(
+  matchId: string,
+  payload: {
+    userId: string;
+    bundleId: string;
+    bundleName: string;
+    amount: number;
+  },
+) {
+  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/bundle/order`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  return json.data; // { orderId, amount, currency }
+}
+
+export async function verifyBundlePayment(
+  matchId: string,
+  payload: {
+    userId: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    bundleId: string;
+  },
+) {
+  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/bundle/verify`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  return json.data; // { bundleId, bundleName, status }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MANUAL UPI PAYMENT FLOW — add these to lib/api.ts
 // ═══════════════════════════════════════════════════════════════════════════
@@ -473,6 +518,43 @@ export async function checkPendingAddon(userId: string, matchId: string, templat
   if (res.status === 404) return null;
   const json = await res.json();
   return json.data as { paymentId: string; status: string; utrNumber: string | null; amount: number; templateName: string } | null;
+}
+
+export async function getBundleQrInfo(amount: number) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/bundle/qr-info?amount=${amount}`,
+    { headers: authHeaders() }
+  );
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to get QR info.");
+  return json.data as { upiString: string; upiId: string; amount: number; amountWithGst: number };
+}
+
+export async function createBundleManualIntent(payload: {
+  userId: string;
+  matchId: string;
+  bundleId: string;
+  bundleName: string;
+  amount: number;
+}) {
+  const res = await fetch(`${API_BASE}/api/v1/payments/manual/bundle/intent`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to create intent.");
+  return json.data as { paymentId: string; status: string; amount: number };
+}
+
+export async function checkPendingBundle(userId: string, matchId: string, bundleId: string) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/payments/manual/bundle/pending?userId=${userId}&matchId=${matchId}&bundleId=${bundleId}`,
+    { headers: authHeaders() }
+  );
+  if (res.status === 404) return null;
+  const json = await res.json();
+  return json.data as { paymentId: string; status: string; utrNumber: string | null; amount: number; bundleName: string } | null;
 }
 
 /** Cancel a pending payment — user chose to start over. */

@@ -138,7 +138,6 @@ function RoleBadge({ role }: { role: MatchRole }) {
 
 function LiveMatchCard({ match }: { match: MatchWithRole }) {
   const isAdmin = match.role === 'admin';
-  const canStream = match.adminHasSubscription;
 
   return (
     <div className="relative bg-white rounded-2xl border-2 border-gray-100 overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -193,30 +192,13 @@ function LiveMatchCard({ match }: { match: MatchWithRole }) {
         </div>
       </div>
 
-      {/* Actions — streaming only */}
-      <div className="px-5 pb-5 space-y-2">
-        {canStream ? (
-          <Link href={`/stream/${match.id}`}
-            className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-sm rounded-xl hover:shadow-lg hover:shadow-red-200 hover:scale-[1.02] transition-all">
-            <i className="ri-live-line text-base animate-pulse" />
-            {isAdmin ? 'Go Live / Manage Stream' : 'Go Live'}
-          </Link>
-        ) : (
-          <div className="w-full">
-            <div className="flex items-center justify-center gap-2 w-full py-3 bg-gray-100 text-gray-400 font-bold text-sm rounded-xl cursor-not-allowed mb-1.5">
-              <i className="ri-lock-line" />Streaming Dashboard Locked
-            </div>
-            {isAdmin && (
-              <Link href="/pricing"
-                className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors">
-                <i className="ri-vip-crown-line" />Upgrade to unlock streaming
-              </Link>
-            )}
-            {!isAdmin && (
-              <p className="text-center text-xs text-gray-400">Ask the match admin to subscribe</p>
-            )}
-          </div>
-        )}
+      {/* Actions */}
+      <div className="px-5 pb-5">
+        <Link href={`/stream/${match.id}`}
+          className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-sm rounded-xl hover:shadow-lg hover:shadow-red-200 hover:scale-[1.02] transition-all">
+          <i className="ri-live-line text-base animate-pulse" />
+          {isAdmin ? 'Go Live / Manage Stream' : 'Go Live'}
+        </Link>
       </div>
     </div>
   );
@@ -227,9 +209,7 @@ function LiveMatchCard({ match }: { match: MatchWithRole }) {
 // ═══════════════════════════════════════════════════════════
 
 function UpcomingMatchCard({ match }: { match: MatchWithRole }) {
-  const isAdmin = match.role === 'admin';
   const days = daysUntil(match.matchDate);
-  const canStream = match.adminHasSubscription;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 overflow-hidden">
@@ -266,30 +246,11 @@ function UpcomingMatchCard({ match }: { match: MatchWithRole }) {
           {match.venue && <span className="flex items-center gap-1 truncate"><i className="ri-map-pin-line text-[#34B8FF]" />{match.venue}</span>}
         </div>
 
-        {/* Actions — streaming only */}
-        <div className="space-y-2">
-          {canStream ? (
-            <Link href={`/stream/${match.id}`}
-              className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold rounded-xl hover:shadow-md hover:shadow-blue-200 transition-all">
-              <i className="ri-broadcast-line" />Open Stream Dashboard
-            </Link>
-          ) : (
-            <div className="w-full">
-              <div className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-100 text-gray-400 font-bold text-xs rounded-xl cursor-not-allowed mb-1.5">
-                <i className="ri-lock-line" />Streaming Dashboard Locked
-              </div>
-              {isAdmin && (
-                <Link href="/pricing"
-                  className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl hover:bg-amber-100 transition-colors">
-                  <i className="ri-vip-crown-line" />Subscribe to unlock streaming
-                </Link>
-              )}
-              {!isAdmin && (
-                <p className="text-center text-xs text-gray-400">Ask the match admin to subscribe</p>
-              )}
-            </div>
-          )}
-        </div>
+        {/* Actions */}
+        <Link href={`/stream/${match.id}`}
+          className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold rounded-xl hover:shadow-md hover:shadow-blue-200 transition-all">
+          <i className="ri-broadcast-line" />Open Stream Dashboard
+        </Link>
       </div>
     </div>
   );
@@ -499,8 +460,8 @@ export default function DashboardPage() {
                 <i className="ri-checkbox-circle-fill" />Active Plan
               </span>
             ) : (
-              <Link href="/pricing" className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full hover:bg-amber-100 transition-colors">
-                <i className="ri-vip-crown-line" />Upgrade
+              <Link href="/pricing" className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-[#1E88E5] bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors">
+                <i className="ri-gift-line" />Get Bundles
               </Link>
             )}
             <Link
@@ -547,7 +508,7 @@ export default function DashboardPage() {
                 )}
                 {!user?.hasSubscription && (
                   <Link href="/pricing" className="inline-flex items-center gap-1.5 bg-amber-400 text-amber-900 text-xs font-black px-3 py-1.5 rounded-full hover:bg-amber-300 transition-colors">
-                    <i className="ri-vip-crown-line" />Upgrade to unlock streaming
+                    <i className="ri-gift-line" />Subscribe for auto-unlocked overlays
                   </Link>
                 )}
               </div>
@@ -588,20 +549,20 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* No subscription banner for admin matches */}
+        {/* Subscription upsell for non-subscribers with admin matches */}
         {!user?.hasSubscription && adminMatches.length > 0 && activeTab !== 'operator' && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <i className="ri-vip-crown-line text-amber-600 text-lg" />
+              <div className="w-10 h-10 rounded-xl bg-white border border-blue-100 flex items-center justify-center flex-shrink-0">
+                <i className="ri-gift-line text-[#34B8FF] text-lg" />
               </div>
               <div>
-                <p className="font-bold text-amber-900 text-sm">Streaming dashboard locked for your matches</p>
-                <p className="text-xs text-amber-700 mt-0.5">Subscribe to unlock OBS overlays, banners and the streaming dashboard for matches you admin.</p>
+                <p className="font-bold text-blue-900 text-sm">Unlock polished overlays for your matches</p>
+                <p className="text-xs text-blue-700 mt-0.5">Stream for free with the score overlay, or buy a Basic Bundle (₹99/match) for 8 professional banners. Subscribe to auto-unlock them for every match.</p>
               </div>
             </div>
             <Link href="/pricing"
-              className="flex-shrink-0 flex items-center gap-2 bg-amber-500 text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-amber-600 transition-colors shadow-md">
+              className="flex-shrink-0 flex items-center gap-2 bg-[#1E88E5] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-[#1565C0] transition-colors shadow-md">
               <i className="ri-vip-crown-line" />View Plans
             </Link>
           </div>

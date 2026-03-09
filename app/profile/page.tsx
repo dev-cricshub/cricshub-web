@@ -41,7 +41,6 @@ interface Transaction {
 // HELPERS
 // ═══════════════════════════════════════════════════════════
 
-const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const fmtDate = (d: string) => {
     if (!d) return 'N/A';
     return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -344,6 +343,19 @@ export default function ProfilePage() {
                 {activeTab === 'overview' && (
                     <div className="space-y-6">
 
+                        {/* Free tier callout — always visible */}
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                                <i className="ri-broadcast-line text-emerald-600 text-lg" />
+                            </div>
+                            <div>
+                                <p className="font-black text-gray-900 text-sm">Streaming is free</p>
+                                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                                    Dashboard access, OBS URL generation, real-time score sync, and the live score overlay are available on every match at no cost.
+                                </p>
+                            </div>
+                        </div>
+
                         {subscription && subscription.status === 'active' ? (
                             <>
                                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
@@ -390,28 +402,19 @@ export default function ProfilePage() {
                                                 Extend Plan
                                             </Link>
                                         </div>
-
-                                        {/* COMMENTED OUT: Razorpay auto-renew/cancel toggles (kept for future use) */}
-                                        {/* <button
-                                            onClick={() => setShowCancelConfirm(true)}
-                                            className="text-sm text-gray-400 hover:text-red-500 font-semibold transition-colors flex items-center gap-1.5"
-                                        >
-                                            <i className="ri-close-circle-line" />Cancel subscription
-                                        </button> 
-                                        */}
                                     </div>
                                 </div>
 
                                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                                    <SectionHeader icon="ri-gift-line" title="What's Included in Your Plan" />
+                                    <SectionHeader icon="ri-gift-line" title="Subscription Benefit" sub="What your plan gives you on top of the free tier" />
                                     <div className="grid md:grid-cols-2 gap-3">
                                         {[
-                                            { icon: 'ri-broadcast-line', text: 'Web streaming dashboard access' },
-                                            { icon: 'ri-code-s-slash-line', text: 'OBS browser source URL generation' },
-                                            { icon: 'ri-lock-unlock-line', text: 'Stream lock & operator handover' },
-                                            { icon: 'ri-refresh-line', text: 'Real-time score sync (auto)' },
-                                            { icon: 'ri-layout-top-2-line', text: 'Live score overlay (always-on)' },
+                                            { icon: 'ri-layout-grid-line', text: 'Basic Bundle auto-unlocked for every match' },
+                                            { icon: 'ri-price-tag-3-line', text: 'No ₹99/match fee — overlays activate instantly' },
                                             { icon: 'ri-flag-line', text: 'Main match banner & Playing XI banners' },
+                                            { icon: 'ri-bar-chart-box-line', text: 'Scorecard, partnership & wagon wheel overlays' },
+                                            { icon: 'ri-trophy-line', text: 'Milestone & player spotlight banners' },
+                                            { icon: 'ri-stack-line', text: 'All 8 Basic Bundle overlays per match' },
                                         ].map((f, i) => (
                                             <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-2.5">
                                                 <i className={`${f.icon} text-[#34B8FF] text-base flex-shrink-0`} />
@@ -423,16 +426,16 @@ export default function ProfilePage() {
                             </>
                         ) : (
                             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-10 text-center">
-                                <div className="w-20 h-20 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-5">
-                                    <i className="ri-vip-crown-line text-amber-500 text-3xl" />
+                                <div className="w-20 h-20 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto mb-5">
+                                    <i className="ri-gift-line text-[#1E88E5] text-3xl" />
                                 </div>
                                 <h3 className="font-black text-gray-900 text-xl mb-2">No Active Subscription</h3>
                                 <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed mb-6">
-                                    Subscribe to unlock the web streaming dashboard, OBS overlays, and all banner controls for your matches.
+                                    You can stream for free with the live score overlay. Subscribe to auto-unlock the Basic Bundle (8 professional overlays) for every match you run — no ₹99/match fee.
                                 </p>
                                 <Link href="/pricing"
                                     className="inline-flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white font-bold px-7 py-3 rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all">
-                                    <i className="ri-vip-crown-line" />View Plans
+                                    <i className="ri-gift-line" />View Plans
                                 </Link>
                             </div>
                         )}
@@ -444,47 +447,73 @@ export default function ProfilePage() {
                 {/* ══════════════════════════════════════════════════ */}
                 {activeTab === 'overlays' && (
                     <div className="space-y-6">
+
+                        {/* Free overlay — always available */}
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                             <SectionHeader
-                                icon="ri-gift-line"
-                                title="Included with Subscription"
-                                sub="Available on every match while your plan is active"
+                                icon="ri-broadcast-line"
+                                title="Free Overlay"
+                                sub="Available on every match, no payment needed"
                             />
-                            {subscription?.status === 'active' ? (
-                                <div className="grid md:grid-cols-3 gap-3">
-                                    {[
-                                        { icon: 'ri-layout-top-2-line', name: 'Main Match Banner', desc: 'Tournament, teams, venue, toss result', bg: 'linear-gradient(135deg,#34B8FF,#1E88E5)' },
-                                        { icon: 'ri-group-line', name: 'Batting XI Banner', desc: 'Full batting lineup with stats', bg: 'linear-gradient(135deg,#00b4d8,#0077b6)' },
-                                        { icon: 'ri-group-2-line', name: 'Bowling XI Banner', desc: 'Bowling lineup with economy rates', bg: 'linear-gradient(135deg,#8E54E9,#4776E6)' },
-                                        { icon: 'ri-bar-chart-fill', name: 'Live Score Overlay', desc: 'Real-time bottom scoreboard for OBS', bg: 'linear-gradient(135deg,#11998e,#38ef7d)' },
-                                    ].map((b, i) => (
-                                        <div key={i} className="rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all">
-                                            <div className="h-16" style={{ background: b.bg }} />
-                                            <div className="p-3">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <i className={`${b.icon} text-[#34B8FF] text-sm`} />
-                                                    <p className="font-bold text-gray-900 text-sm">{b.name}</p>
-                                                </div>
-                                                <p className="text-xs text-gray-400">{b.desc}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-                                    <i className="ri-information-line text-amber-500 text-xl flex-shrink-0" />
+                            <div className="rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all max-w-xs">
+                                <div className="h-16" style={{ background: 'linear-gradient(135deg,#11998e,#38ef7d)' }} />
+                                <div className="p-3 flex items-start gap-3">
+                                    <i className="ri-bar-chart-fill text-emerald-500 text-sm mt-0.5" />
                                     <div>
-                                        <p className="font-bold text-amber-800 text-sm">Subscription required</p>
-                                        <p className="text-xs text-amber-700 mt-0.5">These banners are locked. <Link href="/pricing" className="font-bold underline">Subscribe to unlock →</Link></p>
+                                        <p className="font-bold text-gray-900 text-sm">Live Score Overlay</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">Real-time bottom scoreboard for OBS — always on, always free</p>
                                     </div>
+                                    <span className="ml-auto flex-shrink-0 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">FREE</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Basic Bundle */}
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                            <SectionHeader
+                                icon="ri-layout-grid-line"
+                                title="Basic Bundle"
+                                sub="8 professional overlays — buy per match (₹99) or auto-unlock with a subscription"
+                                action={
+                                    subscription?.status === 'active'
+                                        ? <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />Auto-unlocked</span>
+                                        : <Link href="/pricing" className="text-xs font-bold text-[#1E88E5] hover:underline">Subscribe to auto-unlock →</Link>
+                                }
+                            />
+                            <div className="grid md:grid-cols-3 gap-3">
+                                {[
+                                    { icon: 'ri-layout-top-2-line', name: 'Main Match Banner', desc: 'Tournament, teams, venue, toss result', bg: 'linear-gradient(135deg,#34B8FF,#1E88E5)' },
+                                    { icon: 'ri-group-line', name: 'Batting XI Banner', desc: 'Full batting lineup with stats', bg: 'linear-gradient(135deg,#00b4d8,#0077b6)' },
+                                    { icon: 'ri-group-2-line', name: 'Bowling XI Banner', desc: 'Bowling lineup with economy rates', bg: 'linear-gradient(135deg,#8E54E9,#4776E6)' },
+                                    { icon: 'ri-bar-chart-box-line', name: 'Scorecard Banner', desc: 'Innings scorecard with fall of wickets', bg: 'linear-gradient(135deg,#f7971e,#ffd200)' },
+                                    { icon: 'ri-shield-star-line', name: 'Partnership Banner', desc: 'Current partnership runs & balls', bg: 'linear-gradient(135deg,#ee0979,#ff6a00)' },
+                                    { icon: 'ri-trophy-line', name: 'Milestone Banner', desc: 'Fifty, century & wicket milestones', bg: 'linear-gradient(135deg,#43cea2,#185a9d)' },
+                                    { icon: 'ri-user-star-line', name: 'Player Spotlight', desc: 'Featured player stat card', bg: 'linear-gradient(135deg,#c471ed,#f64f59)' },
+                                    { icon: 'ri-pie-chart-2-line', name: 'Wagon Wheel', desc: 'Shot distribution chart', bg: 'linear-gradient(135deg,#1a1a2e,#16213e)' },
+                                ].map((b) => (
+                                    <div key={b.name} className="rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                                        <div className="h-14" style={{ background: b.bg }} />
+                                        <div className="p-3">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <i className={`${b.icon} text-[#34B8FF] text-sm`} />
+                                                <p className="font-bold text-gray-900 text-sm">{b.name}</p>
+                                            </div>
+                                            <p className="text-xs text-gray-400">{b.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {subscription?.status !== 'active' && (
+                                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3">
+                                    <i className="ri-information-line text-[#1E88E5] text-xl flex-shrink-0" />
+                                    <p className="text-xs text-blue-800 leading-relaxed">
+                                        Buy the Basic Bundle for ₹99/match from the stream dashboard, or{' '}
+                                        <Link href="/pricing" className="font-bold underline">subscribe</Link> to auto-unlock it for every match.
+                                    </p>
                                 </div>
                             )}
                         </div>
-
-                        {/* COMMENTED OUT: Per-Match Add-ons 
-                        Since these are purchased per-match, they don't logically belong in a global "owned templates" tab.
-                        Their purchase history is tracked in the Billing Tab.
-                        */}
                     </div>
                 )}
 
@@ -561,15 +590,30 @@ export default function ProfilePage() {
                                 </div>
                             ) : (
                                 <div className="divide-y divide-gray-50">
-                                    {displayedTx.map((tx, i) => {
-                                        const isAddon = tx.description?.toLowerCase().includes('overlay') || tx.description?.toLowerCase().includes('addon');
-                                        const isSub = tx.description?.toLowerCase().includes('plan') || tx.description?.toLowerCase().includes('subscription');
+                                    {displayedTx.map((tx) => {
+                                        const desc = tx.description?.toLowerCase() ?? '';
+                                        const isBundle = desc.includes('bundle');
+                                        const isAddon = !isBundle && (desc.includes('overlay') || desc.includes('addon'));
+                                        const isSub = !isBundle && !isAddon && (desc.includes('plan') || desc.includes('subscription'));
+                                        const txLabel = isBundle ? 'Bundle' : isAddon ? 'Add-on' : isSub ? 'Subscription' : 'Payment';
+                                        const txStyle = isBundle
+                                            ? 'bg-violet-50 text-violet-700 border-violet-100'
+                                            : isAddon
+                                            ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                            : 'bg-blue-50 text-blue-600 border-blue-100';
+                                        const iconStyle = isBundle
+                                            ? 'bg-violet-50 ri-layout-grid-line text-violet-500'
+                                            : isAddon
+                                            ? 'bg-amber-50 ri-vip-crown-line text-amber-500'
+                                            : isSub
+                                            ? 'bg-blue-50 ri-broadcast-line text-[#1E88E5]'
+                                            : 'bg-gray-50 ri-money-rupee-circle-line text-gray-400';
                                         return (
                                             <div key={tx.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors group">
 
                                                 {/* Icon */}
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isAddon ? 'bg-amber-50' : isSub ? 'bg-blue-50' : 'bg-gray-50'}`}>
-                                                    <i className={`text-lg ${isAddon ? 'ri-vip-crown-line text-amber-500' : isSub ? 'ri-broadcast-line text-[#1E88E5]' : 'ri-money-rupee-circle-line text-gray-400'}`} />
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isBundle ? 'bg-violet-50' : isAddon ? 'bg-amber-50' : isSub ? 'bg-blue-50' : 'bg-gray-50'}`}>
+                                                    <i className={`text-lg ${iconStyle}`} />
                                                 </div>
 
                                                 {/* Description + date */}
@@ -578,8 +622,8 @@ export default function ProfilePage() {
                                                     <div className="flex items-center gap-2 mt-0.5">
                                                         <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
                                                         <span className="text-gray-200">·</span>
-                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isAddon ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
-                                                            {isAddon ? 'Add-on' : 'Subscription'}
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${txStyle}`}>
+                                                            {txLabel}
                                                         </span>
                                                     </div>
                                                 </div>

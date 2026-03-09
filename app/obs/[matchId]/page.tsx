@@ -10,6 +10,7 @@ import InlineBurstOverlay from "@/app/overlays/premium/matchAddOn/InlineBurstOve
 import WinPredictorOverlay from "@/app/overlays/premium/matchAddOn/WinPredictorOverlay";
 import BrandingOverlay, { BrandingConfig, DEFAULT_BRANDING_CONFIG } from "@/app/overlays/premium/matchAddOn/BrandingOverlay";
 import MediaReelOverlay from "@/app/overlays/premium/matchAddOn/MediaReelOverlay";
+import SkeletalScoreOverlay from "@/app/overlays/free/SkeletalScoreOverlay";
 import { fetchBrandingConfig } from "@/lib/brandingConfig";
 
 // ═══════════════════════════════════════════════════════════
@@ -3293,10 +3294,9 @@ export default function ObsOverlayPage() {
           {streamState.activeBanner === "tpl-pro-5" && (
             <MediaReelOverlay matchId={matchId} refreshKey={playlistRefreshKey} />
           )}
-          {/* {streamState.activeBanner.startsWith("tpl-") &&
-            streamState.activeBanner !== "tpl-pro-1" && (
-              <ScoreOverlay state={liveState} />
-            )} */}
+          {streamState.activeBanner === "tpl-skeletal" && (
+            <SkeletalScoreOverlay state={liveState} />
+          )}
         </div>
       </div>
 
