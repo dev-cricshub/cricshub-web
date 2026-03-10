@@ -1,61 +1,65 @@
 // ═══════════════════════════════════════════════════════════
-// GLASS BUNDLE THEME — dark glassmorphism, teal/cyan/pink accents
-// Opacities tuned for outdoor field backgrounds in OBS
+// GLASS BUNDLE THEME — True Holographic & Neon Glassmorphism
+// Heavy blur, edge-lighting, and vibrant glowing data points
 // ═══════════════════════════════════════════════════════════
 
 export const G = {
-  // Panel backgrounds — near-opaque dark panels for outdoor legibility
-  bg:        "rgba(8,12,28,0.94)",   // main card/bar panel (was 0.72)
-  bgDeep:    "rgba(4,6,16,0.97)",    // deepest sections (was 0.85)
-  bgLight:   "rgba(255,255,255,0.05)", // alternating row tint
-  bgDark:    "rgba(0,0,0,0.60)",     // header/footer strips (was 0.35)
+  // Core Glass Backgrounds — Lower opacities, relying on blur for legibility
+  bg:        "rgba(15, 23, 42, 0.45)",    // Main floating panel
+  bgDeep:    "rgba(2, 6, 23, 0.65)",      // Deep structural anchors (for high contrast areas)
+  bgLight:   "rgba(255, 255, 255, 0.08)", // Inner frosted highlights (alternating rows)
+  bgDark:    "rgba(0, 0, 0, 0.55)",       // High-contrast footers
 
-  // Borders — slightly more visible against field glow
-  border:    "rgba(255,255,255,0.20)", // was 0.14
-  borderSub: "rgba(255,255,255,0.10)", // was 0.07
+  // Edge Lighting (Creates the 3D Holographic Bevel)
+  borderHighlight: "rgba(255, 255, 255, 0.35)", // Top/Left light reflection
+  borderShadow:    "rgba(255, 255, 255, 0.05)", // Bottom/Right shadow edge
+  borderSub:       "rgba(255, 255, 255, 0.15)", // Internal dividers
 
-  // Primary accent — teal
-  teal:      "#00D4AA",
-  tealDim:   "rgba(0,212,170,0.18)",
-  tealGlow:  "rgba(0,212,170,0.35)",
+  // Glass Optical Effects
+  backdropBlur: "blur(24px)", // Heavy blur to melt the camera video behind it
+  panelShadow:  "0 16px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.25)", // Drop shadow + Top rim light
 
-  // Team 1 — cyan
-  cyan:      "#22D3EE",
-  cyanDim:   "rgba(34,211,238,0.15)",
-  cyanGlow:  "rgba(34,211,238,0.3)",
+  // Accents — Shifted to pure Neon Hex codes for maximum pop
+  teal:      "#00F5D4",
+  tealDim:   "rgba(0, 245, 212, 0.15)",
+  tealGlow:  "0 0 15px rgba(0, 245, 212, 0.4)",
 
-  // Team 2 — pink
-  pink:      "#F472B6",
-  pinkDim:   "rgba(244,114,182,0.15)",
-  pinkGlow:  "rgba(244,114,182,0.3)",
+  cyan:      "#00E5FF",
+  cyanDim:   "rgba(0, 229, 255, 0.15)",
+  cyanGlow:  "0 0 15px rgba(0, 229, 255, 0.4)",
 
-  // Alert / wicket
-  coral:     "#FB7185",
-  coralDim:  "rgba(251,113,133,0.15)",
+  pink:      "#FF007F",
+  pinkDim:   "rgba(255, 0, 127, 0.15)",
+  pinkGlow:  "0 0 15px rgba(255, 0, 127, 0.4)",
 
-  // Text — brighter dim tokens for legibility through potential background bleed
+  coral:     "#FF3366",
+  coralDim:  "rgba(255, 51, 102, 0.15)",
+
+  // Text — Opacities tuned to glow against the dark glass
   white:     "#FFFFFF",
   w90:       "rgba(255,255,255,0.92)",
-  w70:       "rgba(255,255,255,0.72)",
-  w45:       "rgba(255,255,255,0.55)", // raised from 0.45 — labels readable on field
-  w25:       "rgba(255,255,255,0.32)", // raised from 0.25
-  w12:       "rgba(255,255,255,0.14)",
-  w06:       "rgba(255,255,255,0.07)",
+  w70:       "rgba(255,255,255,0.75)",
+  w45:       "rgba(255,255,255,0.55)", 
+  w25:       "rgba(255,255,255,0.35)", 
+  w12:       "rgba(255,255,255,0.15)",
 
-  // Text shadows — add depth against bright backgrounds
-  textGlow:  "0 1px 10px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1)",
+  // Critical Text Shadow: Ensures readability even if the camera points at the sky
+  textGlow:  "0 2px 4px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.9)", 
 };
 
 export function glassBallStyle(b: string): { bg: string; fg: string; border: string; shadow: string } {
+  // LED / Neon styled ball markers that look like physical glowing diodes
   if (b === "W")
-    return { bg: "rgba(251,113,133,0.22)", fg: "#FB7185", border: "rgba(251,113,133,0.55)", shadow: "0 0 10px rgba(251,113,133,0.35)" };
+    return { bg: "rgba(255, 51, 102, 0.2)", fg: "#FF3366", border: "1px solid rgba(255, 51, 102, 0.6)", shadow: "0 0 12px rgba(255, 51, 102, 0.4)" };
   if (b === "6")
-    return { bg: "rgba(167,139,250,0.22)", fg: "#A78BFA", border: "rgba(167,139,250,0.55)", shadow: "0 0 10px rgba(167,139,250,0.35)" };
+    return { bg: "rgba(189, 0, 255, 0.2)", fg: "#BD00FF", border: "1px solid rgba(189, 0, 255, 0.6)", shadow: "0 0 12px rgba(189, 0, 255, 0.4)" };
   if (b === "4")
-    return { bg: "rgba(34,211,238,0.22)", fg: "#22D3EE", border: "rgba(34,211,238,0.55)", shadow: "0 0 10px rgba(34,211,238,0.35)" };
+    return { bg: "rgba(0, 229, 255, 0.2)", fg: "#00E5FF", border: "1px solid rgba(0, 229, 255, 0.6)", shadow: "0 0 12px rgba(0, 229, 255, 0.4)" };
   if (b === "Wd" || b === "Nb")
-    return { bg: "rgba(251,191,36,0.18)", fg: "#FCD34D", border: "rgba(251,191,36,0.5)", shadow: "0 0 8px rgba(251,191,36,0.25)" };
+    return { bg: "rgba(255, 204, 0, 0.2)", fg: "#FFCC00", border: "1px solid rgba(255, 204, 0, 0.6)", shadow: "0 0 12px rgba(255, 204, 0, 0.4)" };
   if (b === "0")
-    return { bg: "rgba(255,255,255,0.06)", fg: "rgba(255,255,255,0.38)", border: "rgba(255,255,255,0.14)", shadow: "none" };
-  return { bg: "rgba(0,212,170,0.18)", fg: "#00D4AA", border: "rgba(0,212,170,0.5)", shadow: "0 0 10px rgba(0,212,170,0.3)" };
+    return { bg: "rgba(255,255,255,0.05)", fg: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.2)", shadow: "none" };
+  
+  // Normal runs
+  return { bg: "rgba(0, 245, 212, 0.15)", fg: "#00F5D4", border: "1px solid rgba(0, 245, 212, 0.5)", shadow: "0 0 10px rgba(0, 245, 212, 0.3)" };
 }
