@@ -115,7 +115,7 @@ function detectEvent(
   const lastBall = currBalls[currBalls.length - 1];
   const bat = getBatTeam(curr);
   const strikerName =
-    curr.currentNonStriker?.name ?? curr.currentStriker?.name ?? "Batter";
+    curr.currentStriker?.name ?? curr.currentNonStriker?.name ?? "Batter";
 
   // // 🛑 TEMPORARY DEBUG TRIGGERS - DELETE BEFORE PRODUCTION 🛑
   // if (lastBall === "1") {

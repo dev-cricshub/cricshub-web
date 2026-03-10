@@ -109,7 +109,7 @@ function detectEvent(
   const lastBall = currBalls[currBalls.length - 1];
   const bat = getBatTeam(curr);
   const strikerName =
-    curr.currentNonStriker?.name ?? curr.currentStriker?.name ?? "Batter";
+    curr.currentStriker?.name ?? curr.currentNonStriker?.name ?? "Batter";
 
   const batOrder = curr.firstInnings
     ? (curr as any).team1BattingOrder
