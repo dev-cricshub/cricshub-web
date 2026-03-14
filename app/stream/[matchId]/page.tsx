@@ -105,8 +105,6 @@ interface StreamSession {
   lockedByName: string | null;
 }
 
-// ── 'summary' added as 5th included banner ──
-// Replace your existing BannerType with this:
 export type BannerType =
   | "none"
   | "main"
@@ -142,14 +140,13 @@ export type BannerType =
   | "aero_bowl_team1"
   | "aero_bowl_team2"
   | string;
-type MatchRole = "admin" | "operator";
 
+type MatchRole = "admin" | "operator";
 interface MatchSubscription {
   adminHasSubscription: boolean;
   purchasedTemplateIds: string[];
   purchasedBundleIds: string[];
 }
-
 interface Bundle {
   id: string;
   name: string;
@@ -158,7 +155,6 @@ interface Bundle {
   features: string[];
   bannerKeys: string[];
 }
-
 interface AddOnTemplate {
   id: string;
   name: string;
@@ -169,7 +165,7 @@ interface AddOnTemplate {
 }
 
 // ═══════════════════════════════════════════════════════════
-// CLIENT-SIDE VISUAL MAPPING
+// VISUAL MAPPING
 // ═══════════════════════════════════════════════════════════
 
 const VISUAL_MAP: Record<string, string> = {
@@ -234,9 +230,118 @@ const getBowlTeam = (s: MatchState): TeamDetails | null => {
   if (!bat) return null;
   return bat.name === s.team1.name ? s.team2 : s.team1;
 };
-const fmtSR = (v: number) => (v > 0 ? v.toFixed(1) : "—");
-const fmtEcon = (v: number) => (v > 0 ? v.toFixed(2) : "—");
 const fmtOv = (v: number) => (v > 0 ? v.toFixed(1) : "0.0");
+
+// ═══════════════════════════════════════════════════════════
+// OVERLAY PREVIEW MODAL
+// ═══════════════════════════════════════════════════════════
+
+interface OverlayPreviewModalProps {
+  bannerKey: string;
+  bannerTitle: string;
+  previewBg: string;
+  onClose: () => void;
+}
+
+function OverlayPreviewModal({
+  bannerKey,
+  bannerTitle,
+  previewBg,
+  onClose,
+}: OverlayPreviewModalProps) {
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const previewUrl = `/preview?overlay=${bannerKey}`;
+
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex flex-col items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(8px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {/* Header */}
+      <div className="w-full max-w-5xl px-4 pb-3 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-lg flex-shrink-0"
+            style={{ background: previewBg }}
+          />
+          <div>
+            <p className="text-white font-black text-sm">{bannerTitle}</p>
+            <p className="text-white/40 text-xs">Live preview · 1920×1080</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <a
+            href={previewUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs font-bold text-white/60 hover:text-white border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-lg transition-all"
+          >
+            <i className="ri-external-link-line" />
+            Open full size
+          </a>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          >
+            <i className="ri-close-line text-white" />
+          </button>
+        </div>
+      </div>
+
+      {/* 16:9 iframe container */}
+      <div className="w-full max-w-5xl px-4 flex-shrink-0">
+        <div
+          className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
+          style={{ aspectRatio: "16/9" }}
+        >
+          {/* Stadium background */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "url('/images/matchStalkImage.jpg')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          {!iframeLoaded && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+              <i className="ri-loader-4-line text-white/40 text-3xl animate-spin mb-3" />
+              <p className="text-white/40 text-sm font-medium">
+                Loading overlay preview…
+              </p>
+            </div>
+          )}
+          <iframe
+            src={previewUrl}
+            className="absolute inset-0 w-full h-full"
+            style={{
+              border: "none",
+              opacity: iframeLoaded ? 1 : 0,
+              transition: "opacity 0.3s",
+            }}
+            onLoad={() => setIframeLoaded(true)}
+            allow="autoplay"
+          />
+        </div>
+      </div>
+
+      {/* Footer note */}
+      <div className="w-full max-w-5xl px-4 pt-3 flex items-center justify-between">
+        <p className="text-white/30 text-xs">
+          Preview uses sample data — actual overlay will show live match data
+        </p>
+        <button
+          onClick={onClose}
+          className="text-xs font-bold text-white/50 hover:text-white transition-colors"
+        >
+          Close preview
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════
 // COMPONENTS
 // ═══════════════════════════════════════════════════════════
@@ -255,7 +360,6 @@ function ScoreLive({ state }: { state: MatchState }) {
     );
 
   const crr = bat.overs > 0 ? (bat.score / bat.overs).toFixed(2) : "—";
-
   const isBatTeam1 = bat.name === state.team1.name;
   const batOrder = isBatTeam1
     ? state.innings1BattingOrder
@@ -278,6 +382,7 @@ function ScoreLive({ state }: { state: MatchState }) {
     ? bowlOrder?.find((p) => p.playerId === state.currentBowler!.playerId) ||
       bowl.playingXI.find((p) => p.playerId === state.currentBowler!.playerId)
     : null;
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50">
@@ -299,7 +404,6 @@ function ScoreLive({ state }: { state: MatchState }) {
         <p className="text-xs text-gray-400">
           {bat.overs} ov · CRR {crr}
         </p>
-
         {state.currentOverBalls?.length > 0 && (
           <div>
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">
@@ -317,7 +421,6 @@ function ScoreLive({ state }: { state: MatchState }) {
             </div>
           </div>
         )}
-
         {(state.currentStriker ||
           state.currentNonStriker ||
           state.currentBowler) && (
@@ -378,6 +481,7 @@ function BannerCard({
   onToggle,
   previewBg,
   badge,
+  onPreview,
 }: {
   icon: string;
   title: string;
@@ -389,14 +493,15 @@ function BannerCard({
   onToggle: () => void;
   previewBg?: string;
   badge?: string;
+  onPreview?: () => void;
 }) {
   return (
     <div
-      onClick={() => canActivate && onToggle()}
       className={`relative rounded-2xl border overflow-hidden transition-all duration-300 select-none flex flex-col
         ${active ? "border-[#34B8FF] shadow-lg shadow-blue-100 bg-blue-50 cursor-pointer" : ""}
         ${!active && canActivate ? "border-gray-200 bg-white cursor-pointer hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5" : ""}
         ${!canActivate ? "border-gray-200 bg-gray-50 cursor-not-allowed" : ""}`}
+      onClick={() => canActivate && onToggle()}
     >
       {/* Preview colour bar */}
       {previewBg && (
@@ -410,6 +515,19 @@ function BannerCard({
               ON AIR
             </div>
           )}
+          {/* Preview button */}
+          {onPreview && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreview();
+              }}
+              className="absolute top-2 right-2 flex items-center gap-1 bg-black/40 hover:bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded-full transition-colors backdrop-blur-sm"
+            >
+              <i className="ri-eye-line text-xs" />
+              Preview
+            </button>
+          )}
           {active && (
             <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-[#34B8FF] via-blue-300 to-[#34B8FF] animate-pulse" />
           )}
@@ -417,8 +535,7 @@ function BannerCard({
       )}
 
       {/* Body */}
-      <div className="p-4 flex flex-col flex-1 gap-3">
-        {/* Icon + text */}
+      <div className="p-3 sm:p-4 flex flex-col flex-1 gap-3">
         <div className="flex items-start gap-3">
           <div
             className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? "bg-gradient-to-br from-[#34B8FF] to-[#1E88E5]" : "bg-gray-100"}`}
@@ -455,7 +572,7 @@ function BannerCard({
           </div>
         </div>
 
-        {/* Action button — always pinned to bottom */}
+        {/* Action button */}
         <div className="mt-auto">
           {!canActivate ? (
             <div className="w-full py-2 rounded-xl bg-gray-100 text-gray-400 text-xs font-bold text-center flex items-center justify-center gap-1.5">
@@ -541,7 +658,6 @@ function StreamControlPanel({
             </p>
             <p className="text-xs text-gray-500 mb-4 leading-relaxed">
               <strong>{session.lockedByName}</strong> is currently streaming.
-              They must release the stream first.
             </p>
           </div>
         ) : !streaming ? (
@@ -647,213 +763,211 @@ const BUNDLE_OVERLAY_DETAILS: Record<
     teamLabel?: string;
   }
 > = {
-  // ── Basic bundle ──
   main: {
     icon: "ri-layout-top-2-line",
     title: "Main Match Banner",
-    desc: "Tournament name, both teams, venue, date and toss result. Perfect opening graphic.",
+    desc: "Tournament name, both teams, venue, date and toss result.",
     previewBg: "linear-gradient(135deg,#34B8FF,#1E88E5)",
   },
   score: {
     icon: "ri-bar-chart-line",
     title: "Live Score Overlay",
-    desc: "Always-on bottom bar — live score, batters, bowler and ball-by-ball over tracker.",
+    desc: "Always-on bottom bar — live score, batters, bowler and ball-by-ball.",
     previewBg: "linear-gradient(135deg,#0a1628,#1E88E5)",
   },
   summary: {
     icon: "ri-file-list-3-line",
     title: "Match Summary",
-    desc: "Top batters & bowlers from both teams. Shows required rate or final result at bottom.",
+    desc: "Top batters & bowlers from both teams.",
     previewBg: "linear-gradient(135deg,#E2B94B,#8B6914)",
   },
   playingXI_combined: {
     icon: "ri-team-line",
     title: "Playing XI — Both Teams",
-    desc: "Side-by-side full lineup with player roles, captain badge and live match footer.",
+    desc: "Side-by-side full lineup with player roles and captain badge.",
     previewBg: "linear-gradient(135deg,#4A9EF5,#A855F7)",
   },
   playingXI_bat_team1: {
     icon: "ri-group-line",
     title: "Batting XI",
-    desc: "Full batting lineup for Team 1 — live runs, strike rate and dismissal info.",
+    desc: "Full batting lineup for Team 1.",
     previewBg: "linear-gradient(135deg,#00b4d8,#0077b6)",
     teamLabel: "Team 1",
   },
   playingXI_bat_team2: {
     icon: "ri-group-line",
     title: "Batting XI",
-    desc: "Full batting lineup for Team 2 — live runs, strike rate and dismissal info.",
+    desc: "Full batting lineup for Team 2.",
     previewBg: "linear-gradient(135deg,#00b4d8,#0077b6)",
     teamLabel: "Team 2",
   },
   playingXI_bowl_team1: {
     icon: "ri-group-2-line",
     title: "Bowling XI",
-    desc: "Bowling lineup for Team 1 — overs bowled, wickets taken and economy rate.",
+    desc: "Bowling lineup for Team 1.",
     previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)",
     teamLabel: "Team 1",
   },
   playingXI_bowl_team2: {
     icon: "ri-group-2-line",
     title: "Bowling XI",
-    desc: "Bowling lineup for Team 2 — overs bowled, wickets taken and economy rate.",
+    desc: "Bowling lineup for Team 2.",
     previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)",
     teamLabel: "Team 2",
   },
-  // ── Glass bundle ──
   glass_main: {
     icon: "ri-layout-top-2-line",
     title: "Glass Match Banner",
-    desc: "Tournament, teams, venue and toss — frosted-glass panel with teal glow accents.",
+    desc: "Frosted-glass panel with teal glow accents.",
     previewBg: "linear-gradient(135deg,#00D4AA,#22D3EE)",
   },
   glass_score: {
     icon: "ri-bar-chart-line",
     title: "Glass Score Overlay",
-    desc: "Bottom score bar with backdrop blur, teal glow border and per-ball outcome dots.",
+    desc: "Bottom score bar with backdrop blur and teal glow border.",
     previewBg: "linear-gradient(135deg,#00D4AA,#0a1628)",
   },
   glass_summary: {
     icon: "ri-file-list-3-line",
     title: "Glass Match Summary",
-    desc: "Frosted-glass innings panels — top batters & bowlers with cyan/pink accents.",
+    desc: "Frosted-glass innings panels with cyan/pink accents.",
     previewBg: "linear-gradient(135deg,#0a1628,#22D3EE)",
   },
   glass_xi_combined: {
     icon: "ri-team-line",
     title: "Glass Playing XI",
-    desc: "Two-column glassmorphism lineup card with role badges and live match footer.",
+    desc: "Two-column glassmorphism lineup card.",
     previewBg: "linear-gradient(135deg,#22D3EE,#F472B6)",
   },
   glass_bat_team1: {
     icon: "ri-group-line",
     title: "Glass Batting XI",
-    desc: "Frosted batting lineup for Team 1 — live runs, balls faced and dismissal info.",
+    desc: "Frosted batting lineup for Team 1.",
     previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)",
     teamLabel: "Team 1",
   },
   glass_bat_team2: {
     icon: "ri-group-line",
     title: "Glass Batting XI",
-    desc: "Frosted batting lineup for Team 2 — live runs, balls faced and dismissal info.",
+    desc: "Frosted batting lineup for Team 2.",
     previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)",
     teamLabel: "Team 2",
   },
   glass_bowl_team1: {
     icon: "ri-group-2-line",
     title: "Glass Bowling XI",
-    desc: "Frosted bowling lineup for Team 1 — overs, wickets and economy with pink glow.",
+    desc: "Frosted bowling lineup for Team 1.",
     previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)",
     teamLabel: "Team 1",
   },
   glass_bowl_team2: {
     icon: "ri-group-2-line",
     title: "Glass Bowling XI",
-    desc: "Frosted bowling lineup for Team 2 — overs, wickets and economy with pink glow.",
+    desc: "Frosted bowling lineup for Team 2.",
     previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)",
     teamLabel: "Team 2",
   },
   material_main: {
     icon: "ri-layout-top-2-line",
     title: "Material Match Banner",
-    desc: "Clean, flat-design tournament banner with crisp solid colors.",
+    desc: "Clean flat-design tournament banner.",
     previewBg: "#009688",
   },
   material_score: {
     icon: "ri-bar-chart-line",
     title: "Material Score Overlay",
-    desc: "Solid, high-contrast bottom score bar with stark broadcast styling.",
+    desc: "Solid high-contrast bottom score bar.",
     previewBg: "#111827",
   },
   material_summary: {
     icon: "ri-file-list-3-line",
     title: "Material Match Summary",
-    desc: "Flat color-blocked innings panels for top batters & bowlers.",
+    desc: "Flat color-blocked innings panels.",
     previewBg: "#030712",
   },
   material_xi_combined: {
     icon: "ri-team-line",
     title: "Material Playing XI",
-    desc: "Side-by-side solid lineup card with clear dividing lines.",
+    desc: "Side-by-side solid lineup card.",
     previewBg: "#00BCD4",
   },
   material_bat_team1: {
     icon: "ri-group-line",
     title: "Material Batting XI",
-    desc: "Solid batting lineup for Team 1 with strict broadcast typography.",
+    desc: "Solid batting lineup for Team 1.",
     previewBg: "#00BCD4",
     teamLabel: "Team 1",
   },
   material_bat_team2: {
     icon: "ri-group-line",
     title: "Material Batting XI",
-    desc: "Solid batting lineup for Team 2 with strict broadcast typography.",
+    desc: "Solid batting lineup for Team 2.",
     previewBg: "#00BCD4",
     teamLabel: "Team 2",
   },
   material_bowl_team1: {
     icon: "ri-group-2-line",
     title: "Material Bowling XI",
-    desc: "Solid bowling lineup for Team 1 with flat drop shadows.",
+    desc: "Solid bowling lineup for Team 1.",
     previewBg: "#E91E63",
     teamLabel: "Team 1",
   },
   material_bowl_team2: {
     icon: "ri-group-2-line",
     title: "Material Bowling XI",
-    desc: "Solid bowling lineup for Team 2 with flat drop shadows.",
+    desc: "Solid bowling lineup for Team 2.",
     previewBg: "#E91E63",
     teamLabel: "Team 2",
   },
   aero_main: {
     icon: "ri-layout-top-2-line",
     title: "Aero Match Banner",
-    desc: "Premium modular stack with floating tournament pill and team islands.",
+    desc: "Floating modular stack with tournament pill and team islands.",
     previewBg: "#F3F4F6",
   },
   aero_score: {
     icon: "ri-bar-chart-line",
     title: "Aero Score Stack",
-    desc: "Decoupled modular floating islands — separate score, over tracker, and player stats.",
+    desc: "Decoupled modular floating islands.",
     previewBg: "#FFFFFF",
   },
   aero_summary: {
     icon: "ri-file-list-3-line",
     title: "Aero Match Summary",
-    desc: "Elegant light-mode panels with soft gray backgrounds and pill-shaped data badges.",
+    desc: "Elegant light-mode panels with soft gray backgrounds.",
     previewBg: "#F3F4F6",
   },
   aero_xi_combined: {
     icon: "ri-team-line",
     title: "Aero Playing XI",
-    desc: "Clean side-by-side floating lineup with role pills and premium Apple-style shadows.",
+    desc: "Clean floating lineup with role pills.",
     previewBg: "#FFFFFF",
   },
   aero_bat_team1: {
     icon: "ri-group-line",
     title: "Aero Batting XI",
-    desc: "Light-themed batting card with soft-tinted blue pair highlights and pill status tags.",
+    desc: "Light-themed batting card — Team 1.",
     previewBg: "#E0F2FE",
     teamLabel: "Team 1",
   },
   aero_bat_team2: {
     icon: "ri-group-line",
     title: "Aero Batting XI",
-    desc: "Light-themed batting card with soft-tinted blue pair highlights and pill status tags.",
+    desc: "Light-themed batting card — Team 2.",
     previewBg: "#E0F2FE",
     teamLabel: "Team 2",
   },
   aero_bowl_team1: {
     icon: "ri-group-2-line",
     title: "Aero Bowling XI",
-    desc: "Minimalist bowling lineup with soft gray rows and rose-tinted active bowler pills.",
+    desc: "Minimalist bowling lineup — Team 1.",
     previewBg: "#FFE4E6",
     teamLabel: "Team 1",
   },
   aero_bowl_team2: {
     icon: "ri-group-2-line",
     title: "Aero Bowling XI",
-    desc: "Minimalist bowling lineup with soft gray rows and rose-tinted active bowler pills.",
+    desc: "Minimalist bowling lineup — Team 2.",
     previewBg: "#FFE4E6",
     teamLabel: "Team 2",
   },
@@ -862,63 +976,58 @@ const BUNDLE_OVERLAY_DETAILS: Record<
 function BundleInfoModal({
   bundle,
   onClose,
+  onPreview,
 }: {
   bundle: Bundle;
   onClose: () => void;
+  onPreview: (key: string, title: string, previewBg: string) => void;
 }) {
   const cards = bundle.bannerKeys
     .map((key) => ({ key, ...BUNDLE_OVERLAY_DETAILS[key] }))
-    .filter((c) => c.icon); // skip unknown keys
-
+    .filter((c) => c.icon);
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
       style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+      <div className="bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl w-full sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
               <i className="ri-stack-line text-emerald-600" />
             </div>
             <div>
-              <h2 className="font-black text-gray-900 text-lg leading-none">
+              <h2 className="font-black text-gray-900 text-base sm:text-lg leading-none">
                 {bundle.name}
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                {cards.length} overlays included · ₹{bundle.price}/match
+                {cards.length} overlays · ₹{bundle.price}/match
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors flex-shrink-0"
           >
             <i className="ri-close-line text-gray-600 text-lg" />
           </button>
         </div>
-
-        {/* Description */}
-        <div className="px-6 py-3 bg-emerald-50 border-b border-emerald-100">
+        <div className="px-5 sm:px-6 py-3 bg-emerald-50 border-b border-emerald-100 flex-shrink-0">
           <p className="text-sm text-emerald-800">{bundle.description}</p>
         </div>
-
-        {/* Overlay cards grid */}
         <div
-          className="overflow-y-auto overscroll-contain p-6"
-          style={{ WebkitOverflowScrolling: "touch", scrollBehavior: "smooth" }}
+          className="overflow-y-auto overscroll-contain p-4 sm:p-6"
+          style={{ WebkitOverflowScrolling: "touch" }}
         >
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {cards.map((card) => (
               <div
                 key={card.key}
                 className="rounded-2xl border border-gray-100 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow"
               >
-                {/* Preview */}
                 <div
-                  className="h-20 w-full flex items-center justify-center"
+                  className="h-16 sm:h-20 w-full relative flex items-center justify-center"
                   style={{ background: card.previewBg }}
                 >
                   <div className="bg-black/25 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2">
@@ -927,9 +1036,15 @@ function BundleInfoModal({
                       OBS Overlay
                     </span>
                   </div>
+                  <button
+                    onClick={() => onPreview(card.key, card.title, card.previewBg)}
+                    className="absolute top-1.5 right-2 flex items-center gap-1 bg-black/40 hover:bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded-full transition-colors backdrop-blur-sm"
+                  >
+                    <i className="ri-eye-line text-xs" />
+                    Preview
+                  </button>
                 </div>
-                {/* Info */}
-                <div className="p-4">
+                <div className="p-3 sm:p-4">
                   <div className="flex items-start gap-2 mb-2">
                     <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <i className={`${card.icon} text-gray-500 text-xs`} />
@@ -953,15 +1068,13 @@ function BundleInfoModal({
             ))}
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4">
+        <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4 flex-shrink-0">
           <p className="text-xs text-gray-400">
-            All overlays update in real time from your live match score.
+            All overlays update in real time.
           </p>
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-bold rounded-xl hover:shadow-md transition-all"
+            className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-bold rounded-xl hover:shadow-md transition-all"
           >
             Got it
           </button>
@@ -979,7 +1092,6 @@ export default function StreamDashboard() {
   const params = useParams();
   const matchId = params?.matchId as string;
   const [currentUser, setCurrentUser] = useState({ id: "", name: "" });
-
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [session, setSession] = useState<StreamSession>({
@@ -1010,7 +1122,17 @@ export default function StreamDashboard() {
   const [brandingConfig, setBrandingConfig] = useState(DEFAULT_BRANDING_CONFIG);
   const [overlayTab, setOverlayTab] = useState<
     "basic" | "glass" | "material" | "aero"
-  >("basic"); // Auto-switch to whichever tab is actually unlocked when subscription data loads
+  >("basic");
+
+  // ── Sidebar drawer state (mobile) ──
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ── Overlay preview state ──
+  const [previewBanner, setPreviewBanner] = useState<{
+    key: string;
+    title: string;
+    previewBg: string;
+  } | null>(null);
 
   useEffect(() => {
     const basic =
@@ -1021,15 +1143,12 @@ export default function StreamDashboard() {
       "bundle-material",
     );
     const aero = (matchSub?.purchasedBundleIds ?? []).includes("bundle-aero");
-
-    // Priority logic: switch to the first one owned in this order
     if (basic) setOverlayTab("basic");
     else if (glass) setOverlayTab("glass");
     else if (material) setOverlayTab("material");
     else if (aero) setOverlayTab("aero");
   }, [matchSub]);
 
-  // Load on branding overlay config on mount
   useEffect(() => {
     fetchBrandingConfig(matchId).then(setBrandingConfig);
   }, [matchId]);
@@ -1061,11 +1180,9 @@ export default function StreamDashboard() {
   const isOperator = matchRole === "operator";
   const iAmStreaming =
     session.isLocked && session.lockedByUserId === currentUser.id;
-  // Streaming is now always accessible — overlays are gated by bundle purchase
   const canStream = true;
   const streamLockReason = "";
 
-  // Bundle access helpers
   const hasBasicBundle =
     (matchSub?.adminHasSubscription ?? false) ||
     (matchSub?.purchasedBundleIds ?? []).includes("bundle-basic");
@@ -1078,7 +1195,6 @@ export default function StreamDashboard() {
   const hasAeroBundle = (matchSub?.purchasedBundleIds ?? []).includes(
     "bundle-aero",
   );
-
   const hasAnyBundle =
     hasBasicBundle ||
     hasGlassBundle ||
@@ -1112,7 +1228,6 @@ export default function StreamDashboard() {
         const creatorId =
           actualMatch?.creatorId || actualMatch?.creatorName?.id;
         const opsArray = actualMatch?.matchOps || [];
-
         if (
           currentUser.id !== creatorId &&
           !opsArray.includes(currentUser.id)
@@ -1122,7 +1237,6 @@ export default function StreamDashboard() {
           return;
         }
         const actualState = state?.data || state;
-
         setMatchInfo({
           id: actualMatch?.matchId || actualMatch?.id,
           venue: actualMatch?.venue || "Venue TBD",
@@ -1145,7 +1259,6 @@ export default function StreamDashboard() {
           creatorId: actualMatch?.creatorId || actualMatch?.creatorName?.id,
           matchOps: actualMatch?.matchOps || [],
         });
-
         setMatchState(actualState);
         setSession({
           isLocked: sess?.locked ?? false,
@@ -1215,7 +1328,6 @@ export default function StreamDashboard() {
     setBannerBusy(true);
     let next: BannerType;
     if (activeBanner === banner) {
-      // Hiding — for ad overlay, restore the previous template instead of going blank
       if (banner === "tpl-pro-5" && previousBanner !== "none") {
         next = previousBanner;
       } else {
@@ -1223,13 +1335,9 @@ export default function StreamDashboard() {
       }
       setPreviousBanner("none");
     } else {
-      // Activating — save current banner so we can restore it when ad overlay hides
-      if (banner === "tpl-pro-5") {
-        setPreviousBanner(activeBanner);
-      }
+      if (banner === "tpl-pro-5") setPreviousBanner(activeBanner);
       next = banner;
     }
-    // tpl-skeletal is free — send directly, not as a "premium" template
     const isPremium = next.startsWith("tpl-") && next !== "tpl-skeletal";
     await pushActiveBanner(
       matchId,
@@ -1245,6 +1353,11 @@ export default function StreamDashboard() {
     navigator.clipboard.writeText(obsUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // ── Helper: open preview modal ──
+  const openPreview = (key: string, title: string, previewBg: string) => {
+    setPreviewBanner({ key, title, previewBg });
   };
 
   if (loading)
@@ -1291,7 +1404,6 @@ export default function StreamDashboard() {
     matchSub?.purchasedTemplateIds.includes(t.id),
   );
 
-  // ── Helper: label for active banner status bar ──
   const activeBannerLabel = () => {
     if (activeBanner === "none")
       return "No banner active — OBS overlay is clear";
@@ -1299,53 +1411,27 @@ export default function StreamDashboard() {
       return "📊 Score Overlay (Free) is live on OBS";
     if (activeBanner === "main") return "📺 Main Match Banner is live on OBS";
     if (activeBanner === "playingXI_bat_team1")
-      return `🏏 Batting XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
+      return `🏏 Batting XI — ${matchState?.team1?.name ?? "Team 1"} is live`;
     if (activeBanner === "playingXI_bat_team2")
-      return `🏏 Batting XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
+      return `🏏 Batting XI — ${matchState?.team2?.name ?? "Team 2"} is live`;
     if (activeBanner === "playingXI_bowl_team1")
-      return `🎳 Bowling XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
+      return `🎳 Bowling XI — ${matchState?.team1?.name ?? "Team 1"} is live`;
     if (activeBanner === "playingXI_bowl_team2")
-      return `🎳 Bowling XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
+      return `🎳 Bowling XI — ${matchState?.team2?.name ?? "Team 2"} is live`;
     if (activeBanner === "playingXI_combined")
       return "👥 Playing XI — Both Teams is live on OBS";
     if (activeBanner === "score") return "📊 Score Overlay is live on OBS";
     if (activeBanner === "summary") return "📋 Match Summary is live on OBS";
-    if (activeBanner === "glass_score")
-      return "🔷 Glass Score Overlay is live on OBS";
-    if (activeBanner === "glass_main")
-      return "🔷 Glass Match Banner is live on OBS";
-    if (activeBanner === "glass_bat_team1")
-      return `🔷 Glass Batting XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
-    if (activeBanner === "glass_bat_team2")
-      return `🔷 Glass Batting XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
-    if (activeBanner === "glass_bowl_team1")
-      return `🔷 Glass Bowling XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
-    if (activeBanner === "glass_bowl_team2")
-      return `🔷 Glass Bowling XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
-    if (activeBanner === "glass_xi_combined")
-      return "🔷 Glass Playing XI — Both Teams is live on OBS";
-    if (activeBanner === "glass_summary")
-      return "🔷 Glass Match Summary is live on OBS";
-    if (activeBanner === "material_score")
-      return "🔲 Material Score Overlay is live on OBS";
-    if (activeBanner === "material_main")
-      return "🔲 Material Match Banner is live on OBS";
-    if (activeBanner === "material_bat_team1")
-      return `🔲 Material Batting XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
-    if (activeBanner === "material_bat_team2")
-      return `🔲 Material Batting XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
-    if (activeBanner === "material_bowl_team1")
-      return `🔲 Material Bowling XI — ${matchState?.team1?.name ?? "Team 1"} is live on OBS`;
-    if (activeBanner === "material_bowl_team2")
-      return `🔲 Material Bowling XI — ${matchState?.team2?.name ?? "Team 2"} is live on OBS`;
-    if (activeBanner === "material_xi_combined")
-      return "🔲 Material Playing XI — Both Teams is live on OBS";
-    if (activeBanner === "material_summary")
-      return "🔲 Material Match Summary is live on OBS";
+    if (activeBanner.startsWith("glass_"))
+      return `🔷 Glass ${activeBanner.replace("glass_", "")} is live`;
+    if (activeBanner.startsWith("material_"))
+      return `🔲 Material ${activeBanner.replace("material_", "")} is live`;
+    if (activeBanner.startsWith("aero_"))
+      return `🌤 Aero ${activeBanner.replace("aero_", "")} is live`;
     return `✨ ${templates.find((t) => t.id === activeBanner)?.name ?? "Premium Overlay"} is live on OBS`;
   };
 
-  // ── Shared banner list for included banners ──
+  // ── Banner lists ──
   const INCLUDED_BANNERS_ADMIN = [
     {
       icon: "ri-layout-top-2-line",
@@ -1357,7 +1443,7 @@ export default function StreamDashboard() {
     {
       icon: "ri-team-line",
       title: "Playing XI — Both Teams",
-      desc: "Side-by-side lineup with player roles, captain badge and live match footer.",
+      desc: "Side-by-side lineup with player roles and captain badge.",
       key: "playingXI_combined",
       previewBg: "linear-gradient(135deg,#4A9EF5,#A855F7)",
     },
@@ -1403,87 +1489,85 @@ export default function StreamDashboard() {
     {
       icon: "ri-file-list-3-line",
       title: "Match Summary",
-      desc: "Top batters & bowlers from both teams. Shows required or result at bottom.",
+      desc: "Top batters & bowlers from both teams.",
       key: "summary",
       previewBg: "linear-gradient(135deg,#E2B94B,#8B6914)",
     },
   ];
-
   const GLASS_BUNDLE_BANNERS = [
     {
       icon: "ri-layout-top-2-line",
-      title: "Main Match Banner",
-      desc: "Tournament, teams, venue, date and toss result — frosted glass style.",
+      title: "Glass Match Banner",
+      desc: "Frosted glass match banner.",
       key: "glass_main",
       previewBg: "linear-gradient(135deg,#00D4AA,#22D3EE)",
     },
     {
       icon: "ri-team-line",
-      title: "Playing XI — Both Teams",
-      desc: "Side-by-side lineup with role badges and live footer — glass style.",
+      title: "Glass Playing XI",
+      desc: "Glassmorphism lineup card.",
       key: "glass_xi_combined",
       previewBg: "linear-gradient(135deg,#22D3EE,#F472B6)",
     },
     {
       icon: "ri-group-line",
-      title: "Batting XI",
+      title: "Glass Batting XI",
       teamName: matchState?.team1?.name ?? "Team 1",
-      desc: "Full batting lineup with live runs and dismissal info — frosted glass.",
+      desc: "Frosted batting lineup — Team 1.",
       key: "glass_bat_team1",
       previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)",
     },
     {
       icon: "ri-group-line",
-      title: "Batting XI",
+      title: "Glass Batting XI",
       teamName: matchState?.team2?.name ?? "Team 2",
-      desc: "Full batting lineup with live runs and dismissal info — frosted glass.",
+      desc: "Frosted batting lineup — Team 2.",
       key: "glass_bat_team2",
       previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)",
     },
     {
       icon: "ri-group-2-line",
-      title: "Bowling XI",
+      title: "Glass Bowling XI",
       teamName: matchState?.team1?.name ?? "Team 1",
-      desc: "Bowling lineup with overs, wickets and economy — glass style.",
+      desc: "Frosted bowling lineup — Team 1.",
       key: "glass_bowl_team1",
       previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)",
     },
     {
       icon: "ri-group-2-line",
-      title: "Bowling XI",
+      title: "Glass Bowling XI",
       teamName: matchState?.team2?.name ?? "Team 2",
-      desc: "Bowling lineup with overs, wickets and economy — glass style.",
+      desc: "Frosted bowling lineup — Team 2.",
       key: "glass_bowl_team2",
       previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)",
     },
     {
       icon: "ri-bar-chart-line",
-      title: "Live Score Overlay",
-      desc: "Persistent bottom score bar with frosted glass and teal glow.",
+      title: "Glass Score Overlay",
+      desc: "Frosted score bar with teal glow.",
       key: "glass_score",
       previewBg: "linear-gradient(135deg,#00D4AA,#0a1628)",
     },
     {
       icon: "ri-file-list-3-line",
-      title: "Match Summary",
-      desc: "Top batters & bowlers from both teams — glassmorphism card.",
+      title: "Glass Match Summary",
+      desc: "Glassmorphism summary card.",
       key: "glass_summary",
       previewBg: "linear-gradient(135deg,#0a1628,#22D3EE)",
     },
   ];
-
   const MATERIAL_BUNDLE_BANNERS = [
     {
       icon: "ri-layout-top-2-line",
       title: "Material Match Banner",
-      desc: "Clean, flat-design tournament banner with crisp solid colors.",
+      desc: "Flat-design tournament banner.",
       key: "material_main",
       previewBg: "#009688",
     },
     {
       icon: "ri-team-line",
       title: "Material Playing XI",
-      desc: "Side-by-side solid lineup card with clear dividing lines.",
+      desc: "Solid lineup card.",
       key: "material_xi_combined",
       previewBg: "#00BCD4",
     },
@@ -1491,7 +1575,7 @@ export default function StreamDashboard() {
       icon: "ri-group-line",
       title: "Material Batting XI",
       teamName: matchState?.team1?.name ?? "Team 1",
-      desc: "Solid batting lineup for Team 1.",
+      desc: "Solid batting lineup — Team 1.",
       key: "material_bat_team1",
       previewBg: "#00BCD4",
     },
@@ -1499,7 +1583,7 @@ export default function StreamDashboard() {
       icon: "ri-group-line",
       title: "Material Batting XI",
       teamName: matchState?.team2?.name ?? "Team 2",
-      desc: "Solid batting lineup for Team 2.",
+      desc: "Solid batting lineup — Team 2.",
       key: "material_bat_team2",
       previewBg: "#00BCD4",
     },
@@ -1507,7 +1591,7 @@ export default function StreamDashboard() {
       icon: "ri-group-2-line",
       title: "Material Bowling XI",
       teamName: matchState?.team1?.name ?? "Team 1",
-      desc: "Solid bowling lineup for Team 1.",
+      desc: "Solid bowling lineup — Team 1.",
       key: "material_bowl_team1",
       previewBg: "#E91E63",
     },
@@ -1515,39 +1599,37 @@ export default function StreamDashboard() {
       icon: "ri-group-2-line",
       title: "Material Bowling XI",
       teamName: matchState?.team2?.name ?? "Team 2",
-      desc: "Solid bowling lineup for Team 2.",
+      desc: "Solid bowling lineup — Team 2.",
       key: "material_bowl_team2",
       previewBg: "#E91E63",
     },
     {
       icon: "ri-bar-chart-line",
       title: "Material Score Overlay",
-      desc: "Solid, high-contrast bottom score bar with stark broadcast styling.",
+      desc: "High-contrast score bar.",
       key: "material_score",
       previewBg: "#111827",
     },
     {
       icon: "ri-file-list-3-line",
       title: "Material Match Summary",
-      desc: "Flat color-blocked innings panels for top batters & bowlers.",
+      desc: "Flat color-blocked summary.",
       key: "material_summary",
       previewBg: "#030712",
     },
   ];
-
-  // ... right after MATERIAL_BUNDLE_BANNERS
   const AERO_BUNDLE_BANNERS = [
     {
       icon: "ri-layout-top-2-line",
       title: "Aero Match Banner",
-      desc: "Floating modular stack with tournament pill and team islands.",
+      desc: "Modular floating banner.",
       key: "aero_main",
       previewBg: "#F3F4F6",
     },
     {
       icon: "ri-team-line",
       title: "Aero Playing XI",
-      desc: "Clean side-by-side floating lineup card with pill badges.",
+      desc: "Floating lineup card.",
       key: "aero_xi_combined",
       previewBg: "#FFFFFF",
     },
@@ -1555,7 +1637,7 @@ export default function StreamDashboard() {
       icon: "ri-group-line",
       title: "Aero Batting XI",
       teamName: matchState?.team1?.name ?? "Team 1",
-      desc: "Light-mode batting stats with soft pair highlights.",
+      desc: "Light-mode batting — Team 1.",
       key: "aero_bat_team1",
       previewBg: "#E0F2FE",
     },
@@ -1563,7 +1645,7 @@ export default function StreamDashboard() {
       icon: "ri-group-line",
       title: "Aero Batting XI",
       teamName: matchState?.team2?.name ?? "Team 2",
-      desc: "Light-mode batting stats with soft pair highlights.",
+      desc: "Light-mode batting — Team 2.",
       key: "aero_bat_team2",
       previewBg: "#E0F2FE",
     },
@@ -1571,7 +1653,7 @@ export default function StreamDashboard() {
       icon: "ri-group-2-line",
       title: "Aero Bowling XI",
       teamName: matchState?.team1?.name ?? "Team 1",
-      desc: "Minimalist bowling lineup with premium soft shadows.",
+      desc: "Minimalist bowling — Team 1.",
       key: "aero_bowl_team1",
       previewBg: "#FFE4E6",
     },
@@ -1579,28 +1661,160 @@ export default function StreamDashboard() {
       icon: "ri-group-2-line",
       title: "Aero Bowling XI",
       teamName: matchState?.team2?.name ?? "Team 2",
-      desc: "Minimalist bowling lineup with premium soft shadows.",
+      desc: "Minimalist bowling — Team 2.",
       key: "aero_bowl_team2",
       previewBg: "#FFE4E6",
     },
     {
       icon: "ri-bar-chart-line",
       title: "Aero Score Stack",
-      desc: "Decoupled modular floating islands for a high-end tech look.",
+      desc: "Floating score islands.",
       key: "aero_score",
       previewBg: "#FFFFFF",
     },
     {
       icon: "ri-file-list-3-line",
       title: "Aero Match Summary",
-      desc: "Elegant light-mode summary with soft pill-shaped data badges.",
+      desc: "Soft pill-shaped data badges.",
       key: "aero_summary",
       previewBg: "#F3F4F6",
     },
   ];
 
+  // Shared tab UI renderer — avoids duplicating admin/operator tab markup
+  const renderBundleTabs = (showMaterialAero: boolean) => (
+    <div className="overflow-x-auto -mx-1 pb-1">
+      <div className="flex items-center gap-2 px-1 min-w-max">
+        <button
+          onClick={() => setOverlayTab("basic")}
+          className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap ${overlayTab === "basic" ? "bg-[#1E88E5] text-white border-[#1E88E5] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#34B8FF] hover:text-[#1E88E5]"}`}
+        >
+          <i className="ri-gift-line" />
+          Basic
+          {hasBasicBundle && (
+            <span
+              className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "basic" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-500"}`}
+            >
+              {matchSub?.adminHasSubscription ? "FREE" : "OWNED"}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setOverlayTab("glass")}
+          className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap ${overlayTab === "glass" ? "text-white border-[#00D4AA] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#00D4AA] hover:text-[#00D4AA]"}`}
+          style={
+            overlayTab === "glass"
+              ? { background: "linear-gradient(135deg,#00D4AA,#22D3EE)" }
+              : {}
+          }
+        >
+          <i className="ri-contrast-2-line" />
+          Glass
+          {hasGlassBundle && (
+            <span
+              className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "glass" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-600"}`}
+            >
+              OWNED
+            </span>
+          )}
+        </button>
+        {showMaterialAero && (
+          <>
+            <button
+              onClick={() => setOverlayTab("material")}
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap ${overlayTab === "material" ? "text-white border-[#009688] bg-[#009688] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#009688] hover:text-[#009688]"}`}
+            >
+              <i className="ri-tv-2-line" />
+              Material
+              {hasMaterialBundle && (
+                <span
+                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "material" ? "bg-white/20 text-white" : "bg-teal-50 text-teal-600"}`}
+                >
+                  OWNED
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setOverlayTab("aero")}
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap ${overlayTab === "aero" ? "text-white border-[#0D9488] bg-[#0D9488] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#0D9488] hover:text-[#0D9488]"}`}
+            >
+              <i className="ri-cloud-line" />
+              Aero
+              {hasAeroBundle && (
+                <span
+                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "aero" ? "bg-white/20 text-white" : "bg-teal-50 text-teal-600"}`}
+                >
+                  OWNED
+                </span>
+              )}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderLockedTabState = (bundleName: string, forAdmin: boolean) => (
+    <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
+      <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
+      <p className="font-bold text-gray-400 text-sm">
+        {bundleName} not {forAdmin ? "purchased" : "available for this match"}
+      </p>
+      <p className="text-xs text-gray-300 mt-1">
+        {forAdmin
+          ? "Purchase from the Bundles section below."
+          : "The match admin has not purchased this bundle."}
+      </p>
+    </div>
+  );
+
+  const renderBannerGrid = (
+    banners: typeof INCLUDED_BANNERS_ADMIN,
+    hasBundle: boolean,
+    bundleName: string,
+    forAdmin: boolean,
+  ) => {
+    if (!hasBundle) return renderLockedTabState(bundleName, forAdmin);
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        {banners.map((b) => (
+          <BannerCard
+            key={b.key}
+            icon={b.icon}
+            title={b.title}
+            teamName={(b as any).teamName}
+            desc={b.desc}
+            active={activeBanner === b.key}
+            canActivate={iAmStreaming}
+            lockedReason="Start streaming first"
+            onToggle={() => handleBanner(b.key as BannerType)}
+            previewBg={b.previewBg}
+            onPreview={() =>
+              openPreview(
+                b.key,
+                b.title +
+                  ((b as any).teamName ? ` — ${(b as any).teamName}` : ""),
+                b.previewBg,
+              )
+            }
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
+      {/* ── Overlay Preview Modal ── */}
+      {previewBanner && (
+        <OverlayPreviewModal
+          bannerKey={previewBanner.key}
+          bannerTitle={previewBanner.title}
+          previewBg={previewBanner.previewBg}
+          onClose={() => setPreviewBanner(null)}
+        />
+      )}
+
       {checkoutAddon && (
         <UpiCheckoutModal
           userId={currentUser.id}
@@ -1622,7 +1836,7 @@ export default function StreamDashboard() {
                 setTimeout(() => setSuccessAddonId(null), 3000);
               }
             } catch (e) {
-              console.error("Failed to refresh subscription after payment:", e);
+              console.error(e);
             }
           }}
         />
@@ -1631,6 +1845,10 @@ export default function StreamDashboard() {
         <BundleInfoModal
           bundle={bundles.find((b) => b.id === infoBundleId)!}
           onClose={() => setInfoBundleId(null)}
+          onPreview={(key, title, previewBg) => {
+            setInfoBundleId(null);
+            openPreview(key, title, previewBg);
+          }}
         />
       )}
       {checkoutBundle && (
@@ -1653,44 +1871,61 @@ export default function StreamDashboard() {
                 setTimeout(() => setSuccessBundleId(null), 3000);
               }
             } catch (e) {
-              console.error(
-                "Failed to refresh subscription after bundle payment:",
-                e,
-              );
+              console.error(e);
             }
           }}
         />
       )}
 
+      {/* ── Mobile sidebar backdrop ── */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Navbar */}
       <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            {/* Mobile sidebar toggle */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"
+            >
+              <i className="ri-layout-left-line text-gray-600" />
+            </button>
             <Link
               href="/dashboard"
-              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 font-semibold transition-colors"
+              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 font-semibold transition-colors flex-shrink-0"
             >
               <i className="ri-arrow-left-line" />
-              Dashboard
+              <span className="hidden sm:inline">Dashboard</span>
             </Link>
             <span className="text-gray-200 hidden sm:block">|</span>
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2 min-w-0">
               <Image
                 src="/images/iconLogo.png"
                 alt="Cricshub"
                 width={26}
                 height={26}
-                className="rounded-md"
+                className="rounded-md flex-shrink-0"
               />
-              <span className="font-black text-gray-900 text-sm">
+              <span className="font-black text-gray-900 text-sm truncate">
                 Stream Studio
               </span>
             </div>
+            {matchInfo && (
+              <span className="text-xs text-gray-400 truncate hidden md:block max-w-[200px]">
+                {matchInfo.team1.name} vs {matchInfo.team2.name}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {matchRole && (
               <span
-                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${matchRole === "admin" ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-blue-50 text-[#1E88E5] border border-blue-200"}`}
+                className={`hidden sm:flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full ${matchRole === "admin" ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-blue-50 text-[#1E88E5] border border-blue-200"}`}
               >
                 <i
                   className={
@@ -1699,198 +1934,239 @@ export default function StreamDashboard() {
                       : "ri-user-settings-line"
                   }
                 />
-                {matchRole === "admin" ? "Match Admin" : "Operator"}
+                {matchRole === "admin" ? "Admin" : "Operator"}
               </span>
             )}
             {iAmStreaming ? (
-              <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-full">
+              <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-black px-2.5 py-1.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping inline-block" />
-                STREAMING
+                <span className="hidden sm:inline">STREAMING</span>
+                <span className="sm:hidden">LIVE</span>
               </span>
             ) : session.isLocked && !iAmStreaming ? (
-              <span className="flex items-center gap-1.5 bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-full border border-amber-200">
+              <span className="flex items-center gap-1.5 bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1.5 rounded-full border border-amber-200">
                 <i className="ri-lock-line" />
-                Locked · {session.lockedByName}
+                <span className="hidden sm:inline">
+                  Locked · {session.lockedByName}
+                </span>
+                <span className="sm:hidden">Locked</span>
               </span>
             ) : null}
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
-        <div className="grid lg:grid-cols-[320px_1fr] gap-6">
-          {/* ══ LEFT SIDEBAR ══ */}
-          <div className="space-y-5">
-            {matchInfo && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] px-5 pt-5 pb-4">
-                  {matchInfo.tournamentName && (
-                    <p className="text-white/70 text-xs font-semibold mb-1">
-                      {matchInfo.tournamentName}
-                    </p>
-                  )}
-                  <h1 className="text-white font-black text-base leading-snug">
-                    {matchInfo.team1.name}{" "}
-                    <span className="text-white/50 font-normal text-sm">
-                      vs
-                    </span>{" "}
-                    {matchInfo.team2.name}
-                  </h1>
-                  {matchInfo.stage && (
-                    <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mt-2 inline-block uppercase">
-                      {matchInfo.stage}
-                    </span>
-                  )}
-                </div>
-                <div className="px-5 py-4 space-y-2 text-sm text-gray-600">
-                  {[
-                    { icon: "ri-map-pin-line", text: matchInfo.venue },
-                    {
-                      icon: "ri-calendar-line",
-                      text: fmtDate(matchInfo.matchDate),
-                    },
-                    {
-                      icon: "ri-time-line",
-                      text: `${fmt12(matchInfo.matchTime)} · ${matchInfo.overs} overs`,
-                    },
-                  ].map((r, i) => (
-                    <div key={i} className="flex items-center gap-2.5">
-                      <i className={`${r.icon} text-[#34B8FF] flex-shrink-0`} />
-                      <span className="truncate">{r.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <StreamControlPanel
-              session={session}
-              streaming={iAmStreaming}
-              claimBusy={claimBusy}
-              canStream={canStream}
-              lockedReason={streamLockReason}
-              onClaim={handleClaim}
-              onRelease={handleRelease}
-              obsUrl={obsUrl}
-              copied={copied}
-              onCopy={copyObs}
-              currentUserId={currentUser.id}
-            />
-            {matchState && <ScoreLive state={matchState} />}
-            {matchSub?.purchasedTemplateIds.includes("tpl-pro-4") && (
-              <div
-                style={{
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  overflow: "hidden",
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-7xl">
+        <div className="flex gap-6 relative">
+          {/* ══ LEFT SIDEBAR — fixed on desktop, drawer on mobile ══ */}
+          <aside
+            className={`
+              fixed lg:static top-0 left-0 h-full lg:h-auto z-50 lg:z-auto
+              w-[300px] sm:w-[320px] lg:w-[320px] flex-shrink-0
+              bg-[#F8F9FA] lg:bg-transparent
+              overflow-y-auto lg:overflow-visible
+              transition-transform duration-300 ease-in-out
+              ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+              pt-4 lg:pt-0 px-4 lg:px-0
+            `}
+          >
+            {/* Mobile close button */}
+            <div className="flex items-center justify-between mb-4 lg:hidden">
+              <p className="font-black text-gray-900">Match Info</p>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center"
               >
-                <button
-                  onClick={() => setBrandingOpen((v) => !v)}
+                <i className="ri-close-line text-gray-600" />
+              </button>
+            </div>
+
+            <div className="space-y-4 sm:space-y-5 pb-8">
+              {matchInfo && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] px-5 pt-5 pb-4">
+                    {matchInfo.tournamentName && (
+                      <p className="text-white/70 text-xs font-semibold mb-1">
+                        {matchInfo.tournamentName}
+                      </p>
+                    )}
+                    <h1 className="text-white font-black text-base leading-snug">
+                      {matchInfo.team1.name}{" "}
+                      <span className="text-white/50 font-normal text-sm">
+                        vs
+                      </span>{" "}
+                      {matchInfo.team2.name}
+                    </h1>
+                    {matchInfo.stage && (
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mt-2 inline-block uppercase">
+                        {matchInfo.stage}
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-5 py-4 space-y-2 text-sm text-gray-600">
+                    {[
+                      { icon: "ri-map-pin-line", text: matchInfo.venue },
+                      {
+                        icon: "ri-calendar-line",
+                        text: fmtDate(matchInfo.matchDate),
+                      },
+                      {
+                        icon: "ri-time-line",
+                        text: `${fmt12(matchInfo.matchTime)} · ${matchInfo.overs} overs`,
+                      },
+                    ].map((r, i) => (
+                      <div key={i} className="flex items-center gap-2.5">
+                        <i
+                          className={`${r.icon} text-[#34B8FF] flex-shrink-0`}
+                        />
+                        <span className="truncate">{r.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <StreamControlPanel
+                session={session}
+                streaming={iAmStreaming}
+                claimBusy={claimBusy}
+                canStream={canStream}
+                lockedReason={streamLockReason}
+                onClaim={handleClaim}
+                onRelease={handleRelease}
+                obsUrl={obsUrl}
+                copied={copied}
+                onCopy={copyObs}
+                currentUserId={currentUser.id}
+              />
+
+              {matchState && <ScoreLive state={matchState} />}
+
+              {matchSub?.purchasedTemplateIds.includes("tpl-pro-4") && (
+                <div
                   style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "13px 20px",
-                    background: "rgba(8,10,24,0.97)",
-                    border: "none",
-                    borderBottom: brandingOpen
-                      ? "1px solid rgba(255,255,255,0.06)"
-                      : "none",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    overflow: "hidden",
+                    fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  <span
-                    style={{ color: "#F3F4F6", fontSize: 13, fontWeight: 600 }}
-                  >
-                    Branding Config
-                  </span>
-                  <i
-                    className={`ri-arrow-${brandingOpen ? "up" : "down"}-s-line`}
-                    style={{ color: "rgba(255,255,255,0.35)", fontSize: 18 }}
-                  />
-                </button>
-                {brandingOpen && (
-                  <BrandingConfigPanel
-                    config={brandingConfig}
-                    onChange={setBrandingConfig}
-                    onSave={async (cfg) => {
-                      const ok = await saveBrandingConfig(matchId, cfg);
-                      if (!ok)
-                        alert(
-                          "Failed to save branding config. Make sure you are the match admin or active streamer.",
-                        );
+                  <button
+                    onClick={() => setBrandingOpen((v) => !v)}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "13px 20px",
+                      background: "rgba(8,10,24,0.97)",
+                      border: "none",
+                      borderBottom: brandingOpen
+                        ? "1px solid rgba(255,255,255,0.06)"
+                        : "none",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
                     }}
-                  />
-                )}
-              </div>
-            )}
-            {matchSub?.purchasedTemplateIds.includes("tpl-pro-5") && (
-              <div
-                style={{
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  overflow: "hidden",
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                <button
-                  onClick={() => setMediaReelOpen((v) => !v)}
+                  >
+                    <span
+                      style={{
+                        color: "#F3F4F6",
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Branding Config
+                    </span>
+                    <i
+                      className={`ri-arrow-${brandingOpen ? "up" : "down"}-s-line`}
+                      style={{ color: "rgba(255,255,255,0.35)", fontSize: 18 }}
+                    />
+                  </button>
+                  {brandingOpen && (
+                    <BrandingConfigPanel
+                      config={brandingConfig}
+                      onChange={setBrandingConfig}
+                      onSave={async (cfg) => {
+                        const ok = await saveBrandingConfig(matchId, cfg);
+                        if (!ok) alert("Failed to save branding config.");
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+
+              {matchSub?.purchasedTemplateIds.includes("tpl-pro-5") && (
+                <div
                   style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "13px 20px",
-                    background: "rgba(8,10,24,0.97)",
-                    border: "none",
-                    borderBottom: mediaReelOpen
-                      ? "1px solid rgba(255,255,255,0.06)"
-                      : "none",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    overflow: "hidden",
+                    fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  <span
-                    style={{ color: "#F3F4F6", fontSize: 13, fontWeight: 600 }}
+                  <button
+                    onClick={() => setMediaReelOpen((v) => !v)}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "13px 20px",
+                      background: "rgba(8,10,24,0.97)",
+                      border: "none",
+                      borderBottom: mediaReelOpen
+                        ? "1px solid rgba(255,255,255,0.06)"
+                        : "none",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
                   >
-                    Media Reel
-                  </span>
-                  <i
-                    className={`ri-arrow-${mediaReelOpen ? "up" : "down"}-s-line`}
-                    style={{ color: "rgba(255,255,255,0.35)", fontSize: 18 }}
-                  />
-                </button>
-                {mediaReelOpen && (
-                  <MediaAssetsPanel matchId={matchId} userId={currentUser.id} />
-                )}
-              </div>
-            )}
-          </div>
+                    <span
+                      style={{
+                        color: "#F3F4F6",
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Media Reel
+                    </span>
+                    <i
+                      className={`ri-arrow-${mediaReelOpen ? "up" : "down"}-s-line`}
+                      style={{ color: "rgba(255,255,255,0.35)", fontSize: 18 }}
+                    />
+                  </button>
+                  {mediaReelOpen && (
+                    <MediaAssetsPanel
+                      matchId={matchId}
+                      userId={currentUser.id}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
 
           {/* ══ MAIN PANEL ══ */}
-          <div className="space-y-6">
+          <main className="flex-1 min-w-0 space-y-4 sm:space-y-6">
             {/* Active banner status bar */}
             <div
-              className={`rounded-2xl border-2 px-5 py-4 flex items-center justify-between gap-4 transition-all duration-300 ${activeBanner !== "none" ? "border-red-200 bg-red-50" : "border-gray-100 bg-white"}`}
+              className={`rounded-2xl border-2 px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between gap-3 transition-all duration-300 ${activeBanner !== "none" ? "border-red-200 bg-red-50" : "border-gray-100 bg-white"}`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${activeBanner !== "none" ? "bg-red-500" : "bg-gray-100"}`}
+                  className={`w-9 sm:w-10 h-9 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${activeBanner !== "none" ? "bg-red-500" : "bg-gray-100"}`}
                 >
                   <i
-                    className={`ri-broadcast-line text-xl ${activeBanner !== "none" ? "text-white" : "text-gray-400"}`}
+                    className={`ri-broadcast-line text-lg sm:text-xl ${activeBanner !== "none" ? "text-white" : "text-gray-400"}`}
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p
-                    className={`font-bold text-sm ${activeBanner !== "none" ? "text-red-700" : "text-gray-500"}`}
+                    className={`font-bold text-xs sm:text-sm truncate ${activeBanner !== "none" ? "text-red-700" : "text-gray-500"}`}
                   >
                     {activeBannerLabel()}
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-400 hidden sm:block">
                     {activeBanner !== "none"
                       ? "Displaying in your OBS browser source"
                       : "Select a banner below to show it"}
@@ -1901,10 +2177,10 @@ export default function StreamDashboard() {
                 <button
                   onClick={() => handleBanner("none")}
                   disabled={!iAmStreaming || bannerBusy}
-                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40"
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 px-2.5 sm:px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40"
                 >
                   <i className="ri-close-line" />
-                  Clear
+                  <span className="hidden sm:inline">Clear</span>
                 </button>
               )}
             </div>
@@ -1912,10 +2188,10 @@ export default function StreamDashboard() {
             {/* ═════ ADMIN VIEW ═════ */}
             {isAdmin && (
               <div className="space-y-6">
-                {/* ── Free skeletal overlay (shown only when no bundles at all) ── */}
+                {/* Free skeletal overlay */}
                 {!hasAnyBundle && (
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 sm:px-5 py-4 flex items-start gap-3">
                       <i className="ri-bar-chart-box-line text-gray-400 text-xl flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <p className="font-bold text-gray-700 text-sm">
@@ -1927,7 +2203,7 @@ export default function StreamDashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                       <BannerCard
                         icon="ri-bar-chart-2-line"
                         title="Score Overlay"
@@ -1938,224 +2214,60 @@ export default function StreamDashboard() {
                         onToggle={() => handleBanner("tpl-skeletal")}
                         previewBg="linear-gradient(135deg,#374151,#111827)"
                         badge="FREE"
+                        onPreview={() =>
+                          openPreview(
+                            "tpl-skeletal",
+                            "Score Overlay (Free)",
+                            "linear-gradient(135deg,#374151,#111827)",
+                          )
+                        }
                       />
                     </div>
                   </div>
                 )}
 
-                {/* ── Bundle overlay tabs (Basic + Glass) ── */}
-                {(hasBasicBundle || hasGlassBundle) && (
-                  <div>
-                    {/* Tab headers */}
-                    <div className="flex items-center gap-2 mb-4 flex-wrap">
-                      <button
-                        onClick={() => setOverlayTab("basic")}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "basic" ? "bg-[#1E88E5] text-white border-[#1E88E5] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#34B8FF] hover:text-[#1E88E5]"}`}
-                      >
-                        <i className="ri-gift-line" />
-                        Basic Bundle
-                        {hasBasicBundle && (
-                          <span
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "basic" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-500"}`}
-                          >
-                            {matchSub?.adminHasSubscription ? "FREE" : "OWNED"}
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setOverlayTab("glass")}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "glass" ? "text-white border-[#00D4AA] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#00D4AA] hover:text-[#00D4AA]"}`}
-                        style={
-                          overlayTab === "glass"
-                            ? {
-                                background:
-                                  "linear-gradient(135deg,#00D4AA,#22D3EE)",
-                              }
-                            : {}
-                        }
-                      >
-                        <i className="ri-contrast-2-line" />
-                        Glass Bundle
-                        {hasGlassBundle && (
-                          <span
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "glass" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-600"}`}
-                          >
-                            OWNED
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setOverlayTab("material")}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "material" ? "text-white border-[#009688] bg-[#009688] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#009688] hover:text-[#009688]"}`}
-                      >
-                        <i className="ri-tv-2-line" />
-                        Material Bundle
-                        {hasMaterialBundle && (
-                          <span
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "material" ? "bg-white/20 text-white" : "bg-teal-50 text-teal-600"}`}
-                          >
-                            OWNED
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setOverlayTab("aero")}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "aero" ? "text-white border-[#0D9488] bg-[#0D9488] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#0D9488] hover:text-[#0D9488]"}`}
-                      >
-                        <i className="ri-cloud-line" />
-                        Aero Light
-                        {hasAeroBundle && (
-                          <span
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "aero" ? "bg-white/20 text-white" : "bg-teal-50 text-teal-600"}`}
-                          >
-                            OWNED
-                          </span>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Basic tab content */}
-                    {overlayTab === "basic" && hasBasicBundle && (
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {INCLUDED_BANNERS_ADMIN.map((b) => (
-                          <BannerCard
-                            key={b.key}
-                            icon={b.icon}
-                            title={b.title}
-                            teamName={(b as any).teamName}
-                            desc={b.desc}
-                            active={activeBanner === b.key}
-                            canActivate={iAmStreaming}
-                            lockedReason="Start streaming first"
-                            onToggle={() => handleBanner(b.key as BannerType)}
-                            previewBg={b.previewBg}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Glass tab content */}
-                    {overlayTab === "glass" && hasGlassBundle && (
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {GLASS_BUNDLE_BANNERS.map((b) => (
-                          <BannerCard
-                            key={b.key}
-                            icon={b.icon}
-                            title={b.title}
-                            teamName={(b as any).teamName}
-                            desc={b.desc}
-                            active={activeBanner === b.key}
-                            canActivate={iAmStreaming}
-                            lockedReason="Start streaming first"
-                            onToggle={() => handleBanner(b.key as BannerType)}
-                            previewBg={b.previewBg}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {/* Material tab content */}
-                    {overlayTab === "material" && hasMaterialBundle && (
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {MATERIAL_BUNDLE_BANNERS.map((b) => (
-                          <BannerCard
-                            key={b.key}
-                            icon={b.icon}
-                            title={b.title}
-                            teamName={(b as any).teamName}
-                            desc={b.desc}
-                            active={activeBanner === b.key}
-                            canActivate={iAmStreaming}
-                            lockedReason="Start streaming first"
-                            onToggle={() => handleBanner(b.key as BannerType)}
-                            previewBg={b.previewBg}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Locked state for Material tab */}
-                    {overlayTab === "material" && !hasMaterialBundle && (
-                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
-                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
-                        <p className="font-bold text-gray-400 text-sm">
-                          Material Bundle not{" "}
-                          {isAdmin ? "purchased" : "available for this match"}
-                        </p>
-                        <p className="text-xs text-gray-300 mt-1">
-                          {isAdmin
-                            ? "Purchase it from the Bundles section below to unlock these flat-design overlays."
-                            : "The match admin has not purchased this bundle."}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Aero tab content */}
-                    {overlayTab === "aero" && hasAeroBundle && (
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {AERO_BUNDLE_BANNERS.map((b) => (
-                          <BannerCard
-                            key={b.key}
-                            icon={b.icon}
-                            title={b.title}
-                            teamName={(b as any).teamName}
-                            desc={b.desc}
-                            active={activeBanner === b.key}
-                            canActivate={iAmStreaming}
-                            lockedReason="Start streaming first"
-                            onToggle={() => handleBanner(b.key as BannerType)}
-                            previewBg={b.previewBg}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Aero Locked State */}
-                    {overlayTab === "aero" && !hasAeroBundle && (
-                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
-                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
-                        <p className="font-bold text-gray-400 text-sm">
-                          Aero Light Bundle not{" "}
-                          {isAdmin ? "purchased" : "available"}
-                        </p>
-                        <p className="text-xs text-gray-300 mt-1">
-                          {isAdmin
-                            ? "Purchase it from the Bundles section to unlock these modular islands."
-                            : "The match admin has not purchased this bundle."}
-                        </p>
-                      </div>
-                    )}
-                    {/* Locked state — selected tab not purchased */}
-                    {overlayTab === "basic" && !hasBasicBundle && (
-                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
-                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
-                        <p className="font-bold text-gray-400 text-sm">
-                          Basic Bundle not purchased
-                        </p>
-                        <p className="text-xs text-gray-300 mt-1">
-                          Purchase it from the Bundles section below to unlock
-                          these overlays.
-                        </p>
-                      </div>
-                    )}
-                    {overlayTab === "glass" && !hasGlassBundle && (
-                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
-                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
-                        <p className="font-bold text-gray-400 text-sm">
-                          Glass Bundle not purchased
-                        </p>
-                        <p className="text-xs text-gray-300 mt-1">
-                          Purchase it from the Bundles section below to unlock
-                          these frosted-glass overlays.
-                        </p>
-                      </div>
-                    )}
+                {/* Bundle overlay tabs */}
+                {(hasBasicBundle ||
+                  hasGlassBundle ||
+                  hasMaterialBundle ||
+                  hasAeroBundle) && (
+                  <div className="space-y-4">
+                    {renderBundleTabs(true)}
+                    {overlayTab === "basic" &&
+                      renderBannerGrid(
+                        INCLUDED_BANNERS_ADMIN,
+                        hasBasicBundle,
+                        "Basic Bundle",
+                        true,
+                      )}
+                    {overlayTab === "glass" &&
+                      renderBannerGrid(
+                        GLASS_BUNDLE_BANNERS,
+                        hasGlassBundle,
+                        "Glass Bundle",
+                        true,
+                      )}
+                    {overlayTab === "material" &&
+                      renderBannerGrid(
+                        MATERIAL_BUNDLE_BANNERS,
+                        hasMaterialBundle,
+                        "Material Bundle",
+                        true,
+                      )}
+                    {overlayTab === "aero" &&
+                      renderBannerGrid(
+                        AERO_BUNDLE_BANNERS,
+                        hasAeroBundle,
+                        "Aero Light Bundle",
+                        true,
+                      )}
                   </div>
                 )}
 
-                {/* ── Bundle purchase section (admin only) ── */}
+                {/* Bundle purchase section */}
                 {bundles.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
                       <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                         <i className="ri-stack-line text-emerald-600 text-sm" />
                       </div>
@@ -2164,7 +2276,7 @@ export default function StreamDashboard() {
                         Per match · ₹99
                       </span>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {bundles.map((bundle) => {
                         const isOwned = (
                           matchSub?.purchasedBundleIds ?? []
@@ -2194,7 +2306,7 @@ export default function StreamDashboard() {
                             <div className="p-4 bg-white">
                               <div className="flex items-start justify-between gap-2 mb-2">
                                 <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <p className="font-black text-gray-900 text-sm">
                                       {bundle.name}
                                     </p>
@@ -2204,7 +2316,6 @@ export default function StreamDashboard() {
                                         setInfoBundleId(bundle.id);
                                       }}
                                       className="flex items-center gap-1 text-[10px] font-bold text-[#1E88E5] hover:text-[#1565C0] transition-colors flex-shrink-0"
-                                      title="See what's included"
                                     >
                                       <i className="ri-information-line text-xs" />
                                       {bundle.bannerKeys?.length ?? 8} overlays
@@ -2245,7 +2356,10 @@ export default function StreamDashboard() {
                                   className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-[#1E88E5] hover:bg-blue-50 transition-all"
                                 >
                                   <i className="ri-list-check-2" />
-                                  What&apos;s included
+                                  <span className="hidden sm:inline">
+                                    What&apos;s included
+                                  </span>
+                                  <span className="sm:hidden">Details</span>
                                 </button>
                                 {!isOwned && !isFreeWithPremium ? (
                                   <button
@@ -2253,11 +2367,11 @@ export default function StreamDashboard() {
                                     className="flex-1 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-md transition-all flex items-center justify-center gap-1.5"
                                   >
                                     <i className="ri-qr-code-line" />
-                                    Buy via UPI — ₹{bundle.price}
+                                    Buy — ₹{bundle.price}
                                   </button>
                                 ) : (
                                   <div className="flex-1 text-center text-xs text-gray-400 py-2">
-                                    Overlays unlocked above ✓
+                                    Unlocked above ✓
                                   </div>
                                 )}
                               </div>
@@ -2271,16 +2385,16 @@ export default function StreamDashboard() {
 
                 {/* Premium Add-ons */}
                 <div>
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center">
                       <i className="ri-vip-crown-line text-amber-600 text-sm" />
                     </div>
                     <p className="font-black text-gray-900">Premium Add-ons</p>
                     <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
-                      Per match purchase
+                      Per match
                     </span>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {templates.map((tpl) => {
                       const isOwned =
                         matchSub?.purchasedTemplateIds.includes(tpl.id) ??
@@ -2315,6 +2429,19 @@ export default function StreamDashboard() {
                                 ON AIR
                               </div>
                             )}
+                            <button
+                              onClick={() =>
+                                openPreview(
+                                  tpl.id,
+                                  tpl.name,
+                                  tpl.previewGradient ?? "",
+                                )
+                              }
+                              className="absolute top-1.5 right-2 flex items-center gap-1 bg-black/40 hover:bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded-full transition-colors backdrop-blur-sm"
+                            >
+                              <i className="ri-eye-line text-xs" />
+                              Preview
+                            </button>
                           </div>
                           <div className="p-4 bg-white">
                             <div className="flex items-start justify-between gap-2 mb-2">
@@ -2392,7 +2519,7 @@ export default function StreamDashboard() {
             {/* ═════ OPERATOR VIEW ═════ */}
             {isOperator && (
               <div className="space-y-6">
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4 flex items-start gap-3">
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 sm:px-5 py-4 flex items-start gap-3">
                   <i className="ri-user-settings-line text-[#1E88E5] text-xl flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold text-[#1565C0] text-sm">
@@ -2405,17 +2532,16 @@ export default function StreamDashboard() {
                   </div>
                 </div>
 
-                {/* Free skeletal overlay when nothing unlocked */}
                 {!hasAnyBundle && (
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3 flex items-center gap-3">
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 sm:px-5 py-3 flex items-center gap-3">
                       <i className="ri-bar-chart-box-line text-gray-400 text-lg flex-shrink-0" />
                       <p className="text-xs text-gray-500">
                         Only the free score overlay is available. The match
-                        admin can purchase bundles to unlock more.
+                        admin can purchase bundles.
                       </p>
                     </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                       <BannerCard
                         icon="ri-bar-chart-2-line"
                         title="Score Overlay"
@@ -2426,102 +2552,41 @@ export default function StreamDashboard() {
                         onToggle={() => handleBanner("tpl-skeletal")}
                         previewBg="linear-gradient(135deg,#374151,#111827)"
                         badge="FREE"
+                        onPreview={() =>
+                          openPreview(
+                            "tpl-skeletal",
+                            "Score Overlay (Free)",
+                            "linear-gradient(135deg,#374151,#111827)",
+                          )
+                        }
                       />
                     </div>
                   </div>
                 )}
 
-                {/* Bundle overlay tabs (Basic + Glass) */}
                 {(hasBasicBundle || hasGlassBundle) && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-4 flex-wrap">
-                      <button
-                        onClick={() => setOverlayTab("basic")}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "basic" ? "bg-[#1E88E5] text-white border-[#1E88E5] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#34B8FF] hover:text-[#1E88E5]"}`}
-                      >
-                        <i className="ri-gift-line" />
-                        Basic Bundle
-                      </button>
-                      <button
-                        onClick={() => setOverlayTab("glass")}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${overlayTab === "glass" ? "text-white border-[#00D4AA] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#00D4AA] hover:text-[#00D4AA]"}`}
-                        style={
-                          overlayTab === "glass"
-                            ? {
-                                background:
-                                  "linear-gradient(135deg,#00D4AA,#22D3EE)",
-                              }
-                            : {}
-                        }
-                      >
-                        <i className="ri-contrast-2-line" />
-                        Glass Bundle
-                      </button>
-                    </div>
-                    {overlayTab === "basic" && hasBasicBundle && (
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {INCLUDED_BANNERS_ADMIN.map((b) => (
-                          <BannerCard
-                            key={b.key}
-                            icon={b.icon}
-                            title={b.title}
-                            teamName={(b as any).teamName}
-                            desc={b.desc}
-                            active={activeBanner === b.key}
-                            canActivate={iAmStreaming}
-                            lockedReason="Start streaming first"
-                            onToggle={() => handleBanner(b.key as BannerType)}
-                            previewBg={b.previewBg}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {overlayTab === "glass" && hasGlassBundle && (
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {GLASS_BUNDLE_BANNERS.map((b) => (
-                          <BannerCard
-                            key={b.key}
-                            icon={b.icon}
-                            title={b.title}
-                            teamName={(b as any).teamName}
-                            desc={b.desc}
-                            active={activeBanner === b.key}
-                            canActivate={iAmStreaming}
-                            lockedReason="Start streaming first"
-                            onToggle={() => handleBanner(b.key as BannerType)}
-                            previewBg={b.previewBg}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {overlayTab === "basic" && !hasBasicBundle && (
-                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
-                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
-                        <p className="font-bold text-gray-400 text-sm">
-                          Basic Bundle not available for this match
-                        </p>
-                        <p className="text-xs text-gray-300 mt-1">
-                          The match admin has not purchased this bundle.
-                        </p>
-                      </div>
-                    )}
-                    {overlayTab === "glass" && !hasGlassBundle && (
-                      <div className="rounded-2xl border border-gray-100 bg-gray-50 px-6 py-8 text-center">
-                        <i className="ri-lock-line text-gray-300 text-3xl block mb-2" />
-                        <p className="font-bold text-gray-400 text-sm">
-                          Glass Bundle not available for this match
-                        </p>
-                        <p className="text-xs text-gray-300 mt-1">
-                          The match admin has not purchased this bundle.
-                        </p>
-                      </div>
-                    )}
+                  <div className="space-y-4">
+                    {renderBundleTabs(false)}
+                    {overlayTab === "basic" &&
+                      renderBannerGrid(
+                        INCLUDED_BANNERS_ADMIN,
+                        hasBasicBundle,
+                        "Basic Bundle",
+                        false,
+                      )}
+                    {overlayTab === "glass" &&
+                      renderBannerGrid(
+                        GLASS_BUNDLE_BANNERS,
+                        hasGlassBundle,
+                        "Glass Bundle",
+                        false,
+                      )}
                   </div>
                 )}
 
                 {purchasedTemplates.length > 0 ? (
                   <div>
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
                       <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center">
                         <i className="ri-vip-crown-line text-amber-600 text-sm" />
                       </div>
@@ -2532,7 +2597,7 @@ export default function StreamDashboard() {
                         Purchased by match admin
                       </span>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {purchasedTemplates.map((tpl) => (
                         <div
                           key={tpl.id}
@@ -2553,6 +2618,19 @@ export default function StreamDashboard() {
                                 ON AIR
                               </div>
                             )}
+                            <button
+                              onClick={() =>
+                                openPreview(
+                                  tpl.id,
+                                  tpl.name,
+                                  tpl.previewGradient ?? "",
+                                )
+                              }
+                              className="absolute top-1.5 right-2 flex items-center gap-1 bg-black/40 hover:bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded-full transition-colors backdrop-blur-sm"
+                            >
+                              <i className="ri-eye-line text-xs" />
+                              Preview
+                            </button>
                           </div>
                           <div className="p-4 bg-white">
                             <div className="flex items-center justify-between gap-2 mb-2">
@@ -2582,8 +2660,8 @@ export default function StreamDashboard() {
                                   ⬡
                                 </span>
                                 <p className="text-[11px] text-amber-700 font-medium leading-tight">
-                                  Persistent overlay — always visible on stream.
-                                  Configure it in the branding panel above.
+                                  Persistent overlay — always visible. Configure
+                                  in the branding panel.
                                 </p>
                               </div>
                             ) : (
@@ -2611,16 +2689,16 @@ export default function StreamDashboard() {
                       No premium overlays for this match
                     </p>
                     <p className="text-xs text-gray-300 mt-1">
-                      The match admin can purchase premium overlay templates
-                      from their streaming dashboard.
+                      The match admin can purchase premium overlay templates.
                     </p>
                   </div>
                 ) : null}
               </div>
             )}
-          </div>
+          </main>
         </div>
       </div>
+
       <link
         href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
         rel="stylesheet"
