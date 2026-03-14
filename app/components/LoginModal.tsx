@@ -1,11 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import Image from 'next/image';
-import { sendOtp, verifyOtp } from '@/lib/api';
+import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+import { sendOtp, verifyOtp } from "@/lib/api";
 
-
-type Step = 'phone' | 'otp' | 'success';
+type Step = "phone" | "otp" | "success";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -13,25 +12,22 @@ interface LoginModalProps {
   onSuccess?: () => void;
 }
 
-const COUNTRY_CODES = [
-  { code: '+91', flag: '🇮🇳', label: 'IN' },
-  { code: '+1', flag: '🇺🇸', label: 'US' },
-  { code: '+44', flag: '🇬🇧', label: 'GB' },
-  { code: '+61', flag: '🇦🇺', label: 'AU' },
-];
-
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 30;
+// Hardcoded for India as requested
+const COUNTRY_DATA = { code: "+91", flag: "🇮🇳", label: "IN" };
 
-export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
-  const [step, setStep] = useState<Step>('phone');
-  const [phone, setPhone] = useState('');
-  const [countryCode, setCountryCode] = useState(COUNTRY_CODES[0]);
-  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+export default function LoginModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: LoginModalProps) {
+  const [step, setStep] = useState<Step>("phone");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
-  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -39,10 +35,10 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setStep('phone');
-      setPhone('');
-      setOtp(Array(OTP_LENGTH).fill(''));
-      setError('');
+      setStep("phone");
+      setPhone("");
+      setOtp(Array(OTP_LENGTH).fill(""));
+      setError("");
       setLoading(false);
       setResendTimer(0);
     }
@@ -53,80 +49,69 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
     if (resendTimer > 0) {
       timerRef.current = setTimeout(() => setResendTimer((t) => t - 1), 1000);
     }
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [resendTimer]);
 
   const startResendTimer = () => setResendTimer(RESEND_SECONDS);
 
   const handleSendOtp = async () => {
     if (phone.length < 10) {
-      setError('Please enter a valid phone number');
+      setError("Please enter a valid 10-digit phone number");
       return;
     }
-    setError('');
+    setError("");
     setLoading(true);
     try {
       const res = await sendOtp(phone);
       if (res.success) {
-        setStep('otp');
+        setStep("otp");
         startResendTimer();
         setTimeout(() => otpRefs.current[0]?.focus(), 100);
       } else {
-        setError(res.message || 'Failed to send OTP. Try again.');
+        setError(res.message || "Failed to send OTP. Try again.");
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError("Network error. Please check your connection.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleVerifyOtpWithValues = async (otpValues: string[]) => {
-    const otpString = otpValues.join('');
+    const otpString = otpValues.join("");
     if (otpString.length < OTP_LENGTH) return;
 
-    setError('');
+    setError("");
     setLoading(true);
     try {
-      // const fullPhone = `${countryCode.code}${phone}`;
       const res = await verifyOtp(phone, otpString);
-      console.log(res)
       if (res.success && res.data) {
-        // Save auth data to localStorage
-        localStorage.setItem('jwtToken', res.data.token);
-        localStorage.setItem('userUUID', res.data.user.id);
-        localStorage.setItem('userName', res.data.user.name);
-        localStorage.setItem('userPhone', res.data.user.phone);
+        localStorage.setItem("jwtToken", res.data.token);
+        localStorage.setItem("userUUID", res.data.user.id);
+        localStorage.setItem("userName", res.data.user.name);
+        localStorage.setItem("userPhone", res.data.user.phone);
 
-        setStep('success');
+        setStep("success");
 
-        // Close modal and refresh the page so the app picks up the new session
         setTimeout(() => {
           if (onSuccess) {
             onSuccess();
           } else {
             onClose();
-            // 🔥 Check if the URL has a ?redirect= parameter
             const searchParams = new URLSearchParams(window.location.search);
-            const redirectUrl = searchParams.get('redirect');
-
-            if (redirectUrl) {
-              // Deep link from email: Send them straight to the stream dashboard
-              window.location.href = redirectUrl;
-            } else {
-              // Normal login from homepage: Send to main dashboard
-              window.location.href = '/dashboard';
-            }
+            const redirectUrl = searchParams.get("redirect");
+            window.location.href = redirectUrl || "/dashboard";
           }
         }, 1500);
-
       } else {
-        setError(res.message || 'Invalid OTP. Please try again.');
-        setOtp(Array(OTP_LENGTH).fill(''));
+        setError(res.message || "Invalid OTP. Please try again.");
+        setOtp(Array(OTP_LENGTH).fill(""));
         otpRefs.current[0]?.focus();
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -135,31 +120,34 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
   const handleVerifyOtp = () => handleVerifyOtpWithValues(otp);
 
   const handleOtpChange = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, '').slice(-1);
+    const digit = value.replace(/\D/g, "").slice(-1);
     const newOtp = [...otp];
     newOtp[index] = digit;
     setOtp(newOtp);
-    setError('');
+    setError("");
+
     if (digit && index < OTP_LENGTH - 1) {
       otpRefs.current[index + 1]?.focus();
     }
-    // Auto-submit when all filled
-    if (digit && index === OTP_LENGTH - 1 && newOtp.every((d) => d !== '')) {
+    if (digit && index === OTP_LENGTH - 1 && newOtp.every((d) => d !== "")) {
       setTimeout(() => handleVerifyOtpWithValues(newOtp), 100);
     }
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
   };
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, OTP_LENGTH);
     if (pasted.length === OTP_LENGTH) {
-      const newOtp = pasted.split('');
+      const newOtp = pasted.split("");
       setOtp(newOtp);
       otpRefs.current[OTP_LENGTH - 1]?.focus();
       setTimeout(() => handleVerifyOtpWithValues(newOtp), 100);
@@ -172,72 +160,70 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+      {/* Modal Container */}
+      <div className="fixed inset-0 z-[101] flex items-end sm:items-center justify-center pointer-events-none sm:p-4">
         <div
-          className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl pointer-events-auto overflow-hidden"
+          className="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl pointer-events-auto overflow-hidden flex flex-col max-h-[90vh] pb-safe mobile-slide-up sm:desktop-zoom-in"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Top gradient strip */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400" />
+          {/* FIX: Moved gradient line INSIDE the overflow-hidden container
+            and used h-1.5 with rounded-t-2xl to match container exactly.
+          */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 rounded-t-2xl" />
 
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors z-10 p-1 rounded-full hover:bg-gray-100"
+            className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 transition-colors z-10 p-1.5 rounded-full hover:bg-gray-100"
+            aria-label="Close modal"
           >
-            <i className="ri-close-line text-xl" />
+            <i className="ri-close-line text-xl leading-none" />
           </button>
 
-          <div className="px-8 pt-8 pb-10">
+          <div className="px-6 sm:px-8 pt-10 pb-8 overflow-y-auto">
             {/* Logo */}
-            <div className="flex items-center gap-3 mb-6">
-              <Image src="/images/iconLogo.png" alt="Cricshub" width={40} height={40} className="rounded-xl" />
-              <Image src="/images/textLogo.png" alt="Cricshub" width={100} height={30} className="object-contain" />
+            <div className="flex items-center gap-3 mb-8">
+              <Image
+                src="/images/iconLogo.png"
+                alt="Cricshub"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
+              <Image
+                src="/images/textLogo.png"
+                alt="Cricshub"
+                width={100}
+                height={30}
+                className="object-contain"
+              />
             </div>
 
             {/* ── STEP: Phone ── */}
-            {step === 'phone' && (
-              <div className="animate-[fadeSlideUp_0.3s_ease_both]">
-                <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back 👋</h2>
-                <p className="text-gray-500 text-sm mb-7">Enter your phone number to continue</p>
+            {step === "phone" && (
+              <div className="animate-fade-in">
+                <h2 className="text-2xl font-bold text-gray-900 mb-1.5">
+                  Welcome back 👋
+                </h2>
+                <p className="text-gray-600 text-sm mb-8">
+                  Enter your phone number to continue
+                </p>
 
-                {/* Phone input */}
-                <div className="mb-5">
+                <div className="mb-6">
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     Phone Number
                   </label>
-                  <div className="flex gap-2">
-                    {/* Country code selector */}
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowCountryDropdown((v) => !v)}
-                        className="flex items-center gap-1.5 h-12 px-3 border border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700"
-                      >
-                        <span>{countryCode.flag}</span>
-                        <span>{countryCode.code}</span>
-                        <i className="ri-arrow-down-s-line text-xs text-gray-400" />
-                      </button>
-                      {showCountryDropdown && (
-                        <div className="absolute top-14 left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden w-36">
-                          {COUNTRY_CODES.map((c) => (
-                            <button
-                              key={c.code}
-                              onClick={() => { setCountryCode(c); setShowCountryDropdown(false); }}
-                              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors"
-                            >
-                              <span>{c.flag}</span>
-                              <span className="text-gray-500">{c.code}</span>
-                              <span className="text-gray-400 text-xs ml-auto">{c.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+
+                  {/* FIX: Simplified Input Group (Removed Dropdown) */}
+                  <div className="relative flex items-center border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-brand-200 focus-within:border-brand-400 transition-all bg-white h-14">
+                    {/* Fixed Country Code Display */}
+                    <div className="flex items-center gap-2 h-full px-4 text-base font-medium text-gray-700 border-r border-gray-200 bg-gray-50 rounded-l-xl">
+                      <span className="text-lg">{COUNTRY_DATA.flag}</span>
+                      <span>{COUNTRY_DATA.code}</span>
                     </div>
 
                     {/* Number input */}
@@ -246,24 +232,36 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
                       inputMode="numeric"
                       placeholder="9876543210"
                       value={phone}
-                      onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError(''); }}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
-                      className="flex-1 h-12 px-4 border border-gray-200 rounded-xl text-gray-900 text-base placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
+                      onChange={(e) => {
+                        setPhone(
+                          e.target.value.replace(/\D/g, "").slice(0, 10),
+                        );
+                        setError("");
+                      }}
+                      onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
+                      className="flex-1 h-full px-4 bg-transparent text-gray-900 text-base placeholder:text-gray-300 focus:outline-none rounded-r-xl w-full font-medium tracking-wide"
+                      disabled={loading}
                     />
                   </div>
-                  {error && <p className="mt-2 text-xs text-red-500 flex items-center gap-1"><i className="ri-error-warning-line" />{error}</p>}
+                  {error && (
+                    <p className="mt-2.5 text-xs text-red-600 flex items-center gap-1.5 animate-fade-in font-medium">
+                      <i className="ri-error-warning-fill text-sm" />
+                      {error}
+                    </p>
+                  )}
                 </div>
 
                 <button
                   onClick={handleSendOtp}
                   disabled={loading || phone.length < 10}
-                  className="w-full h-12 bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold rounded-xl hover:from-red-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-lg hover:shadow-red-200 flex items-center justify-center gap-2"
+                  // FIX: Changed gradient to use brand colors
+                  className="w-full h-14 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md shadow-brand-100 hover:shadow-lg hover:shadow-brand-200 flex items-center justify-center gap-2 text-lg"
                 >
                   {loading ? (
-                    <span className="flex items-center gap-2">
+                    <>
                       <i className="ri-loader-4-line animate-spin" />
-                      Sending OTP...
-                    </span>
+                      Sending code...
+                    </>
                   ) : (
                     <>
                       Get OTP
@@ -272,66 +270,94 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
                   )}
                 </button>
 
-                <p className="text-center text-xs text-gray-400 mt-5">
-                  By continuing, you agree to our{' '}
-                  <a href="/terms-of-service" className="text-red-500 hover:underline">Terms</a> &{' '}
-                  <a href="/privacy-policy" className="text-red-500 hover:underline">Privacy Policy</a>
+                <p className="text-center text-xs text-gray-500 mt-7 line-height-relaxed">
+                  By continuing, you agree to Cricshub's{" "}
+                  <a
+                    href="/terms-of-service"
+                    className="text-brand-600 hover:text-brand-700 font-medium underline decoration-brand-200 transition-colors"
+                  >
+                    Terms
+                  </a>{" "}
+                  &{" "}
+                  <a
+                    href="/privacy-policy"
+                    className="text-brand-600 hover:text-brand-700 font-medium underline decoration-brand-200 transition-colors"
+                  >
+                    Privacy Policy
+                  </a>
                 </p>
               </div>
             )}
 
             {/* ── STEP: OTP ── */}
-            {step === 'otp' && (
-              <div className="animate-[fadeSlideUp_0.3s_ease_both]">
+            {step === "otp" && (
+              <div className="animate-fade-in">
                 <button
-                  onClick={() => { setStep('phone'); setError(''); setOtp(Array(OTP_LENGTH).fill('')); }}
-                  className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-6"
+                  onClick={() => {
+                    setStep("phone");
+                    setError("");
+                    setOtp(Array(OTP_LENGTH).fill(""));
+                  }}
+                  className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-brand-700 transition-colors mb-7 font-medium"
                 >
                   <i className="ri-arrow-left-line" />
-                  Back
+                  Change phone number
                 </button>
 
-                <h2 className="text-2xl font-bold text-gray-900 mb-1">Check your phone</h2>
-                <p className="text-gray-500 text-sm mb-7">
-                  We sent a 6-digit code to{' '}
-                  <span className="font-semibold text-gray-700">{countryCode.code} {phone}</span>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1.5">
+                  Verify OTP
+                </h2>
+                <p className="text-gray-600 text-sm mb-9">
+                  Enter 6-digit code sent to{" "}
+                  <span className="font-semibold text-gray-800 tracking-wide">
+                    {COUNTRY_DATA.code} {phone}
+                  </span>
                 </p>
 
-                {/* OTP boxes */}
-                <div className="flex gap-3 justify-center mb-5" onPaste={handleOtpPaste}>
+                {/* FIX: Cleaner, less round OTP boxes */}
+                <div
+                  className="flex gap-2 sm:gap-3 justify-between mb-7"
+                  onPaste={handleOtpPaste}
+                >
                   {otp.map((digit, index) => (
                     <input
                       key={index}
-                      ref={(el) => { otpRefs.current[index] = el; }}
+                      ref={(el) => {
+                        otpRefs.current[index] = el;
+                      }}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      className={`w-12 h-14 text-center text-xl font-bold rounded-xl border-2 transition-all duration-200 focus:outline-none
-                        ${digit ? 'border-red-400 bg-red-50 text-red-600' : 'border-gray-200 bg-gray-50 text-gray-900'}
-                        focus:border-red-400 focus:bg-red-50 focus:ring-2 focus:ring-red-100`}
+                      disabled={loading}
+                      // Changed rounding to rounded-lg, focus to brand color
+                      className={`w-full max-w-[3rem] aspect-[4/5] sm:aspect-square text-center text-2xl font-bold rounded-lg border-2 transition-all duration-150 focus:outline-none
+                        ${digit ? "border-brand-300 bg-brand-50 text-brand-700" : "border-gray-200 bg-gray-50 text-gray-900"}
+                        focus:border-brand-400 focus:bg-white focus:ring-4 focus:ring-brand-100/50 disabled:opacity-50`}
                     />
                   ))}
                 </div>
 
                 {error && (
-                  <p className="text-center text-xs text-red-500 flex items-center justify-center gap-1 mb-3">
-                    <i className="ri-error-warning-line" />{error}
+                  <p className="text-center text-sm text-red-600 flex items-center justify-center gap-1.5 mb-5 animate-fade-in font-medium">
+                    <i className="ri-error-warning-fill text-base" />
+                    {error}
                   </p>
                 )}
 
                 <button
                   onClick={handleVerifyOtp}
-                  disabled={loading || otp.some((d) => d === '')}
-                  className="w-full h-12 bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold rounded-xl hover:from-red-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-lg hover:shadow-red-200 flex items-center justify-center gap-2"
+                  disabled={loading || otp.some((d) => d === "")}
+                  // FIX: Changed gradient to use brand colors
+                  className="w-full h-14 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md shadow-brand-100 hover:shadow-lg hover:shadow-brand-200 flex items-center justify-center gap-2 text-lg"
                 >
                   {loading ? (
-                    <span className="flex items-center gap-2">
+                    <>
                       <i className="ri-loader-4-line animate-spin" />
                       Verifying...
-                    </span>
+                    </>
                   ) : (
                     <>
                       Verify & Continue
@@ -341,10 +367,13 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
                 </button>
 
                 {/* Resend */}
-                <div className="text-center mt-5">
+                <div className="text-center mt-7 h-6">
                   {resendTimer > 0 ? (
-                    <p className="text-sm text-gray-400">
-                      Resend OTP in <span className="font-semibold text-gray-600">{resendTimer}s</span>
+                    <p className="text-sm text-gray-500 font-medium">
+                      Resend code in{" "}
+                      <span className="font-bold text-gray-800 tabular-nums">
+                        {resendTimer}s
+                      </span>
                     </p>
                   ) : (
                     <button
@@ -352,11 +381,11 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
                         setLoading(true);
                         await sendOtp(phone);
                         setLoading(false);
-                        setOtp(Array(OTP_LENGTH).fill(''));
+                        setOtp(Array(OTP_LENGTH).fill(""));
                         startResendTimer();
                         otpRefs.current[0]?.focus();
                       }}
-                      className="text-sm text-red-500 hover:text-red-600 font-semibold transition-colors"
+                      className="text-sm text-brand-600 hover:text-brand-700 font-semibold transition-colors underline decoration-brand-200"
                     >
                       Resend OTP
                     </button>
@@ -366,13 +395,18 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
             )}
 
             {/* ── STEP: Success ── */}
-            {step === 'success' && (
-              <div className="animate-[fadeSlideUp_0.3s_ease_both] text-center py-6">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-green-200">
-                  <i className="ri-check-line text-4xl text-white" />
+            {step === "success" && (
+              <div className="animate-fade-in text-center py-10">
+                {/* FIX: Changed success gradient to be softer green */}
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto mb-7 shadow-xl shadow-emerald-100 animate-[scaleUp_0.4s_cubic-bezier(0.34,1.56,0.64,1)]">
+                  <i className="ri-check-line text-5xl text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">You're in! 🎉</h2>
-                <p className="text-gray-500 text-sm">Welcome to Cricshub. Redirecting you...</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Login Successful! 🎉
+                </h2>
+                <p className="text-gray-600 font-medium">
+                  Redirecting you to dashboard...
+                </p>
               </div>
             )}
           </div>
@@ -380,9 +414,65 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
       </div>
 
       <style jsx>{`
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
+        /* Mobile: Slide up from bottom */
+        .mobile-slide-up {
+          animation: slideUpMobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        /* Desktop: Zoom/fade in from center */
+        @media (min-width: 640px) {
+          .sm\\:desktop-zoom-in {
+            animation: zoomInDesktop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+        }
+
+        .animate-fade-in {
+          animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes slideUpMobile {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes zoomInDesktop {
+          from {
+            transform: scale(0.95);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes scaleUp {
+          0% {
+            transform: scale(0.5);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+        /* Helper for iPhone notch/safe areas */
+        .pb-safe {
+          padding-bottom: env(safe-area-inset-bottom);
         }
       `}</style>
     </>
