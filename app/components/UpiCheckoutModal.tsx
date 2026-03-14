@@ -62,8 +62,7 @@ export default function UpiCheckoutModal({
   const [step, setStep] = useState<CheckoutStep>("loading");
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [upiId, setUpiId] = useState("");
-  const [amountWithGst, setAmountWithGst] = useState(0);
-  const [baseAmount, setBaseAmount] = useState(0);
+  const [amount, setAmount] = useState(0);
   const [utrInput, setUtrInput] = useState("");
   const [utrError, setUtrError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -100,7 +99,7 @@ export default function UpiCheckoutModal({
 
         if (pending) {
           setPaymentId(pending.paymentId);
-          setAmountWithGst(pending.amount);
+          setAmount(pending.amount);
           if (pending.utrNumber) setExistingUtr(pending.utrNumber);
 
           // Always load QR info — needed if user goes back from UTR screen
@@ -136,8 +135,8 @@ export default function UpiCheckoutModal({
       throw new Error("No payment target provided.");
     }
     setUpiId(data.upiId);
-    setAmountWithGst(data.amountWithGst);
-    setBaseAmount(data.amount);
+    // Backend no longer applies GST — amountWithGst === amount, use either field
+    setAmount(data.amountWithGst);
     const qr = await QRCode.toDataURL(data.upiString, {
       width: 240,
       margin: 2,
@@ -237,14 +236,14 @@ export default function UpiCheckoutModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const gstAmount = Math.round(baseAmount * 0.18);
   const title = subscriptionPlan
     ? subscriptionPlan === "MONTHLY"
       ? "Monthly Subscription"
       : "6-Month Bundle"
     : bundlePayload
-    ? bundlePayload.bundleName
-    : (addonPayload?.templateName ?? "Premium Overlay");
+      ? bundlePayload.bundleName
+      : (addonPayload?.templateName ?? "Premium Overlay");
+
   const canDismiss = [
     "qr",
     "error",
@@ -254,24 +253,24 @@ export default function UpiCheckoutModal({
   ].includes(step);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={canDismiss ? onClose : undefined}
       />
 
       <div
-        className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
-        style={{ animation: "scaleIn .25s cubic-bezier(.16,1,.3,1)" }}
+        className="relative w-full sm:max-w-md bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden max-h-[95dvh] flex flex-col"
+        style={{ animation: "slideUp .3s cubic-bezier(.16,1,.3,1)" }}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] px-6 py-5 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] px-5 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <i className="ri-qr-code-line text-white text-xl" />
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+              <i className="ri-qr-code-line text-white text-lg" />
             </div>
             <div>
-              <p className="text-white font-black text-base leading-none">
+              <p className="text-white font-black text-sm leading-none">
                 Pay via UPI
               </p>
               <p className="text-white/70 text-xs mt-0.5">{title}</p>
@@ -287,7 +286,8 @@ export default function UpiCheckoutModal({
           )}
         </div>
 
-        <div className="px-6 py-6">
+        {/* Scrollable body */}
+        <div className="px-5 py-5 overflow-y-auto flex-1">
           {/* LOADING */}
           {step === "loading" && (
             <div className="flex flex-col items-center gap-4 py-10">
@@ -298,33 +298,23 @@ export default function UpiCheckoutModal({
 
           {/* QR */}
           {step === "qr" && (
-            <div className="space-y-5">
-              <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between">
-                <div className="text-sm text-gray-500 space-y-0.5">
-                  <p>
-                    Base:{" "}
-                    <span className="font-semibold text-gray-800">
-                      {fmt(baseAmount)}
-                    </span>
+            <div className="space-y-4">
+              {/* Single flat amount — no GST breakdown */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
+                    Amount to Pay
                   </p>
-                  <p>
-                    GST (18%):{" "}
-                    <span className="font-semibold text-gray-800">
-                      {fmt(gstAmount)}
-                    </span>
+                  <p className="text-3xl font-black text-gray-900 mt-0.5">
+                    {fmt(amount)}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider">
-                    Total
-                  </p>
-                  <p className="text-3xl font-black text-gray-900">
-                    {fmt(amountWithGst)}
-                  </p>
+                <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <i className="ri-secure-payment-line text-2xl text-[#1E88E5]" />
                 </div>
               </div>
 
-              <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-col items-center gap-2">
                 <div className="bg-white border-2 border-gray-100 rounded-2xl p-3 shadow-sm">
                   {qrDataUrl && (
                     <img
@@ -353,7 +343,11 @@ export default function UpiCheckoutModal({
                 </div>
                 <button
                   onClick={copyUpiId}
-                  className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${copied ? "bg-green-500 text-white" : "bg-white border border-blue-200 text-[#1E88E5] hover:bg-blue-50"}`}
+                  className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                    copied
+                      ? "bg-green-500 text-white"
+                      : "bg-white border border-blue-200 text-[#1E88E5] hover:bg-blue-50"
+                  }`}
                 >
                   {copied ? "Copied!" : "Copy"}
                 </button>
@@ -362,8 +356,7 @@ export default function UpiCheckoutModal({
               <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-xs text-amber-800 space-y-1">
                 <p className="font-bold">Instructions:</p>
                 <p>
-                  1. Pay <strong>{fmt(amountWithGst)}</strong> to the UPI ID
-                  above
+                  1. Pay <strong>{fmt(amount)}</strong> to the UPI ID above
                 </p>
                 <p>
                   2. Note the{" "}
@@ -385,9 +378,9 @@ export default function UpiCheckoutModal({
           {/* UTR ENTRY — PENDING_UTR state, DB record exists */}
           {step === "utr" &&
             (!showCancelConfirm ? (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto mb-3">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto mb-3">
                     <i className="ri-hashtag text-3xl text-[#1E88E5]" />
                   </div>
                   <p className="font-black text-gray-900">Enter UTR Number</p>
@@ -408,7 +401,11 @@ export default function UpiCheckoutModal({
                       setUtrError("");
                     }}
                     placeholder="e.g. 425123456789"
-                    className={`w-full h-12 rounded-xl border-2 px-4 font-mono text-base transition-colors outline-none ${utrError ? "border-red-300 bg-red-50" : "border-gray-200 bg-gray-50 focus:border-[#34B8FF] focus:bg-white"}`}
+                    className={`w-full h-12 rounded-xl border-2 px-4 font-mono text-base transition-colors outline-none ${
+                      utrError
+                        ? "border-red-300 bg-red-50"
+                        : "border-gray-200 bg-gray-50 focus:border-[#34B8FF] focus:bg-white"
+                    }`}
                     autoFocus
                     onKeyDown={(e) => e.key === "Enter" && handleSubmitUtr()}
                   />
@@ -427,7 +424,7 @@ export default function UpiCheckoutModal({
                 <div className="bg-gray-50 rounded-xl px-4 py-3 flex justify-between text-sm">
                   <span className="text-gray-500">Amount paid</span>
                   <span className="font-black text-gray-900">
-                    {fmt(amountWithGst)}
+                    {fmt(amount)}
                   </span>
                 </div>
 
@@ -620,8 +617,8 @@ export default function UpiCheckoutModal({
                   {subscriptionPlan
                     ? "Your subscription is now active."
                     : bundlePayload
-                    ? `${bundlePayload.bundleName} has been unlocked for this match.`
-                    : `${addonPayload?.templateName} overlay has been unlocked.`}
+                      ? `${bundlePayload.bundleName} has been unlocked for this match.`
+                      : `${addonPayload?.templateName} overlay has been unlocked.`}
                 </p>
               </div>
               <p className="text-xs text-gray-400">
@@ -698,14 +695,26 @@ export default function UpiCheckoutModal({
       </div>
 
       <style jsx global>{`
-        @keyframes scaleIn {
+        @keyframes slideUp {
           from {
             opacity: 0;
-            transform: scale(0.92);
+            transform: translateY(40px) scale(0.97);
           }
           to {
             opacity: 1;
-            transform: scale(1);
+            transform: translateY(0) scale(1);
+          }
+        }
+        @media (min-width: 640px) {
+          @keyframes slideUp {
+            from {
+              opacity: 0;
+              transform: scale(0.92);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
           }
         }
       `}</style>
