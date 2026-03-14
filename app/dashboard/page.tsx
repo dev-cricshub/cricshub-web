@@ -655,6 +655,22 @@ export default function DashboardPage() {
     };
   }, [user, loadMatches]);
 
+  // Sort helper — normalises matchDate/matchTime (array or string) to a timestamp
+  const toTs = (m: MatchWithRole): number => {
+    const dateArr = m.matchDate as any;
+    const d = Array.isArray(dateArr)
+      ? new Date(dateArr[0], dateArr[1] - 1, dateArr[2])
+      : new Date(dateArr as string);
+    if (m.matchTime) {
+      const t = m.matchTime as any;
+      const [h, min] = Array.isArray(t)
+        ? [t[0], t[1] ?? 0]
+        : (t as string).split(":").map(Number);
+      d.setHours(h, min);
+    }
+    return d.getTime();
+  };
+
   // Derived match lists
   const allMatches = matches;
   const adminMatches = matches.filter((m) => m.role === "admin");
@@ -667,9 +683,16 @@ export default function DashboardPage() {
         ? adminMatches
         : operatorMatches;
 
-  const liveMatches = displayed.filter((m) => m.status === "Live");
-  const upcomingMatches = displayed.filter((m) => m.status === "Upcoming");
-  const pastMatches = displayed.filter((m) => m.status === "Completed");
+  // Live: most recently started first; Upcoming: soonest first; Past: most recent first
+  const liveMatches = displayed
+    .filter((m) => m.status === "Live")
+    .sort((a, b) => toTs(b) - toTs(a));
+  const upcomingMatches = displayed
+    .filter((m) => m.status === "Upcoming")
+    .sort((a, b) => toTs(a) - toTs(b));
+  const pastMatches = displayed
+    .filter((m) => m.status === "Completed")
+    .sort((a, b) => toTs(b) - toTs(a));
 
   const adminLive = matches.filter(
     (m) => m.role === "admin" && m.status === "Live",
