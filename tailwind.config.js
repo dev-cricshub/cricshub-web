@@ -12,7 +12,7 @@ module.exports = {
           200: '#bae0fd',
           300: '#7cc8fc',
           400: '#36aff9',
-          500: '#007bff', // Main brand color
+          500: '#1E88E5', // Main brand color
           600: '#0062cc',
           700: '#004da3',
           800: '#003675',
