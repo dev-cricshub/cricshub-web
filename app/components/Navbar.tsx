@@ -39,12 +39,15 @@ export default function Navbar() {
     const handleOpenModal = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.redirect) {
-        // Silently add the redirect parameter to the URL without reloading
-        window.history.replaceState(
-          {},
-          "",
-          `/?redirect=${customEvent.detail.redirect}`,
-        );
+        const redirect = customEvent.detail.redirect as string;
+        // Only allow relative paths — blocks open redirect injection
+        if (redirect.startsWith("/") && !redirect.startsWith("//")) {
+          window.history.replaceState(
+            {},
+            "",
+            `/?redirect=${encodeURIComponent(redirect)}`,
+          );
+        }
       }
       setLoginOpen(true);
     };
@@ -54,23 +57,27 @@ export default function Navbar() {
   }, []);
 
   const checkAuthStatus = () => {
-    const token = localStorage.getItem("jwtToken");
+    // JWT is now in an httpOnly cookie — not readable from JS
+    // Use userName in localStorage as the login state indicator
     const name = localStorage.getItem("userName");
-    const phone = localStorage.getItem("userPhone");
-
-    if (token && name) {
+    if (name) {
       setIsLoggedIn(true);
-      setUser({ name, phone: phone || "" });
+      setUser({ name, phone: "" });
     }
   };
 
   // 4. Complete Logout Logic
-  const handleLogout = () => {
-    localStorage.removeItem("jwtToken");
+  const handleLogout = async () => {
+    // Tell backend to clear the httpOnly jwt cookie
+    await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"}/api/v1/auth/logout`,
+      { method: "POST", credentials: "include" },
+    ).catch(() => {}); // best-effort — clear local state regardless
+
     localStorage.removeItem("userUUID");
     localStorage.removeItem("userName");
-    localStorage.removeItem("userPhone");
     localStorage.removeItem("hasSubscription");
+    document.cookie = "sessionActive=; path=/; Max-Age=0";
 
     setIsLoggedIn(false);
     setUser(null);

@@ -1,25 +1,46 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
-function authHeaders() {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("jwtToken") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+// Central fetch wrapper — always sends cookies, redirects to login on 401, adds fallback header
+async function apiFetch(url: string, options?: RequestInit): Promise<Response> {
+  const headers = new Headers(options?.headers || {});
+
+  if (typeof window !== "undefined") {
+    // UPDATED: Now looks for "jwtToken" to match your login function
+    const token = localStorage.getItem("jwtToken"); 
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
+  const res = await fetch(url, { 
+    ...options, 
+    credentials: "include",
+    headers 
+  });
+
+  if (res.status === 401 && typeof window !== "undefined") {
+    // UPDATED: Now removes "jwtToken" on logout/401
+    ["userUUID", "userName", "hasSubscription", "jwtToken"].forEach(
+      (k) => localStorage.removeItem(k),
+    );
+    const returnPath = encodeURIComponent(window.location.pathname);
+    window.location.href = `/?login=true&redirect=${returnPath}`;
+  }
+  
+  return res;
 }
 
-function authToken() {
-  return typeof window !== "undefined" ? localStorage.getItem("jwtToken") : null;
+// Cookie-based auth — no Authorization header needed for web
+// Mobile app sends Bearer token directly; web relies on httpOnly cookie
+function authHeaders() {
+  return { "Content-Type": "application/json" };
 }
 
 export async function uploadFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
-  const token = authToken();
-  const res = await fetch(`${API_BASE}/api/v1/upload`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/upload`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
   if (!res.ok) throw new Error("File upload failed");
@@ -33,7 +54,7 @@ export async function uploadFile(file: File): Promise<string> {
 
 /** Fetch all matches, filter client-side to those where user is creator or operator */
 export async function fetchUserMatches(userId: string) {
-  const res = await fetch(`${API_BASE}/api/v1/matches`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/matches`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -48,7 +69,7 @@ export async function fetchUserMatches(userId: string) {
 
 /** Fetch single match details (used by stream dashboard) */
 export async function fetchMatchById(matchId: string) {
-  const res = await fetch(`${API_BASE}/api/v1/matches/${matchId}`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/matches/${matchId}`, {
     headers: authHeaders(),
   });
   return res.json();
@@ -56,7 +77,7 @@ export async function fetchMatchById(matchId: string) {
 
 /** Fetch live match state for score overlay */
 export async function fetchMatchState(matchId: string) {
-  const res = await fetch(`${API_BASE}/api/v1/matches/matchstate/${matchId}`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/matches/matchstate/${matchId}`, {
     headers: authHeaders(),
   });
   return res.json();
@@ -67,7 +88,7 @@ export async function fetchMatchState(matchId: string) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function fetchStreamSession(matchId: string) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/session`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/session`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -79,7 +100,7 @@ export async function claimStreamLock(
   userId: string,
   userName: string,
 ) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/claim`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/claim`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ userId, userName }),
@@ -112,7 +133,7 @@ export async function streamHeartbeat(matchId: string, userId: string) {
 
 /** OBS page polls this every 2s OR subscribes via WebSocket /topic/stream/{matchId} */
 export async function fetchStreamState(matchId: string) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/state`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/state`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -125,7 +146,7 @@ export async function pushActiveBanner(
   banner: string,
   templateId: string | null,
 ) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/banner`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/banner`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ userId, banner, templateId }),
@@ -139,7 +160,7 @@ export async function pushActiveBanner(
 
 /** Used by stream dashboard (both admin + operator) */
 export async function fetchMatchSubscription(matchId: string) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/subscription`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/subscription`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -148,7 +169,7 @@ export async function fetchMatchSubscription(matchId: string) {
 
 /** Used by dashboard navbar + pricing page */
 export async function fetchUserSubscription(userId: string) {
-  const res = await fetch(`${API_BASE}/api/v1/subscriptions/user/${userId}`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/subscriptions/user/${userId}`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -157,7 +178,7 @@ export async function fetchUserSubscription(userId: string) {
 
 /** Used by pricing page /my endpoint for full history */
 export async function fetchMySubscription(userId: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/subscriptions/my?userId=${userId}`,
     { headers: authHeaders() },
   );
@@ -174,7 +195,7 @@ export async function createSubscriptionOrder(
   userId: string,
   plan: "MONTHLY" | "SIX_MONTH",
 ) {
-  const res = await fetch(`${API_BASE}/api/v1/subscriptions/order`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/subscriptions/order`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ userId, plan }),
@@ -191,7 +212,7 @@ export async function verifySubscriptionPayment(payload: {
   razorpaySignature: string;
   plan: string;
 }) {
-  const res = await fetch(`${API_BASE}/api/v1/subscriptions/verify`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/subscriptions/verify`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload),
@@ -215,7 +236,7 @@ export async function createAddonOrder(
     amount: number;
   },
 ) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/addon/order`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/addon/order`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload),
@@ -235,7 +256,7 @@ export async function verifyAddonPayment(
     templateId: string;
   },
 ) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/addon/verify`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/addon/verify`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload),
@@ -284,7 +305,7 @@ export async function verifyAddonPayment(
 
 export async function sendOtp(phone: string) {
   // Spring Boot expects @RequestParam, so we append to the URL
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/auth/send?phone=${encodeURIComponent(phone)}`,
     {
       method: "POST",
@@ -295,7 +316,7 @@ export async function sendOtp(phone: string) {
 }
 
 export async function verifyOtp(phone: string, otp: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/auth/verify?phone=${encodeURIComponent(phone)}&otp=${encodeURIComponent(otp)}`,
     {
       method: "POST",
@@ -311,7 +332,7 @@ export async function fetchTransactionHistory() {
   if (!userId) return [];
 
   // Call our new unified subscription/addon billing endpoint
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/subscriptions/billing-history?userId=${userId}`,
     {
       headers: authHeaders(),
@@ -326,7 +347,7 @@ export async function fetchTransactionHistory() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function fetchCurrentUserProfile() {
-  const res = await fetch(`${API_BASE}/api/v1/profile/current`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/profile/current`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -343,16 +364,10 @@ export async function updateUserProfile(data: {
   if (data.name) formData.append("name", data.name);
   if (data.email) formData.append("email", data.email);
 
-  // We need a specific header setup for FormData (do NOT set Content-Type to application/json)
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("jwtToken") : null;
-  const headers: HeadersInit = token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
-
-  const res = await fetch(`${API_BASE}/api/v1/profile/update`, {
+  // No Content-Type header — browser sets multipart/form-data boundary automatically
+  // credentials:"include" is handled by apiFetch so the jwt cookie is sent
+  const res = await apiFetch(`${API_BASE}/api/v1/profile/update`, {
     method: "PUT",
-    headers: headers, // Browser automatically sets multipart/form-data boundary
     body: formData,
   });
 
@@ -360,7 +375,7 @@ export async function updateUserProfile(data: {
 }
 
 export async function fetchAvailableTemplates() {
-  const res = await fetch(`${API_BASE}/api/v1/stream/templates`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/templates`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -368,7 +383,7 @@ export async function fetchAvailableTemplates() {
 }
 
 export async function fetchAvailableBundles() {
-  const res = await fetch(`${API_BASE}/api/v1/stream/bundles`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/bundles`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -384,7 +399,7 @@ export async function createBundleOrder(
     amount: number;
   },
 ) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/bundle/order`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/bundle/order`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload),
@@ -403,7 +418,7 @@ export async function verifyBundlePayment(
     bundleId: string;
   },
 ) {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/bundle/verify`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/bundle/verify`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload),
@@ -418,7 +433,7 @@ export async function verifyBundlePayment(
 
 /** Get UPI QR info — NO DB write. Call when modal opens. */
 export async function getSubscriptionQrInfo(plan: "MONTHLY" | "SIX_MONTH") {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/subscription/qr-info?plan=${plan}`,
     { headers: authHeaders() }
   );
@@ -428,7 +443,7 @@ export async function getSubscriptionQrInfo(plan: "MONTHLY" | "SIX_MONTH") {
 }
 
 export async function getAddonQrInfo(amount: number) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/addon/qr-info?amount=${amount}`,
     { headers: authHeaders() }
   );
@@ -443,7 +458,7 @@ export async function getAddonQrInfo(amount: number) {
  * Idempotent — returns existing record if already pending.
  */
 export async function createSubscriptionIntent(userId: string, plan: "MONTHLY" | "SIX_MONTH") {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/subscription/intent`,
     { method: "POST", headers: authHeaders(), body: JSON.stringify({ userId, plan }) }
   );
@@ -456,7 +471,7 @@ export async function createAddonIntent(
   matchId: string,
   payload: { userId: string; templateId: string; templateName: string; tier: string; amount: number }
 ) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/addon/intent`,
     { method: "POST", headers: authHeaders(), body: JSON.stringify({ matchId, ...payload }) }
   );
@@ -469,7 +484,7 @@ export async function createAddonIntent(
  * Submit UTR — transitions PENDING_UTR → PENDING_VERIFICATION, emails owner.
  */
 export async function submitUtr(paymentId: string, utrNumber: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/${paymentId}/submit-utr`,
     { method: "POST", headers: authHeaders(), body: JSON.stringify({ utrNumber }) }
   );
@@ -480,7 +495,7 @@ export async function submitUtr(paymentId: string, utrNumber: string) {
 
 /** Poll payment status every ~8s after UTR submission. */
 export async function pollManualPaymentStatus(paymentId: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/${paymentId}/status`,
     { headers: authHeaders() }
   );
@@ -501,7 +516,7 @@ export async function pollManualPaymentStatus(paymentId: string) {
 
 /** Check for any pending payment on checkout open — returns PENDING_UTR or PENDING_VERIFICATION record. */
 export async function checkPendingSubscription(userId: string, plan: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/subscription/pending?userId=${userId}&plan=${plan}`,
     { headers: authHeaders() }
   );
@@ -511,7 +526,7 @@ export async function checkPendingSubscription(userId: string, plan: string) {
 }
 
 export async function checkPendingAddon(userId: string, matchId: string, templateId: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/addon/pending?userId=${userId}&matchId=${matchId}&templateId=${templateId}`,
     { headers: authHeaders() }
   );
@@ -521,7 +536,7 @@ export async function checkPendingAddon(userId: string, matchId: string, templat
 }
 
 export async function getBundleQrInfo(amount: number) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/bundle/qr-info?amount=${amount}`,
     { headers: authHeaders() }
   );
@@ -537,7 +552,7 @@ export async function createBundleManualIntent(payload: {
   bundleName: string;
   amount: number;
 }) {
-  const res = await fetch(`${API_BASE}/api/v1/payments/manual/bundle/intent`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/payments/manual/bundle/intent`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload),
@@ -551,7 +566,7 @@ export async function unlockBundleWithSubscription(
   matchId: string,
   payload: { userId: string; bundleId: string; bundleName: string },
 ) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/stream/${matchId}/bundle/unlock`,
     {
       method: "POST",
@@ -565,7 +580,7 @@ export async function unlockBundleWithSubscription(
 }
 
 export async function checkPendingBundle(userId: string, matchId: string, bundleId: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/bundle/pending?userId=${userId}&matchId=${matchId}&bundleId=${bundleId}`,
     { headers: authHeaders() }
   );
@@ -576,7 +591,7 @@ export async function checkPendingBundle(userId: string, matchId: string, bundle
 
 /** Cancel a pending payment — user chose to start over. */
 export async function cancelManualPayment(paymentId: string, userId: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/v1/payments/manual/${paymentId}/cancel`,
     { method: "POST", headers: authHeaders(), body: JSON.stringify({ userId }) }
   );
@@ -601,10 +616,8 @@ export async function uploadMediaAsset(file: File, userId: string): Promise<Medi
   const formData = new FormData();
   formData.append("file", file);
   formData.append("userId", userId);
-  const token = authToken();
-  const res = await fetch(`${API_BASE}/api/v1/media/upload`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/media/upload`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
   const json = await res.json();
@@ -613,7 +626,7 @@ export async function uploadMediaAsset(file: File, userId: string): Promise<Medi
 }
 
 export async function fetchMediaLibrary(userId: string): Promise<MediaAsset[]> {
-  const res = await fetch(`${API_BASE}/api/v1/media/library?userId=${userId}`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/media/library?userId=${userId}`, {
     headers: authHeaders(),
   });
   const json = await res.json();
@@ -621,7 +634,7 @@ export async function fetchMediaLibrary(userId: string): Promise<MediaAsset[]> {
 }
 
 export async function deleteMediaAsset(id: string, userId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/v1/media/${id}?userId=${userId}`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/media/${id}?userId=${userId}`, {
     method: "DELETE",
     headers: authHeaders(),
   });
@@ -630,13 +643,13 @@ export async function deleteMediaAsset(id: string, userId: string): Promise<void
 }
 
 export async function fetchMatchPlaylist(matchId: string): Promise<MediaAsset[]> {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/playlist`);
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/playlist`);
   const json = await res.json();
   return (json.data ?? []) as MediaAsset[];
 }
 
 export async function saveMatchPlaylist(matchId: string, userId: string, assets: MediaAsset[]): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/api/v1/stream/${matchId}/playlist`, {
+  const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/playlist`, {
     method: "PUT",
     headers: authHeaders(),
     body: JSON.stringify({ userId, assets }),

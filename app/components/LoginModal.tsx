@@ -88,10 +88,13 @@ export default function LoginModal({
     try {
       const res = await verifyOtp(phone, otpString);
       if (res.success && res.data) {
+        // JWT stored for Authorization header (fallback for cross-origin/local dev)
+        // httpOnly cookie is also set by the backend for same-site production security
         localStorage.setItem("jwtToken", res.data.token);
         localStorage.setItem("userUUID", res.data.user.id);
         localStorage.setItem("userName", res.data.user.name);
-        localStorage.setItem("userPhone", res.data.user.phone);
+        // sessionActive: non-httpOnly, used only by Next.js middleware to gate routes
+        document.cookie = "sessionActive=1; path=/; SameSite=Lax; Max-Age=18000";
 
         setStep("success");
 
@@ -101,8 +104,13 @@ export default function LoginModal({
           } else {
             onClose();
             const searchParams = new URLSearchParams(window.location.search);
-            const redirectUrl = searchParams.get("redirect");
-            window.location.href = redirectUrl || "/dashboard";
+            const redirectParam = searchParams.get("redirect");
+            // Only allow relative redirects — blocks open redirect attacks
+            const safeRedirect =
+              redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+                ? redirectParam
+                : "/dashboard";
+            window.location.href = safeRedirect;
           }
         }, 1500);
       } else {

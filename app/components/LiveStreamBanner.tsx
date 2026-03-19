@@ -7,8 +7,8 @@ export default function LiveStreamBanner() {
   const router = useRouter();
 
   const handleCtaClick = () => {
-    const token = localStorage.getItem("jwtToken");
-    if (token) {
+    const isLoggedIn = !!localStorage.getItem("userName");
+    if (isLoggedIn) {
       router.push("/dashboard");
     } else {
       // User is not logged in, trigger modal and pass the intended destination
