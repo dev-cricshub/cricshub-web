@@ -765,11 +765,15 @@ export default function DashboardPage() {
 
             {/* Logout */}
             <button
-              onClick={() => {
+              onClick={async () => {
+                await fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"}/api/v1/auth/logout`,
+                  { method: "POST", credentials: "include" },
+                ).catch(() => {});
                 localStorage.removeItem("userUUID");
                 localStorage.removeItem("userName");
-                localStorage.removeItem("userPhone");
-                localStorage.removeItem("jwtToken");
+                localStorage.removeItem("hasSubscription");
+                document.cookie = "sessionActive=; path=/; Max-Age=0";
                 window.location.href = "/";
               }}
               className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all flex-shrink-0"

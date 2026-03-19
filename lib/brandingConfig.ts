@@ -2,21 +2,11 @@ import { BrandingConfig, DEFAULT_BRANDING_CONFIG } from "@/app/overlays/premium/
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
-function authHeaders() {
-  const token = typeof window !== "undefined" ? localStorage.getItem("jwtToken") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
 // ── Fetch saved config (called by both dashboard and OBS page) ───────────────
 // OBS page has no token — that's fine, endpoint is in PUBLIC_URLS
 export async function fetchBrandingConfig(matchId: string): Promise<BrandingConfig> {
   try {
-    const res = await fetch(`${BASE}/api/v1/stream/${matchId}/branding`, {
-      headers: { "Content-Type": "application/json" },
-    });
+    const res = await fetch(`${BASE}/api/v1/stream/${matchId}/branding`);
     if (!res.ok) return DEFAULT_BRANDING_CONFIG;
     const json = await res.json();
     const data = json.data ?? json;
@@ -26,19 +16,19 @@ export async function fetchBrandingConfig(matchId: string): Promise<BrandingConf
   }
 }
 
-// ── Save config (dashboard only — requires JWT) ──────────────────────────────
+// ── Save config (dashboard only — requires JWT cookie) ───────────────────────
 export async function saveBrandingConfig(
   matchId: string,
   config: BrandingConfig,
 ): Promise<boolean> {
   try {
     const userId = localStorage.getItem("userUUID");
-    const token  = localStorage.getItem("jwtToken");
-    if (!userId || !token) return false;
+    if (!userId) return false;
 
     const res = await fetch(`${BASE}/api/v1/stream/${matchId}/branding`, {
       method: "PUT",
-      headers: authHeaders(),
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...config, userId }),
     });
     return res.ok;

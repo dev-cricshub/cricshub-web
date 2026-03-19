@@ -270,8 +270,15 @@ export default function ProfilePage() {
     setSavingProfile(false);
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
+  const handleLogout = async () => {
+    await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"}/api/v1/auth/logout`,
+      { method: "POST", credentials: "include" },
+    ).catch(() => {});
+    localStorage.removeItem("userUUID");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("hasSubscription");
+    document.cookie = "sessionActive=; path=/; Max-Age=0";
     window.location.href = "/";
   };
 
