@@ -547,6 +547,23 @@ export async function createBundleManualIntent(payload: {
   return json.data as { paymentId: string; status: string; amount: number };
 }
 
+export async function unlockBundleWithSubscription(
+  matchId: string,
+  payload: { userId: string; bundleId: string; bundleName: string },
+) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/stream/${matchId}/bundle/unlock`,
+    {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    },
+  );
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || "Failed to unlock bundle.");
+  return json.data as { bundleId: string; bundleName: string; freeWithSubscription: boolean; status: string };
+}
+
 export async function checkPendingBundle(userId: string, matchId: string, bundleId: string) {
   const res = await fetch(
     `${API_BASE}/api/v1/payments/manual/bundle/pending?userId=${userId}&matchId=${matchId}&bundleId=${bundleId}`,
