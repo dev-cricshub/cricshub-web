@@ -42,20 +42,21 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: "sub-monthly",
     cycle: "monthly",
     name: "Monthly",
-    price: 499,
-    perMonth: 499,
+    price: 149,
+    originalPrice: 299,
+    perMonth: 149,
     badge: "Most Flexible",
     highlight: false,
     streamingFeatures: [
-      "OBS browser source URL generation",
-      "Stream lock & operator handover",
-      "Real-time score sync (auto)",
-      "Priority support access",
+      "Professional OBS overlay integration",
+      "Real-time score sync · updates every ball",
+      "Stream lock & co-host handover",
+      "Priority support",
     ],
     bundleFeatures: [
-      "Basic Bundle auto-unlocked for ALL your matches",
-      "No ₹99/match fee — overlays activate instantly",
-      "Main Banner, Score, Playing XI & Summary included",
+      "1 free bundle credit per match you create",
+      "Choose any style — Basic, Glass, Material or Aero",
+      "8 broadcast overlays unlocked instantly",
       "Unlimited matches covered",
     ],
   },
@@ -63,21 +64,21 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: "sub-6month",
     cycle: "sixmonth",
     name: "6-Month Plan",
-    price: 2499,
-    originalPrice: 2994,
-    perMonth: 416,
+    price: 499,
+    originalPrice: 999,
+    perMonth: 83,
     badge: "Best Value",
     highlight: true,
     streamingFeatures: [
       "Everything in Monthly",
-      "Priority support",
       "Early access to new overlay templates",
       "Usage analytics dashboard",
+      "Priority support",
     ],
     bundleFeatures: [
-      "All Monthly benefits included",
-      "Saves ₹495 vs monthly billing",
-      "Extended match history",
+      "1 free bundle credit per match · all 4 styles",
+      "Just ₹83/month · saves ₹395 vs monthly",
+      "Extended match history & reporting",
       "Multi-match management view",
     ],
   },
@@ -88,7 +89,8 @@ const BUNDLE_CATALOGUE = [
   {
     id: "bundle-basic",
     name: "Basic Bundle",
-    price: 99,
+    price: 49,
+    originalPrice: 99,
     gradient: "linear-gradient(135deg,#34B8FF,#1E88E5)",
     accentColor: "#1E88E5",
     desc: "8 clean professional overlays — the essential streaming kit for every match.",
@@ -101,11 +103,22 @@ const BUNDLE_CATALOGUE = [
       "Batting XI (Team 1 & Team 2)",
       "Bowling XI (Team 1 & Team 2)",
     ],
+    bannerKeys: [
+      "main",
+      "score",
+      "summary",
+      "playingXI_combined",
+      "playingXI_bat_team1",
+      "playingXI_bat_team2",
+      "playingXI_bowl_team1",
+      "playingXI_bowl_team2",
+    ],
   },
   {
     id: "bundle-glass",
     name: "Glass Bundle",
-    price: 99,
+    price: 49,
+    originalPrice: 99,
     gradient: "linear-gradient(135deg,#00D4AA,#22D3EE)",
     accentColor: "#00D4AA",
     desc: "Frosted-glass aesthetic with teal glow accents — premium broadcast look.",
@@ -118,14 +131,25 @@ const BUNDLE_CATALOGUE = [
       "Glass Batting XI (Team 1 & Team 2)",
       "Glass Bowling XI (Team 1 & Team 2)",
     ],
+    bannerKeys: [
+      "glass_main",
+      "glass_score",
+      "glass_summary",
+      "glass_xi_combined",
+      "glass_bat_team1",
+      "glass_bat_team2",
+      "glass_bowl_team1",
+      "glass_bowl_team2",
+    ],
   },
   {
     id: "bundle-material",
     name: "Material Bundle",
-    price: 99,
+    price: 49,
+    originalPrice: 99,
     gradient: "linear-gradient(135deg,#009688,#00BCD4)",
     accentColor: "#009688",
-    desc: "Clean, flat-design overlays with crisp solid colors and stark broadcast typography.",
+    desc: "Clean flat-design overlays with crisp solid colors and stark broadcast typography.",
     overlayCount: 8,
     overlays: [
       "Material Main Match Banner",
@@ -135,14 +159,25 @@ const BUNDLE_CATALOGUE = [
       "Material Batting XI (Team 1 & Team 2)",
       "Material Bowling XI (Team 1 & Team 2)",
     ],
+    bannerKeys: [
+      "material_main",
+      "material_score",
+      "material_summary",
+      "material_xi_combined",
+      "material_bat_team1",
+      "material_bat_team2",
+      "material_bowl_team1",
+      "material_bowl_team2",
+    ],
   },
   {
     id: "bundle-aero",
     name: "Aero Light Bundle",
-    price: 99,
+    price: 49,
+    originalPrice: 99,
     gradient: "linear-gradient(135deg,#E0F2FE,#0D9488)",
     accentColor: "#0D9488",
-    desc: "Premium modular floating islands — Apple-style light-mode design with pill badges.",
+    desc: "Apple-inspired floating islands with pill aesthetics — elegant light-mode design.",
     overlayCount: 8,
     overlays: [
       "Aero Main Match Banner",
@@ -152,8 +187,57 @@ const BUNDLE_CATALOGUE = [
       "Aero Batting XI (Team 1 & Team 2)",
       "Aero Bowling XI (Team 1 & Team 2)",
     ],
+    bannerKeys: [
+      "aero_main",
+      "aero_score",
+      "aero_summary",
+      "aero_xi_combined",
+      "aero_bat_team1",
+      "aero_bat_team2",
+      "aero_bowl_team1",
+      "aero_bowl_team2",
+    ],
   },
 ];
+
+// Overlay details for preview — mirrors BUNDLE_OVERLAY_DETAILS in stream dashboard
+const BUNDLE_OVERLAY_DETAILS: Record<
+  string,
+  { icon: string; title: string; desc: string; previewBg: string }
+> = {
+  main:                { icon: "ri-layout-top-2-line", title: "Main Match Banner",        desc: "Tournament name, both teams, venue, date and toss result.",                          previewBg: "linear-gradient(135deg,#34B8FF,#1E88E5)" },
+  score:               { icon: "ri-bar-chart-line",    title: "Live Score Overlay",        desc: "Always-on bottom bar — live score, batters, bowler and ball-by-ball.",              previewBg: "linear-gradient(135deg,#0a1628,#1E88E5)" },
+  summary:             { icon: "ri-file-list-3-line",  title: "Match Summary",             desc: "Top batters & bowlers from both teams.",                                             previewBg: "linear-gradient(135deg,#E2B94B,#8B6914)" },
+  playingXI_combined:  { icon: "ri-team-line",         title: "Playing XI — Both Teams",   desc: "Side-by-side full lineup with player roles and captain badge.",                      previewBg: "linear-gradient(135deg,#4A9EF5,#A855F7)" },
+  playingXI_bat_team1: { icon: "ri-group-line",        title: "Batting XI (Team 1)",        desc: "Full batting lineup for Team 1.",                                                    previewBg: "linear-gradient(135deg,#00b4d8,#0077b6)" },
+  playingXI_bat_team2: { icon: "ri-group-line",        title: "Batting XI (Team 2)",        desc: "Full batting lineup for Team 2.",                                                    previewBg: "linear-gradient(135deg,#00b4d8,#0077b6)" },
+  playingXI_bowl_team1:{ icon: "ri-group-2-line",      title: "Bowling XI (Team 1)",        desc: "Bowling lineup for Team 1.",                                                        previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)" },
+  playingXI_bowl_team2:{ icon: "ri-group-2-line",      title: "Bowling XI (Team 2)",        desc: "Bowling lineup for Team 2.",                                                        previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)" },
+  glass_main:          { icon: "ri-layout-top-2-line", title: "Glass Match Banner",         desc: "Frosted-glass panel with teal glow accents.",                                       previewBg: "linear-gradient(135deg,#00D4AA,#22D3EE)" },
+  glass_score:         { icon: "ri-bar-chart-line",    title: "Glass Score Overlay",        desc: "Bottom score bar with backdrop blur and teal glow border.",                         previewBg: "linear-gradient(135deg,#00D4AA,#0a1628)" },
+  glass_summary:       { icon: "ri-file-list-3-line",  title: "Glass Match Summary",        desc: "Frosted-glass innings panels with cyan/pink accents.",                              previewBg: "linear-gradient(135deg,#0a1628,#22D3EE)" },
+  glass_xi_combined:   { icon: "ri-team-line",         title: "Glass Playing XI",           desc: "Two-column glassmorphism lineup card.",                                             previewBg: "linear-gradient(135deg,#22D3EE,#F472B6)" },
+  glass_bat_team1:     { icon: "ri-group-line",        title: "Glass Batting XI (Team 1)",  desc: "Frosted batting lineup for Team 1.",                                                previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)" },
+  glass_bat_team2:     { icon: "ri-group-line",        title: "Glass Batting XI (Team 2)",  desc: "Frosted batting lineup for Team 2.",                                                previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)" },
+  glass_bowl_team1:    { icon: "ri-group-2-line",      title: "Glass Bowling XI (Team 1)",  desc: "Frosted bowling lineup for Team 1.",                                                previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)" },
+  glass_bowl_team2:    { icon: "ri-group-2-line",      title: "Glass Bowling XI (Team 2)",  desc: "Frosted bowling lineup for Team 2.",                                                previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)" },
+  material_main:          { icon: "ri-layout-top-2-line", title: "Material Match Banner",        desc: "Clean flat-design tournament banner.",                previewBg: "#009688" },
+  material_score:         { icon: "ri-bar-chart-line",    title: "Material Score Overlay",       desc: "Solid high-contrast bottom score bar.",               previewBg: "#111827" },
+  material_summary:       { icon: "ri-file-list-3-line",  title: "Material Match Summary",       desc: "Flat color-blocked innings panels.",                  previewBg: "#030712" },
+  material_xi_combined:   { icon: "ri-team-line",         title: "Material Playing XI",          desc: "Side-by-side solid lineup card.",                     previewBg: "#00BCD4" },
+  material_bat_team1:     { icon: "ri-group-line",        title: "Material Batting XI (Team 1)", desc: "Solid batting lineup for Team 1.",                    previewBg: "#00BCD4" },
+  material_bat_team2:     { icon: "ri-group-line",        title: "Material Batting XI (Team 2)", desc: "Solid batting lineup for Team 2.",                    previewBg: "#00BCD4" },
+  material_bowl_team1:    { icon: "ri-group-2-line",      title: "Material Bowling XI (Team 1)", desc: "Solid bowling lineup for Team 1.",                    previewBg: "#E91E63" },
+  material_bowl_team2:    { icon: "ri-group-2-line",      title: "Material Bowling XI (Team 2)", desc: "Solid bowling lineup for Team 2.",                    previewBg: "#E91E63" },
+  aero_main:           { icon: "ri-layout-top-2-line", title: "Aero Match Banner",          desc: "Floating modular stack with tournament pill and team islands.",                    previewBg: "#F3F4F6" },
+  aero_score:          { icon: "ri-bar-chart-line",    title: "Aero Score Stack",            desc: "Decoupled modular floating islands.",                                              previewBg: "#FFFFFF" },
+  aero_summary:        { icon: "ri-file-list-3-line",  title: "Aero Match Summary",          desc: "Elegant light-mode panels with soft gray backgrounds.",                           previewBg: "#F3F4F6" },
+  aero_xi_combined:    { icon: "ri-team-line",         title: "Aero Playing XI",             desc: "Clean floating lineup with role pills.",                                           previewBg: "#FFFFFF" },
+  aero_bat_team1:      { icon: "ri-group-line",        title: "Aero Batting XI (Team 1)",    desc: "Light-themed batting card — Team 1.",                                             previewBg: "#E0F2FE" },
+  aero_bat_team2:      { icon: "ri-group-line",        title: "Aero Batting XI (Team 2)",    desc: "Light-themed batting card — Team 2.",                                             previewBg: "#E0F2FE" },
+  aero_bowl_team1:     { icon: "ri-group-2-line",      title: "Aero Bowling XI (Team 1)",    desc: "Minimalist bowling lineup — Team 1.",                                             previewBg: "#FFE4E6" },
+  aero_bowl_team2:     { icon: "ri-group-2-line",      title: "Aero Bowling XI (Team 2)",    desc: "Minimalist bowling lineup — Team 2.",                                             previewBg: "#FFE4E6" },
+};
 
 // Real premium add-on templates — mirrors ADDON_TEMPLATES in the stream dashboard
 // These are fetched from backend in the dashboard; here they are shown as a static showcase
@@ -162,7 +246,8 @@ const ADDON_TEMPLATES = [
     id: "tpl-pro-1",
     name: "Event Burst",
     tier: "pro" as const,
-    price: 99,
+    price: 39,
+    originalPrice: 79,
     previewGradient: "linear-gradient(135deg,#00F5A0,#00D9F5)",
     popular: true,
     features: [
@@ -178,25 +263,27 @@ const ADDON_TEMPLATES = [
     id: "tpl-pro-2",
     name: "Inline Burst",
     tier: "pro" as const,
-    price: 99,
+    price: 29,
+    originalPrice: 59,
     previewGradient: "linear-gradient(135deg,#F7971E,#FFD200)",
     features: [
       "In-bar light beam animation on 4, 6, wicket, 50 & 100",
       "Broadcast-style scorebar",
-      "No full-screen takeover",
-      "Player name & stat reveal",
+      "No full-screen overlay takeover",
+      "Player name & stat reveal on event",
     ],
   },
   {
     id: "tpl-pro-3",
     name: "Win Predictor",
     tier: "pro" as const,
-    price: 99,
+    price: 21,
+    originalPrice: 49,
     previewGradient: "linear-gradient(135deg,#2193b0,#6dd5ed)",
     features: [
       "Live win probability meter",
-      "Updates every ball",
-      "Pressure colour system",
+      "Updates every ball automatically",
+      "Pressure colour system — green to red",
       "CRR vs RRR analysis",
       "Wickets & balls remaining context",
     ],
@@ -205,7 +292,8 @@ const ADDON_TEMPLATES = [
     id: "tpl-pro-4",
     name: "Stream Branding",
     tier: "pro" as const,
-    price: 99,
+    price: 39,
+    originalPrice: 79,
     previewGradient: "linear-gradient(135deg,#667eea,#764ba2)",
     popular: true,
     features: [
@@ -219,7 +307,8 @@ const ADDON_TEMPLATES = [
     id: "tpl-pro-5",
     name: "Media Reel",
     tier: "pro" as const,
-    price: 99,
+    price: 49,
+    originalPrice: 99,
     previewGradient: "linear-gradient(135deg,#f093fb,#f5576c)",
     features: [
       "Upload images & videos (up to 10 assets)",
@@ -239,19 +328,6 @@ const cartTotal = (cart: CartItem[]) => cart.reduce((s, i) => s + i.price, 0);
 // ═══════════════════════════════════════════════════════════════════════════
 // SMALL COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════
-
-function Check({ text, muted }: { text: string; muted?: boolean }) {
-  return (
-    <li
-      className={`flex items-start gap-2.5 text-sm ${muted ? "text-gray-400" : "text-gray-600"}`}
-    >
-      <i
-        className={`ri-check-circle-fill flex-shrink-0 mt-0.5 ${muted ? "text-gray-300" : "text-[#34B8FF]"}`}
-      />
-      {text}
-    </li>
-  );
-}
 
 function SectionLabel({
   icon,
@@ -278,6 +354,212 @@ function SectionLabel({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// OVERLAY PREVIEW MODAL  (iframe into /preview?overlay=key)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function OverlayPreviewModal({
+  bannerKey,
+  bannerTitle,
+  previewBg,
+  onClose,
+}: {
+  bannerKey: string;
+  bannerTitle: string;
+  previewBg: string;
+  onClose: () => void;
+}) {
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const previewUrl = `/preview?overlay=${bannerKey}`;
+
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex flex-col items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.93)", backdropFilter: "blur(8px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {/* Header */}
+      <div className="w-full max-w-5xl px-4 pb-3 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: previewBg }} />
+          <div>
+            <p className="text-white font-black text-sm">{bannerTitle}</p>
+            <p className="text-white/40 text-xs">Live preview · 1920×1080 · sample data</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <a
+            href={previewUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs font-bold text-white/60 hover:text-white border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-lg transition-all"
+          >
+            <i className="ri-external-link-line" />
+            Open full size
+          </a>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          >
+            <i className="ri-close-line text-white" />
+          </button>
+        </div>
+      </div>
+
+      {/* 16:9 iframe */}
+      <div className="w-full max-w-5xl px-4 flex-shrink-0">
+        <div
+          className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
+          style={{ aspectRatio: "16/9" }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "url('/images/matchStalkImage.jpg')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          {!iframeLoaded && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+              <i className="ri-loader-4-line text-white/40 text-3xl animate-spin mb-3" />
+              <p className="text-white/40 text-sm font-medium">Loading overlay preview…</p>
+            </div>
+          )}
+          <iframe
+            src={previewUrl}
+            className="absolute inset-0 w-full h-full"
+            style={{ border: "none", opacity: iframeLoaded ? 1 : 0, transition: "opacity 0.3s" }}
+            onLoad={() => setIframeLoaded(true)}
+            allow="autoplay"
+          />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="w-full max-w-5xl px-4 pt-3 flex items-center justify-between">
+        <p className="text-white/30 text-xs">
+          Preview uses sample data — actual overlay will show live match data
+        </p>
+        <button
+          onClick={onClose}
+          className="text-xs font-bold text-white/50 hover:text-white transition-colors"
+        >
+          Close preview
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUNDLE OVERLAY LIST MODAL  (grid of all overlays in a bundle)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function BundleOverlayListModal({
+  bundle,
+  onClose,
+  onPreview,
+}: {
+  bundle: (typeof BUNDLE_CATALOGUE)[0];
+  onClose: () => void;
+  onPreview: (key: string, title: string, bg: string) => void;
+}) {
+  const cards = bundle.bannerKeys
+    .map((key) => ({ key, ...BUNDLE_OVERLAY_DETAILS[key] }))
+    .filter((c) => c.icon);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl w-full sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: bundle.gradient }}
+            >
+              <i className="ri-stack-line text-white" />
+            </div>
+            <div>
+              <h2 className="font-black text-gray-900 text-base sm:text-lg leading-none">
+                {bundle.name}
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {cards.length} overlays · ₹{bundle.price}/match · click any to preview
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors flex-shrink-0"
+          >
+            <i className="ri-close-line text-gray-600 text-lg" />
+          </button>
+        </div>
+
+        {/* Desc strip */}
+        <div className="px-5 sm:px-6 py-3 bg-blue-50 border-b border-blue-100 flex-shrink-0">
+          <p className="text-sm text-blue-800">{bundle.desc}</p>
+        </div>
+
+        {/* Overlay grid */}
+        <div
+          className="overflow-y-auto overscroll-contain p-4 sm:p-6"
+          style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {cards.map((card) => (
+              <div
+                key={card.key}
+                className="rounded-2xl border border-gray-100 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div
+                  className="h-16 sm:h-20 w-full relative flex items-center justify-center"
+                  style={{ background: card.previewBg }}
+                >
+                  <div className="bg-black/25 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2">
+                    <i className={`${card.icon} text-white text-sm`} />
+                    <span className="text-white text-[10px] font-black tracking-widest uppercase">
+                      OBS Overlay
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onPreview(card.key, card.title, card.previewBg)}
+                    className="absolute top-1.5 right-2 flex items-center gap-1 bg-black/40 hover:bg-black/65 text-white text-[9px] font-bold px-2 py-1 rounded-full transition-colors backdrop-blur-sm"
+                  >
+                    <i className="ri-eye-line text-xs" />
+                    Preview
+                  </button>
+                </div>
+                <div className="p-3 sm:p-4">
+                  <p className="font-black text-gray-900 text-sm leading-tight">{card.title}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed mt-1">{card.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4 flex-shrink-0">
+          <p className="text-xs text-gray-400">All overlays update in real time with live match data.</p>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-sm font-bold rounded-xl hover:shadow-md transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // PLAN CARD
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -291,94 +573,212 @@ function PlanCard({
   onToggle: () => void;
 }) {
   const savings = plan.originalPrice ? plan.originalPrice - plan.price : 0;
-  return (
-    <div
-      onClick={onToggle}
-      className={`relative cursor-pointer rounded-2xl sm:rounded-3xl overflow-hidden border-2 transition-all duration-300 select-none
-        ${inCart ? "border-[#34B8FF] shadow-2xl shadow-blue-100 scale-[1.01]" : plan.highlight ? "border-[#34B8FF]/40 shadow-xl hover:border-[#34B8FF] hover:shadow-2xl hover:shadow-blue-100" : "border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-md"}`}
-    >
-      {plan.highlight && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#34B8FF] via-purple-400 to-[#34B8FF]" />
-      )}
+  const savePct = plan.originalPrice
+    ? Math.round((savings / plan.originalPrice) * 100)
+    : 0;
+
+  if (plan.highlight) {
+    // ── Premium dark card (6-Month) ──────────────────────────────────────
+    return (
       <div
-        className={`px-5 sm:px-7 pt-5 sm:pt-7 pb-4 sm:pb-6 relative overflow-hidden ${plan.highlight ? "bg-gradient-to-br from-[#0f2744] to-[#1a3a6e]" : "bg-gradient-to-br from-[#34B8FF] to-[#1E88E5]"}`}
+        onClick={onToggle}
+        className={`relative cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 select-none
+          ${inCart ? "ring-2 ring-[#34B8FF] shadow-2xl shadow-blue-500/25 scale-[1.02]" : "shadow-xl hover:shadow-2xl hover:shadow-blue-900/40 hover:scale-[1.01]"}`}
+        style={{ background: "linear-gradient(145deg,#0B1F40 0%,#0e2a58 60%,#1a3a6e 100%)" }}
       >
-        <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white/5" />
-        <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
-        <div className="relative z-10">
-          {plan.badge && (
-            <span className="inline-block bg-white/20 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-3 sm:mb-4">
+        {/* Subtle glow orbs */}
+        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-blue-400/8 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-36 h-36 rounded-full bg-indigo-500/8 blur-3xl pointer-events-none" />
+        {/* Top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#34B8FF]/60 to-transparent" />
+
+        <div className="relative z-10 p-6 sm:p-7 flex flex-col h-full">
+          {/* Badge row */}
+          <div className="flex items-center justify-between mb-5">
+            <span className="text-[10px] font-black text-blue-300 uppercase tracking-widest">
               {plan.badge}
             </span>
-          )}
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="text-white font-black text-xl sm:text-2xl">
-                {plan.name}
-              </h3>
-              <div className="flex items-baseline gap-2 mt-1 flex-wrap">
-                <span className="text-white font-black text-3xl sm:text-4xl">
-                  {fmt(plan.price)}
+            <span className="flex items-center gap-1 bg-amber-400 text-amber-900 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide">
+              🏷 Launch Offer
+            </span>
+          </div>
+
+          {/* Plan name */}
+          <h3 className="text-white font-black text-xl sm:text-2xl mb-4">
+            {plan.name}
+          </h3>
+
+          {/* Pricing block */}
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-1.5">
+              {plan.originalPrice && (
+                <span className="text-white/35 text-base font-semibold line-through">
+                  {fmt(plan.originalPrice)}
                 </span>
-                <span className="text-white/60 text-sm">
-                  {plan.cycle === "monthly" ? "/month" : "for 6 months"}
+              )}
+              {savePct > 0 && (
+                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  {savePct}% OFF
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-white font-black text-4xl sm:text-5xl tracking-tight">
+                {fmt(plan.price)}
+              </span>
+              <span className="text-white/45 text-sm">for 6 months</span>
+            </div>
+            {plan.perMonth && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-blue-300 text-xs font-bold">
+                  ≈ ₹{plan.perMonth}/month
+                </span>
+                <span className="w-1 h-1 rounded-full bg-white/20" />
+                <span className="text-white/35 text-xs">
+                  Save {fmt(savings)}
                 </span>
               </div>
-              {plan.perMonth && plan.cycle === "sixmonth" && (
-                <p className="text-white/50 text-xs mt-1">
-                  Just {fmt(plan.perMonth)}/month
-                </p>
-              )}
-              {savings > 0 && (
-                <div className="mt-2 inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full">
-                  <i className="ri-price-tag-3-line" />
-                  Save {fmt(savings)}
-                </div>
-              )}
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-white/10 mb-5" />
+
+          {/* Features */}
+          <div className="space-y-4 mb-6 flex-1">
+            <div>
+              <p className="text-[9px] font-black text-blue-300/60 uppercase tracking-widest mb-2.5">
+                Streaming Dashboard
+              </p>
+              <ul className="space-y-2">
+                {plan.streamingFeatures.map((f, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-white/65">
+                    <i className="ri-check-circle-fill text-[#34B8FF] flex-shrink-0 mt-0.5 text-[13px]" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${inCart ? "bg-white border-white shadow-lg" : "bg-white/15 border-white/40"}`}
-            >
-              {inCart ? (
-                <i className="ri-check-line text-[#1E88E5] font-black text-base sm:text-lg" />
-              ) : (
-                <i className="ri-add-line text-white text-base sm:text-lg" />
-              )}
+            <div>
+              <p className="text-[9px] font-black text-blue-300/60 uppercase tracking-widest mb-2.5">
+                Included Overlays
+              </p>
+              <ul className="space-y-2">
+                {plan.bundleFeatures.map((f, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-white/65">
+                    <i className="ri-check-circle-fill text-[#34B8FF] flex-shrink-0 mt-0.5 text-[13px]" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
+          </div>
+
+          {/* CTA */}
+          <div
+            className={`w-full py-3.5 rounded-xl text-sm font-black text-center transition-all duration-200 ${
+              inCart
+                ? "bg-[#34B8FF]/15 text-[#34B8FF] border border-[#34B8FF]/30"
+                : "bg-white text-[#0D2654] hover:bg-blue-50"
+            }`}
+          >
+            {inCart ? "✓ Selected" : "⚡ Get Best Value"}
           </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="bg-white px-5 sm:px-7 py-4 sm:py-6 space-y-4 sm:space-y-5">
-        <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 sm:mb-3">
-            Streaming Dashboard
-          </p>
-          <ul className="space-y-2">
-            {plan.streamingFeatures.map((f, i) => (
-              <Check key={i} text={f} />
-            ))}
-          </ul>
+  // ── Clean white card (Monthly) ─────────────────────────────────────────
+  return (
+    <div
+      onClick={onToggle}
+      className={`relative cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 select-none bg-white
+        ${inCart ? "ring-2 ring-[#34B8FF] shadow-2xl shadow-blue-100 scale-[1.02]" : "border-2 border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-lg hover:scale-[1.01]"}`}
+    >
+      {/* Subtle top gradient strip */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5]" />
+
+      <div className="p-6 sm:p-7 flex flex-col h-full pt-7">
+        {/* Badge row */}
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+            {plan.badge}
+          </span>
+          <span className="flex items-center gap-1 bg-amber-400 text-amber-900 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide">
+            🏷 Launch Offer
+          </span>
         </div>
-        <div className="border-t border-gray-50" />
-        <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 sm:mb-3">
-            Included Overlays
-          </p>
-          <ul className="space-y-2">
-            {plan.bundleFeatures.map((f, i) => (
-              <Check key={i} text={f} />
-            ))}
-          </ul>
+
+        {/* Plan name */}
+        <h3 className="text-gray-900 font-black text-xl sm:text-2xl mb-4">
+          {plan.name}
+        </h3>
+
+        {/* Pricing block */}
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-1.5">
+            {plan.originalPrice && (
+              <span className="text-gray-350 text-base font-semibold line-through text-gray-400">
+                {fmt(plan.originalPrice)}
+              </span>
+            )}
+            {savePct > 0 && (
+              <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-100">
+                {savePct}% OFF
+              </span>
+            )}
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[#1E88E5] font-black text-4xl sm:text-5xl tracking-tight">
+              {fmt(plan.price)}
+            </span>
+            <span className="text-gray-400 text-sm">/month</span>
+          </div>
         </div>
+
+        {/* Divider */}
+        <div className="h-px bg-gray-100 mb-5" />
+
+        {/* Features */}
+        <div className="space-y-4 mb-6 flex-1">
+          <div>
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5">
+              Streaming Dashboard
+            </p>
+            <ul className="space-y-2">
+              {plan.streamingFeatures.map((f, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                  <i className="ri-check-circle-fill text-[#34B8FF] flex-shrink-0 mt-0.5 text-[13px]" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5">
+              Included Overlays
+            </p>
+            <ul className="space-y-2">
+              {plan.bundleFeatures.map((f, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                  <i className="ri-check-circle-fill text-[#34B8FF] flex-shrink-0 mt-0.5 text-[13px]" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* CTA */}
         <div
-          className={`w-full py-3 rounded-xl sm:rounded-2xl text-sm font-black text-center transition-all duration-200 ${inCart ? "bg-[#34B8FF]/10 text-[#1E88E5] border-2 border-[#34B8FF]/30" : plan.highlight ? "bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white shadow-md shadow-blue-200" : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100"}`}
+          className={`w-full py-3.5 rounded-xl text-sm font-black text-center transition-all duration-200 ${
+            inCart
+              ? "bg-[#34B8FF]/10 text-[#1E88E5] border-2 border-[#34B8FF]/25"
+              : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-blue-50 hover:text-[#1E88E5] hover:border-blue-100"
+          }`}
         >
-          {inCart
-            ? "✓ Selected"
-            : plan.highlight
-              ? "⚡ Get Best Value"
-              : "Select Plan"}
+          {inCart ? "✓ Selected" : "Select Plan"}
         </div>
       </div>
     </div>
@@ -391,8 +791,10 @@ function PlanCard({
 
 function BundleShowcaseCard({
   bundle,
+  onPreview,
 }: {
   bundle: (typeof BUNDLE_CATALOGUE)[0];
+  onPreview: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -409,6 +811,9 @@ function BundleShowcaseCard({
         <div className="absolute top-2.5 left-2.5 bg-white/20 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full">
           {bundle.overlayCount} overlays
         </div>
+        <div className="absolute top-2.5 right-2.5 bg-amber-400 text-amber-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
+          🏷 Launch Offer
+        </div>
       </div>
       <div className="p-4 sm:p-5 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -419,7 +824,12 @@ function BundleShowcaseCard({
             </p>
           </div>
           <div className="text-right flex-shrink-0 pl-2">
-            <p className="font-black text-gray-900 text-lg">
+            {bundle.originalPrice && (
+              <p className="text-xs text-gray-400 line-through leading-none mb-0.5">
+                {fmt(bundle.originalPrice)}
+              </p>
+            )}
+            <p className="font-black text-gray-900 text-lg leading-none">
               {fmt(bundle.price)}
             </p>
             <p className="text-[10px] text-gray-400">per match</p>
@@ -452,9 +862,18 @@ function BundleShowcaseCard({
           </button>
         )}
 
-        <div className="w-full mt-3 py-2.5 rounded-xl bg-gray-50 text-gray-500 text-xs font-bold text-center border border-gray-100 flex items-center justify-center gap-1.5">
-          <i className="ri-broadcast-line" />
-          Available in Stream Dashboard
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={onPreview}
+            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-blue-200 transition-all"
+          >
+            <i className="ri-eye-line" />
+            Preview Overlays
+          </button>
+          <div className="flex-shrink-0 py-2.5 px-3 rounded-xl bg-gray-50 text-gray-400 text-xs font-bold text-center border border-gray-100 flex items-center justify-center gap-1.5">
+            <i className="ri-broadcast-line" />
+            Dashboard
+          </div>
         </div>
       </div>
     </div>
@@ -465,18 +884,32 @@ function BundleShowcaseCard({
 // ADD-ON SHOWCASE CARD (view-only — purchase from Stream Dashboard)
 // ═══════════════════════════════════════════════════════════════════════════
 
-function AddOnShowcaseCard({ tpl }: { tpl: (typeof ADDON_TEMPLATES)[0] }) {
+function AddOnShowcaseCard({
+  tpl,
+  onPreview,
+}: {
+  tpl: (typeof ADDON_TEMPLATES)[0];
+  onPreview: () => void;
+}) {
   const tierStyle = "bg-amber-100 text-amber-700 border-amber-200";
 
   return (
     <div className="rounded-2xl border border-gray-100 overflow-hidden bg-white shadow-sm hover:shadow-md transition-all flex flex-col">
       <div
-        className="h-24 sm:h-28 relative flex-shrink-0"
+        className="h-24 sm:h-28 relative flex-shrink-0 cursor-pointer group"
         style={{ background: tpl.previewGradient }}
+        onClick={onPreview}
       >
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-black/25 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
+          <span className="bg-black/25 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full group-hover:bg-black/40 transition-colors">
             OBS Overlay
+          </span>
+        </div>
+        {/* Preview hint on hover */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+            <i className="ri-eye-line" />
+            Click to preview
           </span>
         </div>
         {(tpl as any).popular && (
@@ -496,7 +929,12 @@ function AddOnShowcaseCard({ tpl }: { tpl: (typeof ADDON_TEMPLATES)[0] }) {
             </span>
           </div>
           <div className="text-right flex-shrink-0 pl-2">
-            <p className="font-black text-gray-900 text-lg">₹{tpl.price}</p>
+            {(tpl as any).originalPrice && (
+              <p className="text-xs text-gray-400 line-through leading-none mb-0.5">
+                ₹{(tpl as any).originalPrice}
+              </p>
+            )}
+            <p className="font-black text-gray-900 text-lg leading-none">₹{tpl.price}</p>
             <p className="text-[10px] text-gray-400">per match</p>
           </div>
         </div>
@@ -511,9 +949,18 @@ function AddOnShowcaseCard({ tpl }: { tpl: (typeof ADDON_TEMPLATES)[0] }) {
             </li>
           ))}
         </ul>
-        <div className="w-full py-2.5 rounded-xl bg-gray-50 text-gray-500 text-xs font-bold text-center border border-gray-100 flex items-center justify-center gap-1.5 mt-auto">
-          <i className="ri-broadcast-line" />
-          Available in Stream Dashboard
+        <div className="flex gap-2 mt-auto">
+          <button
+            onClick={onPreview}
+            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-blue-200 transition-all"
+          >
+            <i className="ri-eye-line" />
+            Preview
+          </button>
+          <div className="flex-shrink-0 py-2.5 px-3 rounded-xl bg-gray-50 text-gray-400 text-xs font-bold text-center border border-gray-100 flex items-center justify-center gap-1.5">
+            <i className="ri-broadcast-line" />
+            Dashboard
+          </div>
         </div>
       </div>
     </div>
@@ -575,10 +1022,17 @@ function SuccessScreen({
 export default function PricingPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [step, setStep] = useState<PageStep>("plans");
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
-    null,
-  );
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
+
+  // Preview modals
+  const [previewBundle, setPreviewBundle] = useState<(typeof BUNDLE_CATALOGUE)[0] | null>(null);
+  const [previewOverlay, setPreviewOverlay] = useState<{ key: string; title: string; bg: string } | null>(null);
+
+  const openOverlayPreview = (key: string, title: string, bg: string) => {
+    setPreviewBundle(null);
+    setPreviewOverlay({ key, title, bg });
+  };
 
   const isInCart = (id: string) => cart.some((c) => c.id === id);
   const total = cartTotal(cart); // No GST
@@ -594,7 +1048,7 @@ export default function PricingPage() {
           name: `${plan.name} Subscription`,
           price: plan.price,
           itemType: "subscription",
-          meta: plan.cycle === "monthly" ? "₹499/month" : "6-month bundle",
+          meta: plan.cycle === "monthly" ? "₹149/month" : "6-month · ₹499",
         },
       ]);
       setSelectedPlan(plan);
@@ -625,6 +1079,25 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
+      {/* Bundle overlay list modal */}
+      {previewBundle && (
+        <BundleOverlayListModal
+          bundle={previewBundle}
+          onClose={() => setPreviewBundle(null)}
+          onPreview={openOverlayPreview}
+        />
+      )}
+
+      {/* Single overlay preview modal */}
+      {previewOverlay && (
+        <OverlayPreviewModal
+          bannerKey={previewOverlay.key}
+          bannerTitle={previewOverlay.title}
+          previewBg={previewOverlay.bg}
+          onClose={() => setPreviewOverlay(null)}
+        />
+      )}
+
       {/* UPI Checkout Modal */}
       {showCheckout && selectedPlan && (
         <UpiCheckoutModal
@@ -707,8 +1180,8 @@ export default function PricingPage() {
               </h1>
               <p className="text-gray-500 text-base sm:text-lg max-w-2xl mx-auto">
                 The streaming dashboard is free for all match admins. Buy a
-                bundle (₹99/match) for polished overlays, or subscribe to
-                auto-unlock them for every match you run.
+                bundle (from ₹49/match) for polished overlays, or subscribe to
+                get one free bundle credit per match you create.
               </p>
               <div className="inline-flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-bold px-4 py-2 rounded-full mt-4 flex-wrap justify-center">
                 <i className="ri-bank-line" />
@@ -752,7 +1225,7 @@ export default function PricingPage() {
                 </p>
               </div>
               <span className="text-xs font-black text-[#1E88E5] bg-blue-100 px-3 py-1.5 rounded-full flex-shrink-0 self-start sm:self-auto whitespace-nowrap">
-                ₹99 / match
+                from ₹49 / match
               </span>
             </div>
 
@@ -761,7 +1234,7 @@ export default function PricingPage() {
               <SectionLabel
                 icon="ri-vip-crown-line"
                 label="Subscription Plans"
-                sub="Auto-unlock the Basic Bundle for every match you run — no per-match fee."
+                sub="Get 1 free bundle credit per match — choose your overlay style each time."
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl">
                 {SUBSCRIPTION_PLANS.map((plan) => (
@@ -780,7 +1253,7 @@ export default function PricingPage() {
               <SectionLabel
                 icon="ri-layout-top-2-line"
                 label="Overlay Bundles"
-                sub="4 styles, 8 overlays each — ₹99/match. Buy from your Stream Dashboard."
+                sub="4 styles, 8 overlays each — ₹49/match · Launch Offer. Buy from your Stream Dashboard."
               />
 
               {/* How it works — responsive steps */}
@@ -817,7 +1290,11 @@ export default function PricingPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 {BUNDLE_CATALOGUE.map((bundle) => (
-                  <BundleShowcaseCard key={bundle.id} bundle={bundle} />
+                  <BundleShowcaseCard
+                    key={bundle.id}
+                    bundle={bundle}
+                    onPreview={() => setPreviewBundle(bundle)}
+                  />
                 ))}
               </div>
             </div>
@@ -827,7 +1304,7 @@ export default function PricingPage() {
               <SectionLabel
                 icon="ri-vip-crown-line"
                 label="Premium Add-on Templates"
-                sub="5 animated per-match templates, all ₹99. Buy from your Stream Dashboard."
+                sub="5 animated per-match templates · ₹21–₹49 · Launch Offer. Buy from your Stream Dashboard."
               />
               <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 sm:px-6 py-4 mb-5 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <i className="ri-information-line text-amber-600 text-xl flex-shrink-0" />
@@ -846,7 +1323,7 @@ export default function PricingPage() {
                   ⚡ Pro tier
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs font-black bg-blue-50 text-[#1E88E5] border border-blue-200 px-3 py-1.5 rounded-full whitespace-nowrap">
-                  ₹99 / match
+                  ₹21–₹49 / match
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs font-black bg-gray-100 text-gray-500 border border-gray-200 px-3 py-1.5 rounded-full whitespace-nowrap">
                   5 templates
@@ -854,7 +1331,17 @@ export default function PricingPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {ADDON_TEMPLATES.map((tpl) => (
-                  <AddOnShowcaseCard key={tpl.id} tpl={tpl} />
+                  <AddOnShowcaseCard
+                    key={tpl.id}
+                    tpl={tpl}
+                    onPreview={() =>
+                      openOverlayPreview(
+                        tpl.id,
+                        tpl.name,
+                        tpl.previewGradient ?? "linear-gradient(135deg,#111,#333)",
+                      )
+                    }
+                  />
                 ))}
               </div>
             </div>

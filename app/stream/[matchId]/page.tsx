@@ -16,6 +16,7 @@ import {
   fetchAvailableTemplates,
   fetchAvailableBundles,
   fetchStreamState,
+  unlockBundleWithSubscription,
 } from "@/lib/api";
 import { useMatchWebSocket } from "@/hooks/useMatchWebSocket";
 import UpiCheckoutModal from "@/app/components/UpiCheckoutModal";
@@ -146,11 +147,13 @@ interface MatchSubscription {
   adminHasSubscription: boolean;
   purchasedTemplateIds: string[];
   purchasedBundleIds: string[];
+  subscriptionUnlockedBundleId: string | null;
 }
 interface Bundle {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   description: string;
   features: string[];
   bannerKeys: string[];
@@ -160,6 +163,7 @@ interface AddOnTemplate {
   name: string;
   tier: "pro" | "elite";
   price: number;
+  originalPrice?: number;
   features: string[];
   previewGradient?: string;
 }
@@ -1085,6 +1089,91 @@ function BundleInfoModal({
 }
 
 // ═══════════════════════════════════════════════════════════
+// SUBSCRIPTION UNLOCK CONFIRMATION MODAL
+// ═══════════════════════════════════════════════════════════
+
+function SubscriptionUnlockModal({
+  bundle,
+  onConfirm,
+  onCancel,
+}: {
+  bundle: Bundle;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
+      onClick={(e) => e.target === e.currentTarget && onCancel()}
+    >
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+        {/* Header strip */}
+        <div className="bg-gradient-to-r from-[#1E88E5] to-[#1565C0] px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center flex-shrink-0">
+              <i className="ri-vip-crown-line text-white text-lg" />
+            </div>
+            <div>
+              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest">
+                Subscription Perk
+              </p>
+              <h2 className="text-white font-black text-base leading-tight">
+                Unlock {bundle.name}
+              </h2>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-3">
+            <i className="ri-error-warning-line text-amber-500 text-lg flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800 leading-relaxed">
+              Your subscription includes <strong>one free bundle per match.</strong> Once you choose {bundle.name}, this cannot be changed for this match.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              What you&apos;re unlocking
+            </p>
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+              <p className="font-bold text-gray-900 text-sm">{bundle.name}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{bundle.description}</p>
+              <ul className="mt-2 space-y-1">
+                {bundle.features.slice(0, 4).map((f, i) => (
+                  <li key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <i className="ri-check-line text-emerald-500 flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#1E88E5] to-[#1565C0] text-white text-sm font-black hover:shadow-lg hover:shadow-blue-200 transition-all"
+          >
+            Confirm Unlock
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // MAIN DASHBOARD PAGE
 // ═══════════════════════════════════════════════════════════
 
@@ -1118,6 +1207,8 @@ export default function StreamDashboard() {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [checkoutBundle, setCheckoutBundle] = useState<Bundle | null>(null);
   const [successBundleId, setSuccessBundleId] = useState<string | null>(null);
+  const [freeUnlockBusy, setFreeUnlockBusy] = useState<string | null>(null); // holds bundleId while unlocking
+  const [confirmUnlockBundle, setConfirmUnlockBundle] = useState<Bundle | null>(null);
   const [infoBundleId, setInfoBundleId] = useState<string | null>(null);
   const [brandingConfig, setBrandingConfig] = useState(DEFAULT_BRANDING_CONFIG);
   const [overlayTab, setOverlayTab] = useState<
@@ -1135,9 +1226,7 @@ export default function StreamDashboard() {
   } | null>(null);
 
   useEffect(() => {
-    const basic =
-      (matchSub?.adminHasSubscription ?? false) ||
-      (matchSub?.purchasedBundleIds ?? []).includes("bundle-basic");
+    const basic = (matchSub?.purchasedBundleIds ?? []).includes("bundle-basic");
     const glass = (matchSub?.purchasedBundleIds ?? []).includes("bundle-glass");
     const material = (matchSub?.purchasedBundleIds ?? []).includes(
       "bundle-material",
@@ -1183,9 +1272,7 @@ export default function StreamDashboard() {
   const canStream = true;
   const streamLockReason = "";
 
-  const hasBasicBundle =
-    (matchSub?.adminHasSubscription ?? false) ||
-    (matchSub?.purchasedBundleIds ?? []).includes("bundle-basic");
+  const hasBasicBundle = (matchSub?.purchasedBundleIds ?? []).includes("bundle-basic");
   const hasGlassBundle = (matchSub?.purchasedBundleIds ?? []).includes(
     "bundle-glass",
   );
@@ -1353,6 +1440,27 @@ export default function StreamDashboard() {
     navigator.clipboard.writeText(obsUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleFreeUnlock = async (bundle: Bundle) => {
+    if (freeUnlockBusy) return;
+    setConfirmUnlockBundle(null);
+    setFreeUnlockBusy(bundle.id);
+    try {
+      await unlockBundleWithSubscription(matchId, {
+        userId: currentUser.id,
+        bundleId: bundle.id,
+        bundleName: bundle.name,
+      });
+      const updated = await fetchMatchSubscription(matchId);
+      setMatchSub(updated);
+      setSuccessBundleId(bundle.id);
+      setTimeout(() => setSuccessBundleId(null), 3000);
+    } catch (e: any) {
+      alert(e.message ?? "Failed to unlock bundle.");
+    } finally {
+      setFreeUnlockBusy(null);
+    }
   };
 
   // ── Helper: open preview modal ──
@@ -1695,7 +1803,7 @@ export default function StreamDashboard() {
             <span
               className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "basic" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-500"}`}
             >
-              {matchSub?.adminHasSubscription ? "FREE" : "OWNED"}
+              {matchSub?.subscriptionUnlockedBundleId === "bundle-basic" ? "FREE" : "OWNED"}
             </span>
           )}
         </button>
@@ -1839,6 +1947,13 @@ export default function StreamDashboard() {
               console.error(e);
             }
           }}
+        />
+      )}
+      {confirmUnlockBundle && (
+        <SubscriptionUnlockModal
+          bundle={confirmUnlockBundle}
+          onConfirm={() => handleFreeUnlock(confirmUnlockBundle)}
+          onCancel={() => setConfirmUnlockBundle(null)}
         />
       )}
       {infoBundleId && bundles.find((b) => b.id === infoBundleId) && (
@@ -2276,92 +2391,143 @@ export default function StreamDashboard() {
                         Per match · ₹99
                       </span>
                     </div>
+
+                    {/* Subscription credit status */}
+                    {matchSub?.adminHasSubscription && !matchSub?.subscriptionUnlockedBundleId && (
+                      <div className="mb-4 flex items-center gap-4 bg-white border border-[#1E88E5]/20 rounded-2xl px-4 py-3.5 shadow-sm">
+                        <div className="w-9 h-9 rounded-xl bg-[#EBF5FB] flex items-center justify-center flex-shrink-0">
+                          <i className="ri-vip-crown-line text-[#1E88E5] text-base" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 text-sm">1 bundle included with your plan</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Choose any bundle to unlock for this match. This choice is permanent.</p>
+                        </div>
+                        <span className="flex-shrink-0 text-[10px] font-black text-[#1E88E5] bg-[#EBF5FB] border border-[#1E88E5]/20 px-2.5 py-1 rounded-full uppercase tracking-wide">
+                          1 credit
+                        </span>
+                      </div>
+                    )}
+                    {matchSub?.adminHasSubscription && matchSub?.subscriptionUnlockedBundleId && (
+                      <div className="mb-4 flex items-center gap-3 bg-white border border-emerald-200 rounded-2xl px-4 py-3 shadow-sm">
+                        <i className="ri-checkbox-circle-fill text-emerald-500 text-xl flex-shrink-0" />
+                        <div>
+                          <p className="text-sm text-gray-900 font-bold">
+                            {bundles.find(b => b.id === matchSub.subscriptionUnlockedBundleId)?.name ?? matchSub.subscriptionUnlockedBundleId} unlocked
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">Your subscription credit has been used for this match.</p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {bundles.map((bundle) => {
                         const isOwned = (
                           matchSub?.purchasedBundleIds ?? []
                         ).includes(bundle.id);
-                        const isFreeWithPremium =
-                          bundle.id === "bundle-basic" &&
-                          matchSub?.adminHasSubscription;
+                        const isFreeWithSubscription =
+                          matchSub?.subscriptionUnlockedBundleId === bundle.id;
+                        const canUnlockFree =
+                          matchSub?.adminHasSubscription &&
+                          !matchSub?.subscriptionUnlockedBundleId &&
+                          !isOwned;
                         const justBought = successBundleId === bundle.id;
                         return (
                           <div
                             key={bundle.id}
-                            className={`rounded-2xl border-2 overflow-hidden transition-all duration-300 relative ${isOwned || isFreeWithPremium ? "border-emerald-200" : "border-gray-100 hover:border-emerald-200 hover:shadow-md"}`}
+                            className={`rounded-2xl border overflow-hidden transition-all duration-300 relative
+                              ${isFreeWithSubscription ? "border-[#1E88E5]/30 shadow-sm shadow-blue-50" : isOwned ? "border-emerald-200" : "border-gray-100 hover:border-gray-200 hover:shadow-md"}`}
                           >
                             {justBought && (
-                              <div className="absolute inset-0 z-10 bg-green-500/90 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+                              <div className="absolute inset-0 z-10 bg-emerald-500/90 backdrop-blur-sm flex flex-col items-center justify-center text-white rounded-2xl">
                                 <i className="ri-checkbox-circle-fill text-4xl mb-1" />
-                                <p className="font-black text-sm uppercase tracking-wider">
-                                  Unlocked!
-                                </p>
+                                <p className="font-black text-sm uppercase tracking-wider">Unlocked</p>
                               </div>
                             )}
-                            <div className="h-14 w-full bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center">
-                              <span className="bg-black/20 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
+
+                            {/* Card header */}
+                            <div className="h-12 w-full bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center px-4 justify-between">
+                              <span className="text-white text-[10px] font-black tracking-widest uppercase opacity-80">
                                 {bundle.name}
                               </span>
+                              {isFreeWithSubscription && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full">
+                                  <i className="ri-checkbox-circle-fill text-xs" />
+                                  Included
+                                </span>
+                              )}
+                              {canUnlockFree && (
+                                <span className="text-[10px] font-bold text-white/90 bg-white/20 px-2 py-0.5 rounded-full">
+                                  Included in plan
+                                </span>
+                              )}
                             </div>
+
                             <div className="p-4 bg-white">
-                              <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="font-black text-gray-900 text-sm">
-                                      {bundle.name}
-                                    </p>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setInfoBundleId(bundle.id);
-                                      }}
-                                      className="flex items-center gap-1 text-[10px] font-bold text-[#1E88E5] hover:text-[#1565C0] transition-colors flex-shrink-0"
-                                    >
-                                      <i className="ri-information-line text-xs" />
-                                      {bundle.bannerKeys?.length ?? 8} overlays
-                                    </button>
-                                  </div>
-                                  <p className="text-xs text-gray-500 mt-0.5">
-                                    {bundle.description}
-                                  </p>
+                                  <p className="font-bold text-gray-900 text-sm leading-tight">{bundle.name}</p>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setInfoBundleId(bundle.id); }}
+                                    className="text-[11px] text-[#1E88E5] font-semibold hover:underline mt-0.5 flex items-center gap-1"
+                                  >
+                                    <i className="ri-eye-line text-xs" />
+                                    {bundle.bannerKeys?.length ?? 8} overlays
+                                  </button>
                                 </div>
-                                {isFreeWithPremium ? (
-                                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
-                                    ✓ With Premium
+                                {isFreeWithSubscription ? (
+                                  <span className="flex-shrink-0 text-[10px] font-bold text-[#1E88E5] bg-[#EBF5FB] border border-[#1E88E5]/20 px-2 py-0.5 rounded-full">
+                                    Plan benefit
                                   </span>
                                 ) : isOwned ? (
-                                  <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0">
-                                    ✓ Owned
+                                  <span className="flex-shrink-0 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                    Purchased
                                   </span>
                                 ) : (
-                                  <span className="text-sm font-black text-gray-900 flex-shrink-0">
-                                    ₹{bundle.price}
-                                  </span>
+                                  <div className="flex-shrink-0 text-right">
+                                    {bundle.originalPrice && (
+                                      <p className="text-[10px] text-gray-400 line-through leading-none">₹{bundle.originalPrice}</p>
+                                    )}
+                                    <span className="text-base font-black text-gray-900">₹{bundle.price}</span>
+                                  </div>
                                 )}
                               </div>
-                              <ul className="space-y-0.5 mb-3">
+
+                              <ul className="space-y-1 mb-4">
                                 {bundle.features.slice(0, 3).map((f, i) => (
-                                  <li
-                                    key={i}
-                                    className="flex items-center gap-1.5 text-[11px] text-gray-500"
-                                  >
+                                  <li key={i} className="flex items-center gap-2 text-[11px] text-gray-500">
                                     <i className="ri-check-line text-emerald-500 flex-shrink-0" />
                                     {f}
                                   </li>
                                 ))}
                               </ul>
+
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => setInfoBundleId(bundle.id)}
-                                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-[#1E88E5] hover:bg-blue-50 transition-all"
+                                  className="py-2 px-3 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors flex items-center gap-1.5"
                                 >
-                                  <i className="ri-list-check-2" />
-                                  <span className="hidden sm:inline">
-                                    What&apos;s included
-                                  </span>
-                                  <span className="sm:hidden">Details</span>
+                                  <i className="ri-list-check-2 text-xs" />
+                                  Details
                                 </button>
-                                {!isOwned && !isFreeWithPremium ? (
+                                {isOwned || isFreeWithSubscription ? (
+                                  <div className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gray-50 text-xs font-semibold text-gray-400">
+                                    <i className="ri-checkbox-circle-line text-emerald-400" />
+                                    Active
+                                  </div>
+                                ) : canUnlockFree ? (
+                                  <button
+                                    onClick={() => setConfirmUnlockBundle(bundle)}
+                                    disabled={!!freeUnlockBusy}
+                                    className="flex-1 py-2 rounded-xl text-xs font-bold bg-[#1E88E5] hover:bg-[#1565C0] text-white transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                  >
+                                    {freeUnlockBusy === bundle.id ? (
+                                      <i className="ri-loader-4-line animate-spin" />
+                                    ) : (
+                                      <i className="ri-vip-crown-line" />
+                                    )}
+                                    Use plan credit
+                                  </button>
+                                ) : (
                                   <button
                                     onClick={() => setCheckoutBundle(bundle)}
                                     className="flex-1 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-md transition-all flex items-center justify-center gap-1.5"
@@ -2369,10 +2535,6 @@ export default function StreamDashboard() {
                                     <i className="ri-qr-code-line" />
                                     Buy — ₹{bundle.price}
                                   </button>
-                                ) : (
-                                  <div className="flex-1 text-center text-xs text-gray-400 py-2">
-                                    Unlocked above ✓
-                                  </div>
                                 )}
                               </div>
                             </div>
@@ -2460,9 +2622,12 @@ export default function StreamDashboard() {
                                   ✓ Owned
                                 </span>
                               ) : (
-                                <span className="text-sm font-black text-gray-900 flex-shrink-0">
-                                  ₹{tpl.price}
-                                </span>
+                                <div className="flex-shrink-0 text-right">
+                                  {tpl.originalPrice && (
+                                    <p className="text-[10px] text-gray-400 line-through leading-none">₹{tpl.originalPrice}</p>
+                                  )}
+                                  <span className="text-sm font-black text-gray-900">₹{tpl.price}</span>
+                                </div>
                               )}
                             </div>
                             <ul className="space-y-0.5 mb-3">
@@ -2504,7 +2669,7 @@ export default function StreamDashboard() {
                                 className="w-full py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md transition-all flex items-center justify-center gap-1.5"
                               >
                                 <i className="ri-qr-code-line" />
-                                Buy via UPI — ₹{tpl.price}
+                                Buy — ₹{tpl.price}
                               </button>
                             )}
                           </div>
