@@ -23,10 +23,10 @@ async function apiFetch(
   });
 
   if (res.status === 401 && !skipAuthRedirect && typeof window !== "undefined") {
-    // UPDATED: Now removes "jwtToken" on logout/401
     ["userUUID", "userName", "hasSubscription", "jwtToken"].forEach(
       (k) => localStorage.removeItem(k),
     );
+    document.cookie = "sessionActive=; path=/; Max-Age=0";
     const returnPath = encodeURIComponent(window.location.pathname);
     window.location.href = `/?login=true&redirect=${returnPath}`;
   }
@@ -322,9 +322,9 @@ export async function sendOtp(phone: string) {
   return res.json(); // Returns BaseApiResponse<String>
 }
 
-export async function verifyOtp(phone: string, otp: string) {
+export async function verifyOtp(phone: string, otp: string, rememberMe = false) {
   const res = await apiFetch(
-    `${API_BASE}/api/v1/auth/verify?phone=${encodeURIComponent(phone)}&otp=${encodeURIComponent(otp)}`,
+    `${API_BASE}/api/v1/auth/verify?phone=${encodeURIComponent(phone)}&otp=${encodeURIComponent(otp)}&rememberMe=${rememberMe}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -57,13 +57,24 @@ export default function Navbar() {
   }, []);
 
   const checkAuthStatus = () => {
-    // JWT is now in an httpOnly cookie — not readable from JS
-    // Use userName in localStorage as the login state indicator
     const name = localStorage.getItem("userName");
-    if (name) {
-      setIsLoggedIn(true);
-      setUser({ name, phone: "" });
+    if (!name) return;
+
+    // sessionActive is a non-httpOnly cookie set on login.
+    // If it's gone (expired or cleared) but localStorage is stale, clear it.
+    const hasSession = document.cookie
+      .split(";")
+      .some((c) => c.trim().startsWith("sessionActive="));
+
+    if (!hasSession) {
+      ["userUUID", "userName", "hasSubscription", "jwtToken"].forEach((k) =>
+        localStorage.removeItem(k),
+      );
+      return;
     }
+
+    setIsLoggedIn(true);
+    setUser({ name, phone: "" });
   };
 
   // 4. Complete Logout Logic
