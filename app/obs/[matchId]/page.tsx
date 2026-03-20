@@ -112,9 +112,9 @@ export default function ObsOverlayPage() {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
     Promise.all([
-      fetchMatchById(matchId),
-      fetchMatchState(matchId),
-      fetchStreamState(matchId),
+      fetchMatchById(matchId, { skipAuthRedirect: true }),
+      fetchMatchState(matchId, { skipAuthRedirect: true }),
+      fetchStreamState(matchId, { skipAuthRedirect: true }),
       fetchBrandingConfig(matchId),
     ])
       .then(([rawMatch, state, stream, branding]) => {
@@ -192,7 +192,7 @@ export default function ObsOverlayPage() {
             if (d?.team1 && d?.team2) {
               setLiveState(d);
             } else {
-              const full = await fetchMatchState(matchId);
+              const full = await fetchMatchState(matchId, { skipAuthRedirect: true });
               setLiveState(full.data || full);
             }
           } catch (e) {

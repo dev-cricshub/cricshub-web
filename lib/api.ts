@@ -1,32 +1,36 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 // Central fetch wrapper — always sends cookies, redirects to login on 401, adds fallback header
-async function apiFetch(url: string, options?: RequestInit): Promise<Response> {
-  const headers = new Headers(options?.headers || {});
+async function apiFetch(
+  url: string,
+  options?: RequestInit & { skipAuthRedirect?: boolean },
+): Promise<Response> {
+  const { skipAuthRedirect, ...fetchOptions } = options ?? {};
+  const headers = new Headers(fetchOptions?.headers || {});
 
   if (typeof window !== "undefined") {
     // UPDATED: Now looks for "jwtToken" to match your login function
-    const token = localStorage.getItem("jwtToken"); 
+    const token = localStorage.getItem("jwtToken");
     if (token && !headers.has("Authorization")) {
       headers.set("Authorization", `Bearer ${token}`);
     }
   }
 
-  const res = await fetch(url, { 
-    ...options, 
+  const res = await fetch(url, {
+    ...fetchOptions,
     credentials: "include",
-    headers 
+    headers
   });
 
-  if (res.status === 401 && typeof window !== "undefined") {
-    // UPDATED: Now removes "jwtToken" on logout/401
+  if (res.status === 401 && !skipAuthRedirect && typeof window !== "undefined") {
     ["userUUID", "userName", "hasSubscription", "jwtToken"].forEach(
       (k) => localStorage.removeItem(k),
     );
+    document.cookie = "sessionActive=; path=/; Max-Age=0";
     const returnPath = encodeURIComponent(window.location.pathname);
     window.location.href = `/?login=true&redirect=${returnPath}`;
   }
-  
+
   return res;
 }
 
@@ -67,18 +71,20 @@ export async function fetchUserMatches(userId: string) {
   );
 }
 
-/** Fetch single match details (used by stream dashboard) */
-export async function fetchMatchById(matchId: string) {
+/** Fetch single match details (used by stream dashboard and OBS page) */
+export async function fetchMatchById(matchId: string, opts?: { skipAuthRedirect?: boolean }) {
   const res = await apiFetch(`${API_BASE}/api/v1/matches/${matchId}`, {
     headers: authHeaders(),
+    ...opts,
   });
   return res.json();
 }
 
 /** Fetch live match state for score overlay */
-export async function fetchMatchState(matchId: string) {
+export async function fetchMatchState(matchId: string, opts?: { skipAuthRedirect?: boolean }) {
   const res = await apiFetch(`${API_BASE}/api/v1/matches/matchstate/${matchId}`, {
     headers: authHeaders(),
+    ...opts,
   });
   return res.json();
 }
@@ -132,9 +138,10 @@ export async function streamHeartbeat(matchId: string, userId: string) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** OBS page polls this every 2s OR subscribes via WebSocket /topic/stream/{matchId} */
-export async function fetchStreamState(matchId: string) {
+export async function fetchStreamState(matchId: string, opts?: { skipAuthRedirect?: boolean }) {
   const res = await apiFetch(`${API_BASE}/api/v1/stream/${matchId}/state`, {
     headers: authHeaders(),
+    ...opts,
   });
   const json = await res.json();
   return json.data; // { activeBanner, activeTemplateId, updatedAt }
@@ -315,9 +322,9 @@ export async function sendOtp(phone: string) {
   return res.json(); // Returns BaseApiResponse<String>
 }
 
-export async function verifyOtp(phone: string, otp: string) {
+export async function verifyOtp(phone: string, otp: string, rememberMe = false) {
   const res = await apiFetch(
-    `${API_BASE}/api/v1/auth/verify?phone=${encodeURIComponent(phone)}&otp=${encodeURIComponent(otp)}`,
+    `${API_BASE}/api/v1/auth/verify?phone=${encodeURIComponent(phone)}&otp=${encodeURIComponent(otp)}&rememberMe=${rememberMe}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -28,6 +28,7 @@ export default function LoginModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,7 +87,7 @@ export default function LoginModal({
     setError("");
     setLoading(true);
     try {
-      const res = await verifyOtp(phone, otpString);
+      const res = await verifyOtp(phone, otpString, rememberMe);
       if (res.success && res.data) {
         // JWT stored for Authorization header (fallback for cross-origin/local dev)
         // httpOnly cookie is also set by the backend for same-site production security
@@ -94,7 +95,11 @@ export default function LoginModal({
         localStorage.setItem("userUUID", res.data.user.id);
         localStorage.setItem("userName", res.data.user.name);
         // sessionActive: non-httpOnly, used only by Next.js middleware to gate routes
-        document.cookie = "sessionActive=1; path=/; SameSite=Lax; Max-Age=18000";
+        // Remember me: 30 days | Default: session cookie (expires on browser close)
+        const sessionCookie = rememberMe
+          ? "sessionActive=1; path=/; SameSite=Lax; Max-Age=2592000"
+          : "sessionActive=1; path=/; SameSite=Lax";
+        document.cookie = sessionCookie;
 
         setStep("success");
 
@@ -258,6 +263,24 @@ export default function LoginModal({
                     </p>
                   )}
                 </div>
+
+                {/* Remember me */}
+                <label className="flex items-center gap-2.5 mb-6 cursor-pointer select-none group w-fit">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-5 h-5 rounded-md border-2 border-gray-300 bg-white peer-checked:bg-brand-500 peer-checked:border-brand-500 transition-all flex items-center justify-center">
+                      {rememberMe && <i className="ri-check-line text-white text-xs leading-none" />}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors font-medium">
+                    Remember me for 30 days
+                  </span>
+                </label>
 
                 <button
                   onClick={handleSendOtp}

@@ -958,7 +958,7 @@ export default function DashboardPage() {
                     Unlock polished overlays for your matches
                   </p>
                   <p className="text-xs text-blue-700 mt-0.5">
-                    Stream for free with the score overlay, or buy a Basic
+                    Stream for free with the score overlay, or buy an IPL
                     Bundle (₹99/match) for 8 professional banners. Subscribe to
                     auto-unlock them for every match.
                   </p>
