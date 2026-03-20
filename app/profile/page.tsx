@@ -583,7 +583,7 @@ export default function ProfilePage() {
                     {[
                       {
                         icon: "ri-layout-grid-line",
-                        text: "Basic Bundle auto-unlocked for every match",
+                        text: "IPL Bundle auto-unlocked for every match",
                       },
                       {
                         icon: "ri-price-tag-3-line",
@@ -603,7 +603,7 @@ export default function ProfilePage() {
                       },
                       {
                         icon: "ri-stack-line",
-                        text: "All 8 Basic Bundle overlays per match",
+                        text: "All 8 IPL Bundle overlays per match",
                       },
                     ].map((f, i) => (
                       <div
@@ -631,7 +631,7 @@ export default function ProfilePage() {
                 </h3>
                 <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed mb-5 sm:mb-6">
                   You can stream for free with the live score overlay. Subscribe
-                  to auto-unlock the Basic Bundle (8 professional overlays) for
+                  to auto-unlock the IPL Bundle (8 professional overlays) for
                   every match you run — no ₹99/match fee.
                 </p>
                 <Link
@@ -683,11 +683,11 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Basic Bundle */}
+            {/* IPL Bundle */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
               <SectionHeader
                 icon="ri-layout-grid-line"
-                title="Basic Bundle"
+                title="IPL Bundle"
                 sub="8 overlays per match — buy once for ₹99 or auto-unlock every match with a subscription"
                 action={
                   subscription?.status === "active" ? (
@@ -785,7 +785,7 @@ export default function ProfilePage() {
                 <div className="mt-4 bg-blue-50 border border-blue-200 rounded-2xl p-3 sm:p-4 flex items-start gap-3">
                   <i className="ri-information-line text-[#1E88E5] text-lg sm:text-xl flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-blue-800 leading-relaxed">
-                    Buy the Basic Bundle for ₹99/match from the stream
+                    Buy the IPL Bundle for ₹99/match from the stream
                     dashboard, or{" "}
                     <Link href="/pricing" className="font-bold underline">
                       subscribe

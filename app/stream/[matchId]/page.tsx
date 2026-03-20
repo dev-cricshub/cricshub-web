@@ -1798,7 +1798,7 @@ export default function StreamDashboard() {
           className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap ${overlayTab === "basic" ? "bg-[#1E88E5] text-white border-[#1E88E5] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#34B8FF] hover:text-[#1E88E5]"}`}
         >
           <i className="ri-gift-line" />
-          Basic
+          IPL
           {hasBasicBundle && (
             <span
               className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "basic" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-500"}`}
@@ -1817,7 +1817,7 @@ export default function StreamDashboard() {
           }
         >
           <i className="ri-contrast-2-line" />
-          Glass
+          WPL
           {hasGlassBundle && (
             <span
               className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "glass" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-600"}`}
@@ -1833,7 +1833,7 @@ export default function StreamDashboard() {
               className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap ${overlayTab === "material" ? "text-white border-[#009688] bg-[#009688] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#009688] hover:text-[#009688]"}`}
             >
               <i className="ri-tv-2-line" />
-              Material
+              CT
               {hasMaterialBundle && (
                 <span
                   className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "material" ? "bg-white/20 text-white" : "bg-teal-50 text-teal-600"}`}
@@ -1847,7 +1847,7 @@ export default function StreamDashboard() {
               className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap ${overlayTab === "aero" ? "text-white border-[#0D9488] bg-[#0D9488] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-[#0D9488] hover:text-[#0D9488]"}`}
             >
               <i className="ri-cloud-line" />
-              Aero
+              BGT
               {hasAeroBundle && (
                 <span
                   className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${overlayTab === "aero" ? "bg-white/20 text-white" : "bg-teal-50 text-teal-600"}`}
@@ -2352,28 +2352,28 @@ export default function StreamDashboard() {
                       renderBannerGrid(
                         INCLUDED_BANNERS_ADMIN,
                         hasBasicBundle,
-                        "Basic Bundle",
+                        "IPL Bundle",
                         true,
                       )}
                     {overlayTab === "glass" &&
                       renderBannerGrid(
                         GLASS_BUNDLE_BANNERS,
                         hasGlassBundle,
-                        "Glass Bundle",
+                        "WPL Bundle",
                         true,
                       )}
                     {overlayTab === "material" &&
                       renderBannerGrid(
                         MATERIAL_BUNDLE_BANNERS,
                         hasMaterialBundle,
-                        "Material Bundle",
+                        "Champions Trophy Bundle",
                         true,
                       )}
                     {overlayTab === "aero" &&
                       renderBannerGrid(
                         AERO_BUNDLE_BANNERS,
                         hasAeroBundle,
-                        "Aero Light Bundle",
+                        "Border-Gavaskar Bundle",
                         true,
                       )}
                   </div>
@@ -2736,14 +2736,14 @@ export default function StreamDashboard() {
                       renderBannerGrid(
                         INCLUDED_BANNERS_ADMIN,
                         hasBasicBundle,
-                        "Basic Bundle",
+                        "IPL Bundle",
                         false,
                       )}
                     {overlayTab === "glass" &&
                       renderBannerGrid(
                         GLASS_BUNDLE_BANNERS,
                         hasGlassBundle,
-                        "Glass Bundle",
+                        "WPL Bundle",
                         false,
                       )}
                   </div>

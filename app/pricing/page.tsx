@@ -55,7 +55,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     ],
     bundleFeatures: [
       "1 free bundle credit per match you create",
-      "Choose any style — Basic, Glass, Material or Aero",
+      "Choose any style — IPL, WPL, Champions Trophy or Border-Gavaskar",
       "8 broadcast overlays unlocked instantly",
       "Unlimited matches covered",
     ],
@@ -88,7 +88,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 const BUNDLE_CATALOGUE = [
   {
     id: "bundle-basic",
-    name: "Basic Bundle",
+    name: "IPL Bundle",
     price: 49,
     originalPrice: 99,
     gradient: "linear-gradient(135deg,#34B8FF,#1E88E5)",
@@ -116,7 +116,7 @@ const BUNDLE_CATALOGUE = [
   },
   {
     id: "bundle-glass",
-    name: "Glass Bundle",
+    name: "WPL Bundle",
     price: 49,
     originalPrice: 99,
     gradient: "linear-gradient(135deg,#00D4AA,#22D3EE)",
@@ -124,12 +124,12 @@ const BUNDLE_CATALOGUE = [
     desc: "Frosted-glass aesthetic with teal glow accents — premium broadcast look.",
     overlayCount: 8,
     overlays: [
-      "Glass Main Match Banner",
-      "Glass Score Overlay",
-      "Glass Match Summary",
-      "Glass Playing XI — Both Teams",
-      "Glass Batting XI (Team 1 & Team 2)",
-      "Glass Bowling XI (Team 1 & Team 2)",
+      "WPL Main Match Banner",
+      "WPL Score Overlay",
+      "WPL Match Summary",
+      "WPL Playing XI — Both Teams",
+      "WPL Batting XI (Team 1 & Team 2)",
+      "WPL Bowling XI (Team 1 & Team 2)",
     ],
     bannerKeys: [
       "glass_main",
@@ -144,7 +144,7 @@ const BUNDLE_CATALOGUE = [
   },
   {
     id: "bundle-material",
-    name: "Material Bundle",
+    name: "Champions Trophy Bundle",
     price: 49,
     originalPrice: 99,
     gradient: "linear-gradient(135deg,#009688,#00BCD4)",
@@ -152,12 +152,12 @@ const BUNDLE_CATALOGUE = [
     desc: "Clean flat-design overlays with crisp solid colors and stark broadcast typography.",
     overlayCount: 8,
     overlays: [
-      "Material Main Match Banner",
-      "Material Score Overlay",
-      "Material Match Summary",
-      "Material Playing XI — Both Teams",
-      "Material Batting XI (Team 1 & Team 2)",
-      "Material Bowling XI (Team 1 & Team 2)",
+      "Champions Trophy Main Match Banner",
+      "Champions Trophy Score Overlay",
+      "Champions Trophy Match Summary",
+      "Champions Trophy Playing XI — Both Teams",
+      "Champions Trophy Batting XI (Team 1 & Team 2)",
+      "Champions Trophy Bowling XI (Team 1 & Team 2)",
     ],
     bannerKeys: [
       "material_main",
@@ -172,7 +172,7 @@ const BUNDLE_CATALOGUE = [
   },
   {
     id: "bundle-aero",
-    name: "Aero Light Bundle",
+    name: "Border-Gavaskar Bundle",
     price: 49,
     originalPrice: 99,
     gradient: "linear-gradient(135deg,#E0F2FE,#0D9488)",
@@ -180,12 +180,12 @@ const BUNDLE_CATALOGUE = [
     desc: "Apple-inspired floating islands with pill aesthetics — elegant light-mode design.",
     overlayCount: 8,
     overlays: [
-      "Aero Main Match Banner",
-      "Aero Score Stack",
-      "Aero Match Summary",
-      "Aero Playing XI — Both Teams",
-      "Aero Batting XI (Team 1 & Team 2)",
-      "Aero Bowling XI (Team 1 & Team 2)",
+      "Border-Gavaskar Main Match Banner",
+      "Border-Gavaskar Score Stack",
+      "Border-Gavaskar Match Summary",
+      "Border-Gavaskar Playing XI — Both Teams",
+      "Border-Gavaskar Batting XI (Team 1 & Team 2)",
+      "Border-Gavaskar Bowling XI (Team 1 & Team 2)",
     ],
     bannerKeys: [
       "aero_main",
@@ -213,30 +213,30 @@ const BUNDLE_OVERLAY_DETAILS: Record<
   playingXI_bat_team2: { icon: "ri-group-line",        title: "Batting XI (Team 2)",        desc: "Full batting lineup for Team 2.",                                                    previewBg: "linear-gradient(135deg,#00b4d8,#0077b6)" },
   playingXI_bowl_team1:{ icon: "ri-group-2-line",      title: "Bowling XI (Team 1)",        desc: "Bowling lineup for Team 1.",                                                        previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)" },
   playingXI_bowl_team2:{ icon: "ri-group-2-line",      title: "Bowling XI (Team 2)",        desc: "Bowling lineup for Team 2.",                                                        previewBg: "linear-gradient(135deg,#8E54E9,#4776E6)" },
-  glass_main:          { icon: "ri-layout-top-2-line", title: "Glass Match Banner",         desc: "Frosted-glass panel with teal glow accents.",                                       previewBg: "linear-gradient(135deg,#00D4AA,#22D3EE)" },
-  glass_score:         { icon: "ri-bar-chart-line",    title: "Glass Score Overlay",        desc: "Bottom score bar with backdrop blur and teal glow border.",                         previewBg: "linear-gradient(135deg,#00D4AA,#0a1628)" },
-  glass_summary:       { icon: "ri-file-list-3-line",  title: "Glass Match Summary",        desc: "Frosted-glass innings panels with cyan/pink accents.",                              previewBg: "linear-gradient(135deg,#0a1628,#22D3EE)" },
-  glass_xi_combined:   { icon: "ri-team-line",         title: "Glass Playing XI",           desc: "Two-column glassmorphism lineup card.",                                             previewBg: "linear-gradient(135deg,#22D3EE,#F472B6)" },
-  glass_bat_team1:     { icon: "ri-group-line",        title: "Glass Batting XI (Team 1)",  desc: "Frosted batting lineup for Team 1.",                                                previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)" },
-  glass_bat_team2:     { icon: "ri-group-line",        title: "Glass Batting XI (Team 2)",  desc: "Frosted batting lineup for Team 2.",                                                previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)" },
-  glass_bowl_team1:    { icon: "ri-group-2-line",      title: "Glass Bowling XI (Team 1)",  desc: "Frosted bowling lineup for Team 1.",                                                previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)" },
-  glass_bowl_team2:    { icon: "ri-group-2-line",      title: "Glass Bowling XI (Team 2)",  desc: "Frosted bowling lineup for Team 2.",                                                previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)" },
-  material_main:          { icon: "ri-layout-top-2-line", title: "Material Match Banner",        desc: "Clean flat-design tournament banner.",                previewBg: "#009688" },
-  material_score:         { icon: "ri-bar-chart-line",    title: "Material Score Overlay",       desc: "Solid high-contrast bottom score bar.",               previewBg: "#111827" },
-  material_summary:       { icon: "ri-file-list-3-line",  title: "Material Match Summary",       desc: "Flat color-blocked innings panels.",                  previewBg: "#030712" },
-  material_xi_combined:   { icon: "ri-team-line",         title: "Material Playing XI",          desc: "Side-by-side solid lineup card.",                     previewBg: "#00BCD4" },
-  material_bat_team1:     { icon: "ri-group-line",        title: "Material Batting XI (Team 1)", desc: "Solid batting lineup for Team 1.",                    previewBg: "#00BCD4" },
-  material_bat_team2:     { icon: "ri-group-line",        title: "Material Batting XI (Team 2)", desc: "Solid batting lineup for Team 2.",                    previewBg: "#00BCD4" },
-  material_bowl_team1:    { icon: "ri-group-2-line",      title: "Material Bowling XI (Team 1)", desc: "Solid bowling lineup for Team 1.",                    previewBg: "#E91E63" },
-  material_bowl_team2:    { icon: "ri-group-2-line",      title: "Material Bowling XI (Team 2)", desc: "Solid bowling lineup for Team 2.",                    previewBg: "#E91E63" },
-  aero_main:           { icon: "ri-layout-top-2-line", title: "Aero Match Banner",          desc: "Floating modular stack with tournament pill and team islands.",                    previewBg: "#F3F4F6" },
-  aero_score:          { icon: "ri-bar-chart-line",    title: "Aero Score Stack",            desc: "Decoupled modular floating islands.",                                              previewBg: "#FFFFFF" },
-  aero_summary:        { icon: "ri-file-list-3-line",  title: "Aero Match Summary",          desc: "Elegant light-mode panels with soft gray backgrounds.",                           previewBg: "#F3F4F6" },
-  aero_xi_combined:    { icon: "ri-team-line",         title: "Aero Playing XI",             desc: "Clean floating lineup with role pills.",                                           previewBg: "#FFFFFF" },
-  aero_bat_team1:      { icon: "ri-group-line",        title: "Aero Batting XI (Team 1)",    desc: "Light-themed batting card — Team 1.",                                             previewBg: "#E0F2FE" },
-  aero_bat_team2:      { icon: "ri-group-line",        title: "Aero Batting XI (Team 2)",    desc: "Light-themed batting card — Team 2.",                                             previewBg: "#E0F2FE" },
-  aero_bowl_team1:     { icon: "ri-group-2-line",      title: "Aero Bowling XI (Team 1)",    desc: "Minimalist bowling lineup — Team 1.",                                             previewBg: "#FFE4E6" },
-  aero_bowl_team2:     { icon: "ri-group-2-line",      title: "Aero Bowling XI (Team 2)",    desc: "Minimalist bowling lineup — Team 2.",                                             previewBg: "#FFE4E6" },
+  glass_main:          { icon: "ri-layout-top-2-line", title: "WPL Match Banner",                    desc: "Frosted-glass panel with teal glow accents.",                                       previewBg: "linear-gradient(135deg,#00D4AA,#22D3EE)" },
+  glass_score:         { icon: "ri-bar-chart-line",    title: "WPL Score Overlay",                   desc: "Bottom score bar with backdrop blur and teal glow border.",                         previewBg: "linear-gradient(135deg,#00D4AA,#0a1628)" },
+  glass_summary:       { icon: "ri-file-list-3-line",  title: "WPL Match Summary",                   desc: "Frosted-glass innings panels with cyan/pink accents.",                              previewBg: "linear-gradient(135deg,#0a1628,#22D3EE)" },
+  glass_xi_combined:   { icon: "ri-team-line",         title: "WPL Playing XI",                      desc: "Two-column glassmorphism lineup card.",                                             previewBg: "linear-gradient(135deg,#22D3EE,#F472B6)" },
+  glass_bat_team1:     { icon: "ri-group-line",        title: "WPL Batting XI (Team 1)",             desc: "Frosted batting lineup for Team 1.",                                                previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)" },
+  glass_bat_team2:     { icon: "ri-group-line",        title: "WPL Batting XI (Team 2)",             desc: "Frosted batting lineup for Team 2.",                                                previewBg: "linear-gradient(135deg,#22D3EE,#0077b6)" },
+  glass_bowl_team1:    { icon: "ri-group-2-line",      title: "WPL Bowling XI (Team 1)",             desc: "Frosted bowling lineup for Team 1.",                                                previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)" },
+  glass_bowl_team2:    { icon: "ri-group-2-line",      title: "WPL Bowling XI (Team 2)",             desc: "Frosted bowling lineup for Team 2.",                                                previewBg: "linear-gradient(135deg,#00D4AA,#F472B6)" },
+  material_main:          { icon: "ri-layout-top-2-line", title: "Champions Trophy Match Banner",    desc: "Clean flat-design tournament banner.",                previewBg: "#009688" },
+  material_score:         { icon: "ri-bar-chart-line",    title: "Champions Trophy Score Overlay",   desc: "Solid high-contrast bottom score bar.",               previewBg: "#111827" },
+  material_summary:       { icon: "ri-file-list-3-line",  title: "Champions Trophy Match Summary",   desc: "Flat color-blocked innings panels.",                  previewBg: "#030712" },
+  material_xi_combined:   { icon: "ri-team-line",         title: "Champions Trophy Playing XI",      desc: "Side-by-side solid lineup card.",                     previewBg: "#00BCD4" },
+  material_bat_team1:     { icon: "ri-group-line",        title: "Champions Trophy Batting XI (Team 1)", desc: "Solid batting lineup for Team 1.",                previewBg: "#00BCD4" },
+  material_bat_team2:     { icon: "ri-group-line",        title: "Champions Trophy Batting XI (Team 2)", desc: "Solid batting lineup for Team 2.",                previewBg: "#00BCD4" },
+  material_bowl_team1:    { icon: "ri-group-2-line",      title: "Champions Trophy Bowling XI (Team 1)", desc: "Solid bowling lineup for Team 1.",                previewBg: "#E91E63" },
+  material_bowl_team2:    { icon: "ri-group-2-line",      title: "Champions Trophy Bowling XI (Team 2)", desc: "Solid bowling lineup for Team 2.",                previewBg: "#E91E63" },
+  aero_main:           { icon: "ri-layout-top-2-line", title: "Border-Gavaskar Match Banner",         desc: "Floating modular stack with tournament pill and team islands.",                    previewBg: "#F3F4F6" },
+  aero_score:          { icon: "ri-bar-chart-line",    title: "Border-Gavaskar Score Stack",           desc: "Decoupled modular floating islands.",                                              previewBg: "#FFFFFF" },
+  aero_summary:        { icon: "ri-file-list-3-line",  title: "Border-Gavaskar Match Summary",         desc: "Elegant light-mode panels with soft gray backgrounds.",                           previewBg: "#F3F4F6" },
+  aero_xi_combined:    { icon: "ri-team-line",         title: "Border-Gavaskar Playing XI",            desc: "Clean floating lineup with role pills.",                                           previewBg: "#FFFFFF" },
+  aero_bat_team1:      { icon: "ri-group-line",        title: "Border-Gavaskar Batting XI (Team 1)",   desc: "Light-themed batting card — Team 1.",                                             previewBg: "#E0F2FE" },
+  aero_bat_team2:      { icon: "ri-group-line",        title: "Border-Gavaskar Batting XI (Team 2)",   desc: "Light-themed batting card — Team 2.",                                             previewBg: "#E0F2FE" },
+  aero_bowl_team1:     { icon: "ri-group-2-line",      title: "Border-Gavaskar Bowling XI (Team 1)",   desc: "Minimalist bowling lineup — Team 1.",                                             previewBg: "#FFE4E6" },
+  aero_bowl_team2:     { icon: "ri-group-2-line",      title: "Border-Gavaskar Bowling XI (Team 2)",   desc: "Minimalist bowling lineup — Team 2.",                                             previewBg: "#FFE4E6" },
 };
 
 // Real premium add-on templates — mirrors ADDON_TEMPLATES in the stream dashboard
@@ -1219,8 +1219,8 @@ export default function PricingPage() {
                   </span>
                 </p>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  4 bundle styles available — Basic, Glass, Material, and Aero
-                  Light. Each bundle unlocks 8 overlays for one match. Buy
+                  4 bundle styles available — IPL, WPL, Champions Trophy, and
+                  Border-Gavaskar. Each bundle unlocks 8 overlays for one match. Buy
                   directly from your Stream Dashboard.
                 </p>
               </div>
