@@ -24,6 +24,11 @@ import BrandingConfigPanel from "@/app/components/overlays/BrandingConfigPanel";
 import MediaAssetsPanel from "@/app/components/overlays/MediaAssetsPanel";
 import { fetchBrandingConfig, saveBrandingConfig } from "@/lib/brandingConfig";
 import { DEFAULT_BRANDING_CONFIG } from "@/app/overlays/premium/matchAddOn/BrandingOverlay";
+import { useObs } from "@/hooks/useObs";
+import { useVmix } from "@/hooks/useVmix";
+import ConnectionSettingsPanel from "@/app/components/streaming/ConnectionSettingsPanel";
+import ObsControlPanel from "@/app/components/streaming/obs/ObsControlPanel";
+import VmixControlPanel from "@/app/components/streaming/vmix/VmixControlPanel";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -608,10 +613,12 @@ function StreamControlPanel({
   lockedReason,
   onClaim,
   onRelease,
-  obsUrl,
+  overlayUrl,
   copied,
   onCopy,
   currentUserId,
+  streamSoftware,
+  onSoftwareChange,
 }: {
   session: StreamSession;
   streaming: boolean;
@@ -620,19 +627,54 @@ function StreamControlPanel({
   lockedReason?: string;
   onClaim: () => void;
   onRelease: () => void;
-  obsUrl: string;
+  overlayUrl: string;
   copied: boolean;
   onCopy: () => void;
   currentUserId: string;
+  streamSoftware: "obs" | "vmix";
+  onSoftwareChange: (sw: "obs" | "vmix") => void;
 }) {
   const lockedByOther =
     session.isLocked && session.lockedByUserId !== currentUserId;
+  const swLabel = streamSoftware === "obs" ? "OBS" : "vMix";
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
           Stream Control
         </p>
+
+        {/* Software selector */}
+        <div className="mb-4">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            Streaming Software
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onSoftwareChange("obs")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                streamSoftware === "obs"
+                  ? "bg-[#34B8FF]/10 text-[#1E88E5] border-[#34B8FF]/30 shadow-sm"
+                  : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100"
+              }`}
+            >
+              <i className="ri-camera-line" />
+              OBS Studio
+            </button>
+            <button
+              onClick={() => onSoftwareChange("vmix")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                streamSoftware === "vmix"
+                  ? "bg-[#34B8FF]/10 text-[#1E88E5] border-[#34B8FF]/30 shadow-sm"
+                  : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100"
+              }`}
+            >
+              <i className="ri-vidicon-line" />
+              vMix
+            </button>
+          </div>
+        </div>
+
         {!canStream ? (
           <div className="text-center py-3">
             <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-3">
@@ -668,8 +710,8 @@ function StreamControlPanel({
           <div className="space-y-3">
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700 space-y-1">
               <p className="font-bold">Before you start:</p>
-              <p>① Copy the OBS URL below & add as Browser Source</p>
-              <p>② Click "Start Streaming" to take control</p>
+              <p>① Copy the URL below & add as Browser Source in {swLabel}</p>
+              <p>② Click &quot;Start Streaming&quot; to take control</p>
             </div>
             <button
               onClick={onClaim}
@@ -696,7 +738,7 @@ function StreamControlPanel({
               <div>
                 <p className="text-red-700 text-sm font-bold">You are live</p>
                 <p className="text-red-500 text-xs">
-                  OBS is capturing your overlay
+                  {swLabel} is capturing your overlay
                 </p>
               </div>
             </div>
@@ -714,10 +756,10 @@ function StreamControlPanel({
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              OBS Browser Source URL
+              Browser Source URL
             </p>
             <Link
-              href={obsUrl}
+              href={overlayUrl}
               target="_blank"
               className="text-[10px] text-[#34B8FF] font-semibold hover:underline"
             >
@@ -726,7 +768,7 @@ function StreamControlPanel({
           </div>
           <div className="flex gap-2 mb-2">
             <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-500 font-mono truncate">
-              {obsUrl}
+              {overlayUrl}
             </div>
             <button
               onClick={onCopy}
@@ -744,8 +786,9 @@ function StreamControlPanel({
             </button>
           </div>
           <p className="text-[10px] text-gray-400 leading-relaxed">
-            OBS → Add Source → Browser → paste URL → 1920×1080 → ✅ Allow
-            transparency
+            {streamSoftware === "obs"
+              ? "OBS \u2192 Add Source \u2192 Browser \u2192 paste URL \u2192 1920\u00d71080 \u2192 \u2705 Allow transparency"
+              : "vMix \u2192 Add Input \u2192 Web Browser \u2192 paste URL \u2192 1920\u00d71080"}
           </p>
         </div>
       )}
@@ -1255,10 +1298,15 @@ export default function StreamDashboard() {
     });
   }, []);
 
-  const [obsUrl, setObsUrl] = useState("");
+  const [overlayUrl, setOverlayUrl] = useState("");
+  const [streamSoftware, setStreamSoftware] = useState<"obs" | "vmix">("obs");
   useEffect(() => {
-    setObsUrl(`${window.location.origin}/obs/${matchId}`);
+    setOverlayUrl(`${window.location.origin}/overlay/${matchId}`);
   }, [matchId]);
+
+  // ── OBS & vMix integration hooks ──
+  const obs = useObs();
+  const vmix = useVmix();
 
   const matchRole: MatchRole | null = matchInfo
     ? matchInfo.creatorId === currentUser.id
@@ -1436,8 +1484,8 @@ export default function StreamDashboard() {
     setBannerBusy(false);
   };
 
-  const copyObs = () => {
-    navigator.clipboard.writeText(obsUrl);
+  const copyOverlayUrl = () => {
+    navigator.clipboard.writeText(overlayUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -1512,12 +1560,13 @@ export default function StreamDashboard() {
     matchSub?.purchasedTemplateIds.includes(t.id),
   );
 
+  const swLabel = streamSoftware === "obs" ? "OBS" : "vMix";
   const activeBannerLabel = () => {
     if (activeBanner === "none")
-      return "No banner active — OBS overlay is clear";
+      return `No banner active — overlay is clear`;
     if (activeBanner === "tpl-skeletal")
-      return "📊 Score Overlay (Free) is live on OBS";
-    if (activeBanner === "main") return "📺 Main Match Banner is live on OBS";
+      return `📊 Score Overlay (Free) is live on ${swLabel}`;
+    if (activeBanner === "main") return `📺 Main Match Banner is live on ${swLabel}`;
     if (activeBanner === "playingXI_bat_team1")
       return `🏏 Batting XI — ${matchState?.team1?.name ?? "Team 1"} is live`;
     if (activeBanner === "playingXI_bat_team2")
@@ -1527,16 +1576,16 @@ export default function StreamDashboard() {
     if (activeBanner === "playingXI_bowl_team2")
       return `🎳 Bowling XI — ${matchState?.team2?.name ?? "Team 2"} is live`;
     if (activeBanner === "playingXI_combined")
-      return "👥 Playing XI — Both Teams is live on OBS";
-    if (activeBanner === "score") return "📊 Score Overlay is live on OBS";
-    if (activeBanner === "summary") return "📋 Match Summary is live on OBS";
+      return `👥 Playing XI — Both Teams is live on ${swLabel}`;
+    if (activeBanner === "score") return `📊 Score Overlay is live on ${swLabel}`;
+    if (activeBanner === "summary") return `📋 Match Summary is live on ${swLabel}`;
     if (activeBanner.startsWith("glass_"))
       return `🔷 Glass ${activeBanner.replace("glass_", "")} is live`;
     if (activeBanner.startsWith("material_"))
       return `🔲 Material ${activeBanner.replace("material_", "")} is live`;
     if (activeBanner.startsWith("aero_"))
       return `🌤 Aero ${activeBanner.replace("aero_", "")} is live`;
-    return `✨ ${templates.find((t) => t.id === activeBanner)?.name ?? "Premium Overlay"} is live on OBS`;
+    return `✨ ${templates.find((t) => t.id === activeBanner)?.name ?? "Premium Overlay"} is live on ${swLabel}`;
   };
 
   // ── Banner lists ──
@@ -2149,11 +2198,25 @@ export default function StreamDashboard() {
                 lockedReason={streamLockReason}
                 onClaim={handleClaim}
                 onRelease={handleRelease}
-                obsUrl={obsUrl}
+                overlayUrl={overlayUrl}
                 copied={copied}
-                onCopy={copyObs}
+                onCopy={copyOverlayUrl}
                 currentUserId={currentUser.id}
+                streamSoftware={streamSoftware}
+                onSoftwareChange={setStreamSoftware}
               />
+
+              {/* ── OBS / vMix Connection + Controls ── */}
+              <ConnectionSettingsPanel
+                software={streamSoftware}
+                status={streamSoftware === "obs" ? obs.status : vmix.status}
+                error={streamSoftware === "obs" ? obs.error : vmix.error}
+                onConnectObs={obs.connect}
+                onConnectVmix={vmix.connect}
+                onDisconnect={streamSoftware === "obs" ? obs.disconnect : vmix.disconnect}
+              />
+              {streamSoftware === "obs" && <ObsControlPanel obs={obs} />}
+              {streamSoftware === "vmix" && <VmixControlPanel vmix={vmix} />}
 
               {matchState && <ScoreLive state={matchState} />}
 
@@ -2283,7 +2346,7 @@ export default function StreamDashboard() {
                   </p>
                   <p className="text-xs text-gray-400 hidden sm:block">
                     {activeBanner !== "none"
-                      ? "Displaying in your OBS browser source"
+                      ? `Displaying in your ${streamSoftware === "obs" ? "OBS" : "vMix"} browser source`
                       : "Select a banner below to show it"}
                   </p>
                 </div>
@@ -2582,7 +2645,7 @@ export default function StreamDashboard() {
                           >
                             <div className="absolute inset-0 flex items-center justify-center">
                               <span className="bg-black/25 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
-                                OBS Overlay
+                                Stream Overlay
                               </span>
                             </div>
                             {isActive && (
@@ -2774,7 +2837,7 @@ export default function StreamDashboard() {
                           >
                             <div className="absolute inset-0 flex items-center justify-center">
                               <span className="bg-black/25 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full backdrop-blur-sm">
-                                OBS Overlay
+                                Stream Overlay
                               </span>
                             </div>
                             {activeBanner === tpl.id && (
