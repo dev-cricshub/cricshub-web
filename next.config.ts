@@ -28,8 +28,22 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Allow /preview route to be embedded in iframes (for modal previews)
       {
-        source: "/(.*)",
+        source: "/preview",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+      // Apply full security headers to all other routes (excluding /preview)
+      {
+        source: "/((?!preview).*)",
         headers: securityHeaders,
       },
     ];
