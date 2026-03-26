@@ -59,7 +59,11 @@ const PREVIEW_BRANDING_CONFIG = {
   showVignette: true,
 };
 
-import type { PlayerStats, MatchState, MatchInfo } from "@/app/overlays/bundles/types";
+import type {
+  PlayerStats,
+  MatchState,
+  MatchInfo,
+} from "@/app/overlays/bundles/types";
 
 // ═══════════════════════════════════════════════════════════
 // STATIC MOCK DATA — no real match data, safe to be public
@@ -109,32 +113,32 @@ function mkPlayer(
 
 // Mumbai Indians — batted first, 187/5 in 20 overs
 const MI_XI: PlayerStats[] = [
-  mkPlayer("p1",  "R. Sharma",     "BAT", 62,  41, 7, 3, "caught",  0,   0,  0),
-  mkPlayer("p2",  "I. Kishan",     "WK",   8,  12, 0, 0, "bowled",  0,   0,  0),
-  mkPlayer("p3",  "S. Yadav",      "BAT", 45,  28, 3, 4, null,      0,   0,  0),
-  mkPlayer("p4",  "T. Tilak",      "BAT", 22,  17, 2, 1, "caught",  0,   0,  0),
-  mkPlayer("p5",  "T. Stubbs",     "BAT", 31,  22, 2, 2, null,      0,   0,  0),
-  mkPlayer("p6",  "H. Pandya",     "AR",  12,   9, 1, 0, "run out", 0,   0,  0),
-  mkPlayer("p7",  "M. Pollard",    "AR",   7,   6, 0, 0, null,      0,   0,  0),
-  mkPlayer("p8",  "K. Kartikeya", "BWL",   0,   0, 0, 0, null,      4,  28,  1),
-  mkPlayer("p9",  "J. Bumrah",     "BWL",  0,   0, 0, 0, null,      4,  24,  2),
-  mkPlayer("p10", "M. Siraj",      "BWL",  0,   0, 0, 0, null,      4,  38,  1),
-  mkPlayer("p11", "A. Khan",       "BWL",  0,   0, 0, 0, null,      4,  32,  0),
+  mkPlayer("p1", "R. Sharma", "BAT", 62, 41, 7, 3, "caught", 0, 0, 0),
+  mkPlayer("p2", "I. Kishan", "WK", 8, 12, 0, 0, "bowled", 0, 0, 0),
+  mkPlayer("p3", "S. Yadav", "BAT", 45, 28, 3, 4, null, 0, 0, 0),
+  mkPlayer("p4", "T. Tilak", "BAT", 22, 17, 2, 1, "caught", 0, 0, 0),
+  mkPlayer("p5", "T. Stubbs", "BAT", 31, 22, 2, 2, null, 0, 0, 0),
+  mkPlayer("p6", "H. Pandya", "AR", 12, 9, 1, 0, "run out", 0, 0, 0),
+  mkPlayer("p7", "M. Pollard", "AR", 7, 6, 0, 0, null, 0, 0, 0),
+  mkPlayer("p8", "K. Kartikeya", "BWL", 0, 0, 0, 0, null, 4, 28, 1),
+  mkPlayer("p9", "J. Bumrah", "BWL", 0, 0, 0, 0, null, 4, 24, 2),
+  mkPlayer("p10", "M. Siraj", "BWL", 0, 0, 0, 0, null, 4, 38, 1),
+  mkPlayer("p11", "A. Khan", "BWL", 0, 0, 0, 0, null, 4, 32, 0),
 ];
 
 // Royal Challengers Bangalore — chasing 188, 148/4 in 16.4 overs
 const RCB_XI: PlayerStats[] = [
-  mkPlayer("p12", "F. du Plessis", "BAT", 18,  15, 2, 0, "caught",  0,    0,  0),
-  mkPlayer("p13", "V. Kohli",      "BAT", 67,  48, 6, 2, null,      0,    0,  0), // striker
-  mkPlayer("p14", "G. Maxwell",    "AR",  23,  18, 2, 1, null,      0,    0,  0), // non-striker
-  mkPlayer("p15", "M. Kerr",       "BAT", 14,  12, 1, 0, "lbw",     0,    0,  0),
-  mkPlayer("p16", "D. Karthik",    "WK",  21,  14, 1, 1, "stumped", 0,    0,  0),
-  mkPlayer("p17", "S. Rajendran",  "AR",   5,   4, 0, 0, null,      0,    0,  0),
-  mkPlayer("p18", "W. Hasaranga",  "AR",   0,   0, 0, 0, null,      3,   22,  1),
-  mkPlayer("p19", "J. Bumrah_rcb", "BWL",  0,   0, 0, 0, null,      3.4, 34,  2), // current bowler
-  mkPlayer("p20", "H. Tyagi",      "BWL",  0,   0, 0, 0, null,      4,   41,  0),
-  mkPlayer("p21", "A. Harshal",    "BWL",  0,   0, 0, 0, null,      4,   36,  1),
-  mkPlayer("p22", "K. Ahmed",      "BWL",  0,   0, 0, 0, null,      2,   18,  0),
+  mkPlayer("p12", "F. du Plessis", "BAT", 18, 15, 2, 0, "caught", 0, 0, 0),
+  mkPlayer("p13", "V. Kohli", "BAT", 67, 48, 6, 2, null, 0, 0, 0), // striker
+  mkPlayer("p14", "G. Maxwell", "AR", 23, 18, 2, 1, null, 0, 0, 0), // non-striker
+  mkPlayer("p15", "M. Kerr", "BAT", 14, 12, 1, 0, "lbw", 0, 0, 0),
+  mkPlayer("p16", "D. Karthik", "WK", 21, 14, 1, 1, "stumped", 0, 0, 0),
+  mkPlayer("p17", "S. Rajendran", "AR", 5, 4, 0, 0, null, 0, 0, 0),
+  mkPlayer("p18", "W. Hasaranga", "AR", 0, 0, 0, 0, null, 3, 22, 1),
+  mkPlayer("p19", "J. Bumrah_rcb", "BWL", 0, 0, 0, 0, null, 3.4, 34, 2), // current bowler
+  mkPlayer("p20", "H. Tyagi", "BWL", 0, 0, 0, 0, null, 4, 41, 0),
+  mkPlayer("p21", "A. Harshal", "BWL", 0, 0, 0, 0, null, 4, 36, 1),
+  mkPlayer("p22", "K. Ahmed", "BWL", 0, 0, 0, 0, null, 2, 18, 0),
 ];
 
 const MI_TEAM = {
@@ -208,16 +212,16 @@ const H = 1080;
 const PREVIEW_ASSETS = [
   { id: "1", type: "VIDEO", url: "/stalkMediaAssets/stalkVideo1.mp4" },
   { id: "2", type: "VIDEO", url: "/stalkMediaAssets/stalkVideo2.mp4" },
-  { id: "3", type: "IMAGE", url: "/stalkMediaAssets/stalkImage.png"  },
+  { id: "3", type: "IMAGE", url: "/stalkMediaAssets/stalkImage.png" },
 ];
 const IMAGE_DURATION_MS = 8000;
 const FADE_MS = 500;
 
 function MediaReelPreview() {
-  const [index, setIndex]     = useState(0);
+  const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
-  const timerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const videoRef              = useRef<HTMLVideoElement | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const advance = () => {
     setVisible(false);
@@ -233,62 +237,157 @@ function MediaReelPreview() {
     if (current.type === "IMAGE") {
       timerRef.current = setTimeout(advance, IMAGE_DURATION_MS);
     }
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [index]);
 
   const current = PREVIEW_ASSETS[index];
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 90, background: "#000", overflow: "hidden" }}>
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 90,
+        background: "#000",
+        overflow: "hidden",
+      }}
+    >
       {/* Full-bleed media */}
-      <div style={{ position: "absolute", inset: 0, opacity: visible ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: visible ? 1 : 0,
+          transition: `opacity ${FADE_MS}ms ease`,
+        }}
+      >
         {current.type === "IMAGE" ? (
-          <img key={current.id} src={current.url} alt=""
-            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img
+            key={current.id}
+            src={current.url}
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
         ) : (
-          <video key={current.id} ref={videoRef} src={current.url}
-            autoPlay playsInline muted onEnded={advance}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <video
+            key={current.id}
+            ref={videoRef}
+            src={current.url}
+            autoPlay
+            playsInline
+            muted
+            onEnded={advance}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
         )}
       </div>
 
       {/* Gradient vignettes */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        background: `
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background: `
           linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 18%),
           linear-gradient(0deg,   rgba(0,0,0,0.72) 0%, transparent 32%)
         `,
-      }} />
+        }}
+      />
 
       {/* Lower third */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
-        <div style={{
-          height: 2,
-          background: "linear-gradient(90deg, transparent 0%, rgba(217,119,6,0.9) 12%, rgba(217,119,6,0.9) 88%, transparent 100%)",
-        }} />
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "14px 44px 22px", gap: 24,
-        }}>
+        <div
+          style={{
+            height: 2,
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(217,119,6,0.9) 12%, rgba(217,119,6,0.9) 88%, transparent 100%)",
+          }}
+        />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 44px 22px",
+            gap: 24,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 3, alignSelf: "stretch", background: "#D97706", borderRadius: 2, minHeight: 32 }} />
+            <div
+              style={{
+                width: 3,
+                alignSelf: "stretch",
+                background: "#D97706",
+                borderRadius: 2,
+                minHeight: 32,
+              }}
+            />
             <div>
-              <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: 3.5, textTransform: "uppercase", marginBottom: 3, lineHeight: 1 }}>
+              <div
+                style={{
+                  color: "rgba(255,255,255,0.45)",
+                  fontSize: 10,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 700,
+                  letterSpacing: 3.5,
+                  textTransform: "uppercase",
+                  marginBottom: 3,
+                  lineHeight: 1,
+                }}
+              >
                 Commercial Break
               </div>
-              <div style={{ color: "#FFFFFF", fontSize: 30, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", lineHeight: 1 }}>
+              <div
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 30,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                  lineHeight: 1,
+                }}
+              >
                 Advertisement
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 9 }}>
-            <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, letterSpacing: 2, lineHeight: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: 9,
+            }}
+          >
+            <div
+              style={{
+                color: "rgba(255,255,255,0.35)",
+                fontSize: 11,
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 600,
+                letterSpacing: 2,
+                lineHeight: 1,
+              }}
+            >
               {index + 1}&nbsp;/&nbsp;{PREVIEW_ASSETS.length}
             </div>
             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
               {PREVIEW_ASSETS.map((_, i) => (
-                <div key={i} style={{ height: 3, width: i === index ? 32 : 10, borderRadius: 2, background: i === index ? "#D97706" : "rgba(255,255,255,0.2)", transition: "width 0.4s ease, background 0.4s ease" }} />
+                <div
+                  key={i}
+                  style={{
+                    height: 3,
+                    width: i === index ? 32 : 10,
+                    borderRadius: 2,
+                    background:
+                      i === index ? "#D97706" : "rgba(255,255,255,0.2)",
+                    transition: "width 0.4s ease, background 0.4s ease",
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -296,9 +395,36 @@ function MediaReelPreview() {
       </div>
 
       {/* On-air indicator */}
-      <div style={{ position: "absolute", top: 24, right: 36, display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#D97706", flexShrink: 0, animation: "onAirPulse 2s ease-in-out infinite" }} />
-        <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: 3, textTransform: "uppercase" }}>
+      <div
+        style={{
+          position: "absolute",
+          top: 24,
+          right: 36,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <div
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: "#D97706",
+            flexShrink: 0,
+            animation: "onAirPulse 2s ease-in-out infinite",
+          }}
+        />
+        <span
+          style={{
+            color: "rgba(255,255,255,0.7)",
+            fontSize: 11,
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontWeight: 700,
+            letterSpacing: 3,
+            textTransform: "uppercase",
+          }}
+        >
           Ad Break
         </span>
       </div>
@@ -318,8 +444,8 @@ const EVENT_OVERLAY_KEYS = ["tpl-pro-1", "tpl-pro-2"];
 // ── Event trigger buttons — rendered at normal scale outside the canvas ──
 function EventTriggerBar({ onFire }: { onFire: (ball: string) => void }) {
   const events: { label: string; ball: string; color: string }[] = [
-    { label: "SIX",    ball: "6", color: "#FFD700" },
-    { label: "FOUR",   ball: "4", color: "#00D4FF" },
+    { label: "SIX", ball: "6", color: "#FFD700" },
+    { label: "FOUR", ball: "4", color: "#00D4FF" },
     { label: "WICKET", ball: "W", color: "#FF4444" },
   ];
   return (
@@ -341,7 +467,16 @@ function EventTriggerBar({ onFire }: { onFire: (ball: string) => void }) {
         fontFamily: "'DM Sans', sans-serif",
       }}
     >
-      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginRight: 4 }}>
+      <span
+        style={{
+          color: "rgba(255,255,255,0.4)",
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: 2,
+          textTransform: "uppercase",
+          marginRight: 4,
+        }}
+      >
         Trigger
       </span>
       {events.map(({ label, ball, color }) => (
@@ -361,10 +496,14 @@ function EventTriggerBar({ onFire }: { onFire: (ball: string) => void }) {
             transition: "background 0.15s, transform 0.1s",
             fontFamily: "'DM Sans', sans-serif",
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = `${color}33`)}
-          onMouseLeave={e => (e.currentTarget.style.background = `${color}18`)}
-          onMouseDown={e => (e.currentTarget.style.transform = "scale(0.95)")}
-          onMouseUp={e => (e.currentTarget.style.transform = "scale(1)")}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = `${color}33`)
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = `${color}18`)
+          }
+          onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
+          onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
           {label}
         </button>
@@ -405,56 +544,95 @@ function OverlayCanvas({ overlayKey }: { overlayKey: string }) {
   function renderOverlay() {
     switch (overlayKey) {
       // Basic
-      case "score":               return <ScoreOverlay state={s} />;
-      case "main":                return <MainMatchBanner info={info} state={s} />;
-      case "playingXI_bat_team1": return <BattingCard team={s.team1} state={s} />;
-      case "playingXI_bat_team2": return <BattingCard team={s.team2} state={s} />;
-      case "playingXI_bowl_team1":return <BowlingCard team={s.team1} state={s} />;
-      case "playingXI_bowl_team2":return <BowlingCard team={s.team2} state={s} />;
-      case "playingXI_combined":  return <PlayingXIBothTeamsCard state={s} />;
-      case "summary":             return <MatchSummaryCard state={s} />;
+      case "score":
+        return <ScoreOverlay state={s} />;
+      case "main":
+        return <MainMatchBanner info={info} state={s} />;
+      case "playingXI_bat_team1":
+        return <BattingCard team={s.team1} state={s} />;
+      case "playingXI_bat_team2":
+        return <BattingCard team={s.team2} state={s} />;
+      case "playingXI_bowl_team1":
+        return <BowlingCard team={s.team1} state={s} />;
+      case "playingXI_bowl_team2":
+        return <BowlingCard team={s.team2} state={s} />;
+      case "playingXI_combined":
+        return <PlayingXIBothTeamsCard state={s} />;
+      case "summary":
+        return <MatchSummaryCard state={s} />;
 
       // Glass
-      case "glass_score":         return <GlassScoreOverlay state={s} />;
-      case "glass_main":          return <GlassMainMatchBanner info={info} state={s} />;
-      case "glass_bat_team1":     return <GlassBattingCard team={s.team1} state={s} />;
-      case "glass_bat_team2":     return <GlassBattingCard team={s.team2} state={s} />;
-      case "glass_bowl_team1":    return <GlassBowlingCard team={s.team1} state={s} />;
-      case "glass_bowl_team2":    return <GlassBowlingCard team={s.team2} state={s} />;
-      case "glass_xi_combined":   return <GlassPlayingXIBothTeamsCard state={s} />;
-      case "glass_summary":       return <GlassMatchSummaryCard state={s} />;
+      case "glass_score":
+        return <GlassScoreOverlay state={s} />;
+      case "glass_main":
+        return <GlassMainMatchBanner info={info} state={s} />;
+      case "glass_bat_team1":
+        return <GlassBattingCard team={s.team1} state={s} />;
+      case "glass_bat_team2":
+        return <GlassBattingCard team={s.team2} state={s} />;
+      case "glass_bowl_team1":
+        return <GlassBowlingCard team={s.team1} state={s} />;
+      case "glass_bowl_team2":
+        return <GlassBowlingCard team={s.team2} state={s} />;
+      case "glass_xi_combined":
+        return <GlassPlayingXIBothTeamsCard state={s} />;
+      case "glass_summary":
+        return <GlassMatchSummaryCard state={s} />;
 
       // Material
-      case "material_score":      return <MaterialScoreOverlay state={s} />;
-      case "material_main":       return <MaterialMainMatchBanner info={info} state={s} />;
-      case "material_bat_team1":  return <MaterialBattingCard team={s.team1} state={s} />;
-      case "material_bat_team2":  return <MaterialBattingCard team={s.team2} state={s} />;
-      case "material_bowl_team1": return <MaterialBowlingCard team={s.team1} state={s} />;
-      case "material_bowl_team2": return <MaterialBowlingCard team={s.team2} state={s} />;
-      case "material_xi_combined":return <MaterialPlayingXIBothTeamsCard state={s} />;
-      case "material_summary":    return <MaterialMatchSummaryCard state={s} />;
+      case "material_score":
+        return <MaterialScoreOverlay state={s} />;
+      case "material_main":
+        return <MaterialMainMatchBanner info={info} state={s} />;
+      case "material_bat_team1":
+        return <MaterialBattingCard team={s.team1} state={s} />;
+      case "material_bat_team2":
+        return <MaterialBattingCard team={s.team2} state={s} />;
+      case "material_bowl_team1":
+        return <MaterialBowlingCard team={s.team1} state={s} />;
+      case "material_bowl_team2":
+        return <MaterialBowlingCard team={s.team2} state={s} />;
+      case "material_xi_combined":
+        return <MaterialPlayingXIBothTeamsCard state={s} />;
+      case "material_summary":
+        return <MaterialMatchSummaryCard state={s} />;
 
       // Aero
-      case "aero_score":          return <AeroScoreOverlay state={s} />;
-      case "aero_main":           return <AeroMainMatchBanner info={info} state={s} />;
-      case "aero_bat_team1":      return <AeroBattingCard team={s.team1} state={s} />;
-      case "aero_bat_team2":      return <AeroBattingCard team={s.team2} state={s} />;
-      case "aero_bowl_team1":     return <AeroBowlingCard team={s.team1} state={s} />;
-      case "aero_bowl_team2":     return <AeroBowlingCard team={s.team2} state={s} />;
-      case "aero_xi_combined":    return <AeroPlayingXIBothTeamsCard state={s} />;
-      case "aero_summary":        return <AeroMatchSummaryCard state={s} />;
+      case "aero_score":
+        return <AeroScoreOverlay state={s} />;
+      case "aero_main":
+        return <AeroMainMatchBanner info={info} state={s} />;
+      case "aero_bat_team1":
+        return <AeroBattingCard team={s.team1} state={s} />;
+      case "aero_bat_team2":
+        return <AeroBattingCard team={s.team2} state={s} />;
+      case "aero_bowl_team1":
+        return <AeroBowlingCard team={s.team1} state={s} />;
+      case "aero_bowl_team2":
+        return <AeroBowlingCard team={s.team2} state={s} />;
+      case "aero_xi_combined":
+        return <AeroPlayingXIBothTeamsCard state={s} />;
+      case "aero_summary":
+        return <AeroMatchSummaryCard state={s} />;
 
       // Free
-      case "tpl-skeletal":        return <SkeletalScoreOverlay state={s} />;
+      case "tpl-skeletal":
+        return <SkeletalScoreOverlay state={s} />;
 
       // Premium add-ons
-      case "tpl-pro-1":           return <EventBurstOverlay state={s as any} />;
-      case "tpl-pro-2":           return <InlineBurstOverlay state={s as any} />;
-      case "tpl-pro-3":           return <WinPredictorOverlay state={s as any} />;
-      case "tpl-pro-4":           return <BrandingOverlay config={PREVIEW_BRANDING_CONFIG} />;
-      case "tpl-pro-5":           return <MediaReelPreview />;
+      case "tpl-pro-1":
+        return <EventBurstOverlay state={s as any} />;
+      case "tpl-pro-2":
+        return <InlineBurstOverlay state={s as any} />;
+      case "tpl-pro-3":
+        return <WinPredictorOverlay state={s as any} />;
+      case "tpl-pro-4":
+        return <BrandingOverlay config={PREVIEW_BRANDING_CONFIG} />;
+      case "tpl-pro-5":
+        return <MediaReelPreview />;
 
-      default: return null;
+      default:
+        return null;
     }
   }
 
@@ -548,7 +726,24 @@ function PreviewContent() {
 
 export default function PreviewPage() {
   return (
-    <Suspense>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            width: "100vw",
+            height: "100vh",
+            background: "#000",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>
+            Loading preview...
+          </p>
+        </div>
+      }
+    >
       <PreviewContent />
     </Suspense>
   );
