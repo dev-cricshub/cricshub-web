@@ -1,101 +1,90 @@
 import { MatchState, TeamDetails, PlayerStats } from "../types";
 import { getBatTeam, getBowlTeam, fmtSR, fmtOv, fmtEcon } from "../helpers";
-import { G } from "./theme";
-import { GlassTeamBadge } from "./TeamBadge";
+import { B } from "./theme";
+import { BroadcastTeamBadge } from "./TeamBadge";
 
-function GlassInningsPanel({
+// ═══════════════════════════════════════════════════════════
+// BROADCAST MATCH SUMMARY CARD
+// TV scorecard summary after match / at drinks break.
+// Two innings side-by-side with batters + bowlers.
+// Result bar at bottom in team color of winner.
+// ═══════════════════════════════════════════════════════════
+
+function InningsPanel({
   inningsNum,
   batTeam,
   bowlTeam,
   batters,
   bowlers,
-  accent,
-  accentGlow,
-  opponentAccent,
-  opponentGlow,
+  teamColor,
+  teamColorDim,
+  teamColorMid, // Added here
 }: {
   inningsNum: number;
   batTeam: TeamDetails;
   bowlTeam: TeamDetails;
   batters: PlayerStats[];
   bowlers: PlayerStats[];
-  accent: string;
-  accentGlow: string;
-  opponentAccent: string;
-  opponentGlow: string;
+  teamColor: string;
+  teamColorDim: string;
+  teamColorMid: string; // Added here
 }) {
-  const ROW_H = 42; // Slightly taller for the premium holographic look
+  const ROW_H = 40;
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        borderBottom: `1px solid ${G.borderShadow}`,
-      }}
-    >
-      {/* Innings Header (Etched Glass) */}
+    <div style={{ borderBottom: `1px solid ${B.lineHard}` }}>
+      {/* Innings header */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 32px",
-          background: G.bgDeep, // Recessed layer
-          borderBottom: `1px solid ${G.borderSub}`,
-          borderTop: `1px solid ${G.borderSub}`,
-          boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
+          padding: "14px 32px",
+          background: `linear-gradient(90deg, ${teamColorMid} 0%, ${teamColorDim} 60%, transparent 100%)`,
+          borderLeft: `8px solid ${teamColor}`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {/* Neon Hollow Pill */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <span
             style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: accent,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 900,
+              color: B.panelBg,
+              background: teamColor,
+              borderRadius: 3,
+              padding: "3px 8px",
               letterSpacing: 2,
               textTransform: "uppercase",
-              border: `1px solid ${accent}`,
-              boxShadow: `inset 0 0 8px ${accentGlow}, 0 0 8px ${accentGlow}`,
-              borderRadius: 4,
-              padding: "3px 8px",
-              background: "rgba(0,0,0,0.5)",
-              textShadow: `0 0 5px ${accent}`,
             }}
           >
             {inningsNum === 1 ? "1ST INN" : "2ND INN"}
           </span>
           <span
             style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: G.white,
-              fontSize: 22,
+              color: B.white,
+              fontSize: 26,
               fontWeight: 900,
               textTransform: "uppercase",
               letterSpacing: 1,
-              textShadow: G.textGlow,
             }}
           >
             {batTeam.name}
           </span>
           <span
             style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: accent,
-              fontSize: 28,
+              color: B.white,
+              fontSize: 34,
               fontWeight: 900,
-              textShadow: `0 0 15px ${accentGlow}, ${G.textGlow}`,
+              textShadow: `0 2px 10px rgba(0,0,0,0.5)`,
             }}
           >
             {batTeam.score}/{batTeam.wickets}
           </span>
           <span
             style={{
-              color: G.w70,
-              fontSize: 14,
-              fontWeight: 700,
-              textShadow: G.textGlow,
+              color: B.white,
+              opacity: 0.8,
+              fontSize: 16,
+              fontWeight: 800,
             }}
           >
             ({batTeam.overs} ov)
@@ -104,31 +93,21 @@ function GlassInningsPanel({
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span
             style={{
-              color: G.w45,
-              fontSize: 12,
-              fontFamily: "'Barlow Condensed', sans-serif",
+              color: B.w50,
+              fontSize: 14,
+              fontWeight: 900,
               letterSpacing: 2,
-              textTransform: "uppercase",
-              fontWeight: 800,
             }}
           >
-            vs
+            VS
           </span>
-          <GlassTeamBadge
-            name={bowlTeam.name}
-            logoUrl={bowlTeam.logoUrl}
-            size={36}
-            accent={opponentAccent}
-            glow={opponentGlow}
-          />
           <span
             style={{
-              color: G.w90,
-              fontSize: 16,
-              fontFamily: "'Barlow Condensed', sans-serif",
+              color: B.white,
+              opacity: 0.9,
+              fontSize: 18,
               fontWeight: 800,
               textTransform: "uppercase",
-              textShadow: G.textGlow,
             }}
           >
             {bowlTeam.name}
@@ -138,41 +117,39 @@ function GlassInningsPanel({
 
       {/* Stats columns */}
       <div style={{ display: "flex" }}>
-        {/* BATTERS */}
-        <div style={{ flex: 1, borderRight: `1px solid ${G.borderSub}` }}>
+        {/* Batters */}
+        <div style={{ flex: 1, borderRight: `1px solid ${B.lineHard}` }}>
+          {/* Sub-header */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "8px 24px",
-              borderBottom: `1px solid ${G.borderSub}`,
-              background: G.bgLight,
+              padding: "7px 20px",
+              borderBottom: `1px solid ${B.lineHard}`,
+              background: B.panelBgDeep,
             }}
           >
             <span
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
+                color: B.w50,
                 fontSize: 11,
                 fontWeight: 800,
-                letterSpacing: 2.5,
+                letterSpacing: 2,
                 textTransform: "uppercase",
               }}
             >
               Batter
             </span>
-            <div style={{ display: "flex", gap: 16 }}>
+            <div style={{ display: "flex", gap: 12 }}>
               {["R", "B", "SR"].map((h) => (
                 <span
                   key={h}
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.w45,
+                    color: B.w50,
                     fontSize: 11,
                     fontWeight: 800,
                     letterSpacing: 2,
-                    textTransform: "uppercase",
                     width: 36,
                     textAlign: "right",
                   }}
@@ -183,16 +160,8 @@ function GlassInningsPanel({
             </div>
           </div>
           {batters.length === 0 ? (
-            <div
-              style={{
-                padding: "16px 24px",
-                color: G.w25,
-                fontSize: 13,
-                fontFamily: "'Barlow Condensed', sans-serif",
-                letterSpacing: 1,
-              }}
-            >
-              NO BATTING DATA
+            <div style={{ padding: "14px 20px", color: B.w30, fontSize: 13 }}>
+              No batting data
             </div>
           ) : (
             batters.map((p, i) => {
@@ -205,14 +174,11 @@ function GlassInningsPanel({
                     alignItems: "center",
                     justifyContent: "space-between",
                     height: ROW_H,
-                    padding: "0 24px",
-                    background:
-                      i % 2 === 0
-                        ? "transparent"
-                        : `linear-gradient(90deg, transparent, ${G.bgLight} 50%, transparent)`,
+                    padding: "0 20px",
+                    background: i % 2 === 0 ? "transparent" : B.panelBgMid,
                     borderBottom:
                       i < batters.length - 1
-                        ? `1px solid ${G.borderShadow}`
+                        ? `1px solid ${B.lineDim}`
                         : "none",
                   }}
                 >
@@ -220,23 +186,21 @@ function GlassInningsPanel({
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 8,
                       flex: 1,
                       overflow: "hidden",
                     }}
                   >
                     <span
                       style={{
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        color: isNotOut ? G.white : G.w70,
-                        fontWeight: isNotOut ? 800 : 600,
+                        color: isNotOut ? B.white : B.w70,
+                        fontWeight: isNotOut ? 700 : 500,
                         fontSize: 16,
                         textTransform: "uppercase",
                         letterSpacing: 0.5,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        textShadow: G.textGlow,
                       }}
                     >
                       {p.name}
@@ -244,54 +208,45 @@ function GlassInningsPanel({
                     {isNotOut && (
                       <span
                         style={{
-                          fontFamily: "'Barlow Condensed', sans-serif",
                           fontSize: 10,
-                          color: accent,
-                          border: `1px solid ${accent}`,
-                          boxShadow: `inset 0 0 4px ${accentGlow}, 0 0 4px ${accentGlow}`,
-                          borderRadius: 4,
-                          padding: "1px 6px",
-                          letterSpacing: 1,
+                          color: teamColor,
+                          border: `1px solid ${teamColor}`,
+                          borderRadius: 3,
+                          padding: "0 5px",
                           flexShrink: 0,
-                          background: "rgba(0,0,0,0.4)",
                         }}
                       >
                         *
                       </span>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 16, flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
                     <span
                       style={{
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        color: accent,
+                        color: teamColor,
                         fontWeight: 900,
                         fontSize: 18,
                         width: 36,
                         textAlign: "right",
-                        textShadow: G.textGlow,
                       }}
                     >
                       {p.runs}
                     </span>
                     <span
                       style={{
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        color: G.w70,
+                        color: B.w70,
                         fontWeight: 700,
                         fontSize: 16,
                         width: 36,
                         textAlign: "right",
-                        textShadow: G.textGlow,
                       }}
                     >
                       {p.ballsFaced}
                     </span>
                     <span
                       style={{
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        color: G.w45,
-                        fontWeight: 700,
+                        color: B.w50,
+                        fontWeight: 600,
                         fontSize: 14,
                         width: 36,
                         textAlign: "right",
@@ -310,16 +265,14 @@ function GlassInningsPanel({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "8px 24px",
-                borderTop: `1px solid ${G.borderSub}`,
-                background: G.bgDeep,
-                boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
+                padding: "7px 20px",
+                borderTop: `1px solid ${B.lineHard}`,
+                background: B.panelBgDeep,
               }}
             >
               <span
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.w45,
+                  color: B.w50,
                   fontSize: 11,
                   fontWeight: 800,
                   letterSpacing: 2,
@@ -328,71 +281,61 @@ function GlassInningsPanel({
               >
                 Extras
               </span>
-              <span
-                style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.w45,
-                  fontSize: 13,
-                  fontWeight: 700,
-                }}
-              >
+              <span style={{ color: B.w90, fontSize: 13, fontWeight: 900 }}>
+                {batTeam.extras.wide +
+                  batTeam.extras.noBall +
+                  batTeam.extras.bye +
+                  batTeam.extras.legBye +
+                  batTeam.extras.penalty}
                 <span
                   style={{
-                    color: G.w90,
-                    fontWeight: 900,
-                    marginRight: 8,
-                    textShadow: G.textGlow,
+                    color: B.w50,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    marginLeft: 6,
                   }}
                 >
-                  {batTeam.extras.wide +
-                    batTeam.extras.noBall +
-                    batTeam.extras.bye +
-                    batTeam.extras.legBye +
-                    batTeam.extras.penalty}
+                  (W:{batTeam.extras.wide} NB:{batTeam.extras.noBall} B:
+                  {batTeam.extras.bye} LB:{batTeam.extras.legBye})
                 </span>
-                (W:{batTeam.extras.wide} NB:{batTeam.extras.noBall} B:
-                {batTeam.extras.bye} LB:{batTeam.extras.legBye})
               </span>
             </div>
           )}
         </div>
 
-        {/* BOWLERS */}
+        {/* Bowlers */}
         <div style={{ flex: 1 }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "8px 24px",
-              borderBottom: `1px solid ${G.borderSub}`,
-              background: G.bgLight,
+              padding: "7px 20px",
+              borderBottom: `1px solid ${B.lineHard}`,
+              background: B.panelBgDeep,
             }}
           >
             <span
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
+                color: B.w50,
                 fontSize: 11,
                 fontWeight: 800,
-                letterSpacing: 2.5,
+                letterSpacing: 2,
                 textTransform: "uppercase",
               }}
             >
               Bowler
             </span>
-            <div style={{ display: "flex", gap: 16 }}>
+            <div style={{ display: "flex", gap: 12 }}>
               {["W-R", "O", "ECO"].map((h) => (
                 <span
                   key={h}
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.w45,
+                    color: B.w50,
                     fontSize: 11,
                     fontWeight: 800,
                     letterSpacing: 2,
-                    textTransform: "uppercase",
-                    width: 36,
+                    width: 40,
                     textAlign: "right",
                   }}
                 >
@@ -402,16 +345,8 @@ function GlassInningsPanel({
             </div>
           </div>
           {bowlers.length === 0 ? (
-            <div
-              style={{
-                padding: "16px 24px",
-                color: G.w25,
-                fontSize: 13,
-                fontFamily: "'Barlow Condensed', sans-serif",
-                letterSpacing: 1,
-              }}
-            >
-              NO BOWLING DATA
+            <div style={{ padding: "14px 20px", color: B.w30, fontSize: 13 }}>
+              No bowling data
             </div>
           ) : (
             bowlers.map((p, i) => (
@@ -422,72 +357,57 @@ function GlassInningsPanel({
                   alignItems: "center",
                   justifyContent: "space-between",
                   height: ROW_H,
-                  padding: "0 24px",
-                  background:
-                    i % 2 === 0
-                      ? "transparent"
-                      : `linear-gradient(90deg, transparent, ${G.bgLight} 50%, transparent)`,
+                  padding: "0 20px",
+                  background: i % 2 === 0 ? "transparent" : B.panelBgMid,
                   borderBottom:
-                    i < bowlers.length - 1
-                      ? `1px solid ${G.borderShadow}`
-                      : "none",
+                    i < bowlers.length - 1 ? `1px solid ${B.lineDim}` : "none",
                 }}
               >
                 <span
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.w70,
-                    fontWeight: 700,
+                    color: B.w70,
+                    fontWeight: 600,
                     fontSize: 16,
                     textTransform: "uppercase",
                     letterSpacing: 0.5,
+                    flex: 1,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    flex: 1,
-                    paddingRight: 12,
-                    textShadow: G.textGlow,
+                    paddingRight: 10,
                   }}
                 >
                   {p.name}
                 </span>
-                <div style={{ display: "flex", gap: 16, flexShrink: 0 }}>
+                <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
                   <span
                     style={{
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      color: p.wicketsTaken > 0 ? opponentAccent : G.w70,
+                      color: p.wicketsTaken > 0 ? teamColor : B.w70,
                       fontWeight: p.wicketsTaken > 0 ? 900 : 700,
                       fontSize: 18,
-                      width: 36,
+                      width: 40,
                       textAlign: "right",
-                      textShadow:
-                        p.wicketsTaken > 0
-                          ? `0 0 10px ${opponentGlow}, ${G.textGlow}`
-                          : G.textGlow,
                     }}
                   >
                     {p.wicketsTaken}-{p.runsConceded}
                   </span>
                   <span
                     style={{
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      color: G.w70,
+                      color: B.w70,
                       fontWeight: 700,
                       fontSize: 16,
-                      width: 36,
+                      width: 40,
                       textAlign: "right",
-                      textShadow: G.textGlow,
                     }}
                   >
                     {fmtOv(p.overs)}
                   </span>
                   <span
                     style={{
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      color: G.w45,
-                      fontWeight: 700,
+                      color: B.w50,
+                      fontWeight: 600,
                       fontSize: 14,
-                      width: 36,
+                      width: 40,
                       textAlign: "right",
                     }}
                   >
@@ -503,63 +423,70 @@ function GlassInningsPanel({
   );
 }
 
-export function GlassMatchSummaryCard({ state }: { state: MatchState }) {
+export function BroadcastMatchSummaryCard({ state }: { state: MatchState }) {
   const inn1BatTeam =
     state.battingFirst?.name === state.team1.name ? state.team1 : state.team2;
   const inn1BowlTeam =
     inn1BatTeam.name === state.team1.name ? state.team2 : state.team1;
   const inn2BatTeam = inn1BowlTeam;
   const inn2BowlTeam = inn1BatTeam;
+
+  const isInn1T1 = inn1BatTeam.name === state.team1.name;
+
   const strikerId = state.currentStriker?.playerId;
   const nonStrikerId = state.currentNonStriker?.playerId;
 
-  const inn1Batters: PlayerStats[] = ((state as any).team1BattingOrder ?? [])
-    .filter((p: PlayerStats) => p.ballsFaced > 0)
-    .map((p: PlayerStats) => {
-      const live = inn1BatTeam.playingXI.find((x) => x.playerId === p.playerId);
+  function enrich(order: PlayerStats[], team: TeamDetails): PlayerStats[] {
+    return order.map((p) => {
+      const live = team.playingXI.find((x) => x.playerId === p.playerId);
       const enriched = live ?? p;
-      const isAtCrease =
+      const atCrease =
         enriched.playerId === strikerId || enriched.playerId === nonStrikerId;
-      return isAtCrease ? { ...enriched, wicketDetails: null } : enriched;
-    })
-    .sort((a: PlayerStats, b: PlayerStats) => b.runs - a.runs)
-    .slice(0, 4);
+      return atCrease ? { ...enriched, wicketDetails: null } : enriched;
+    });
+  }
 
-  const inn1Bowlers: PlayerStats[] = ((state as any).team1BowlingOrder ?? [])
+  const inn1Batters = enrich(
+    (state as any).team1BattingOrder ?? [],
+    inn1BatTeam,
+  )
+    .filter((p) => p.ballsFaced > 0)
+    .sort((a, b) => b.runs - a.runs)
+    .slice(0, 5);
+
+  const inn1Bowlers = ((state as any).team1BowlingOrder ?? [])
     .sort(
       (a: PlayerStats, b: PlayerStats) =>
         b.wicketsTaken - a.wicketsTaken || a.economyRate - b.economyRate,
     )
-    .slice(0, 4);
+    .slice(0, 5);
 
-  const inn2Batters: PlayerStats[] = ((state as any).team2BattingOrder ?? [])
-    .filter((p: PlayerStats) => p.ballsFaced > 0)
-    .map((p: PlayerStats) => {
-      const live = inn2BatTeam.playingXI.find((x) => x.playerId === p.playerId);
-      const enriched = live ?? p;
-      const isAtCrease =
-        enriched.playerId === strikerId || enriched.playerId === nonStrikerId;
-      return isAtCrease ? { ...enriched, wicketDetails: null } : enriched;
-    })
-    .sort((a: PlayerStats, b: PlayerStats) => b.runs - a.runs)
-    .slice(0, 4);
+  const inn2Batters = enrich(
+    (state as any).team2BattingOrder ?? [],
+    inn2BatTeam,
+  )
+    .filter((p) => p.ballsFaced > 0)
+    .sort((a, b) => b.runs - a.runs)
+    .slice(0, 5);
 
-  const inn2Bowlers: PlayerStats[] = ((state as any).team2BowlingOrder ?? [])
+  const inn2Bowlers = ((state as any).team2BowlingOrder ?? [])
     .sort(
       (a: PlayerStats, b: PlayerStats) =>
         b.wicketsTaken - a.wicketsTaken || a.economyRate - b.economyRate,
     )
-    .slice(0, 4);
+    .slice(0, 5);
 
-  const showInnings2 =
+  const showInn2 =
     !state.firstInnings || inn2Batters.length > 0 || inn2Bowlers.length > 0;
 
+  // Status bar
   function statusBar() {
     if (state.matchComplete && state.winner) {
       return {
         text: `${state.winner.toUpperCase()} WON`,
-        sub: state.winBy ? state.winBy.toUpperCase() : "",
-        isResult: true,
+        sub: state.winBy?.toUpperCase() ?? "",
+        win: true,
+        winnerIsT1: state.winner === state.team1.name,
       };
     }
     const bat = getBatTeam(state);
@@ -575,18 +502,21 @@ export function GlassMatchSummaryCard({ state }: { state: MatchState }) {
       const rrr =
         ballsLeft > 0 ? ((runsNeeded / ballsLeft) * 6).toFixed(2) : "—";
       return {
-        text: `${bat.name.toUpperCase()} NEED ${runsNeeded} OFF ${ballsLeft} BALLS`,
+        text: `${bat.name.toUpperCase()} NEED ${runsNeeded} FROM ${ballsLeft} BALLS`,
         sub: `RRR  ${rrr}`,
-        isResult: false,
+        win: false,
+        winnerIsT1: false,
       };
     }
     return {
       text: `${bat.name.toUpperCase()} — INNINGS IN PROGRESS`,
       sub: `CRR  ${crr}`,
-      isResult: false,
+      win: false,
+      winnerIsT1: false,
     };
   }
   const bar = statusBar();
+  const barColor = bar.win ? (bar.winnerIsT1 ? B.t1 : B.t2) : B.gold;
 
   return (
     <div
@@ -596,68 +526,51 @@ export function GlassMatchSummaryCard({ state }: { state: MatchState }) {
         left: "50%",
         transform: "translate(-50%, -50%)",
         width: 1460,
-        animation: "glassScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'Barlow Condensed', 'DM Sans', sans-serif",
+        animation: "bcScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
       }}
     >
       <div
         style={{
-          background: G.bg,
-          backdropFilter: G.backdropBlur,
-          WebkitBackdropFilter: G.backdropBlur,
-          borderTop: `1px solid ${G.borderHighlight}`,
-          borderLeft: `1px solid ${G.borderHighlight}`,
-          borderBottom: `1px solid ${G.borderShadow}`,
-          borderRight: `1px solid ${G.borderShadow}`,
-          borderRadius: 24,
+          background: B.panelBg,
+          borderRadius: 4,
           overflow: "hidden",
-          boxShadow: G.panelShadow,
-          position: "relative",
+          boxShadow: B.shadow,
+          border: `1px solid ${B.lineHard}`,
         }}
       >
-        {/* Holographic Top Rim Glow */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "20%",
-            right: "20%",
-            height: 2,
-            background: `linear-gradient(90deg, transparent, ${G.cyan}, ${G.teal}, ${G.pink}, transparent)`,
-            boxShadow: `0 0 20px ${G.cyan}, 0 0 10px ${G.white}`,
-            opacity: 0.8,
-          }}
-        />
+        {/* Top split rail */}
+        <div style={{ display: "flex", height: 5 }}>
+          <div style={{ flex: 1, background: B.t1 }} />
+          <div style={{ flex: 1, background: B.t2 }} />
+        </div>
 
-        {/* Title (Etched Glass) */}
+        {/* Title */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "16px 36px",
-            borderBottom: `1px solid ${G.borderSub}`,
-            background: G.bgDeep,
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
-            gap: 20,
+            padding: "13px 32px",
+            borderBottom: `1px solid ${B.lineHard}`,
+            background: B.panelBgDeep,
+            gap: 18,
           }}
         >
           <div
             style={{
               height: 1,
               flex: 1,
-              background: `linear-gradient(90deg, transparent, ${G.tealGlow})`,
+              background: `linear-gradient(90deg, transparent, ${B.lineHard})`,
             }}
           />
           <span
             style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: G.teal,
+              color: B.w90,
+              fontSize: 18,
               fontWeight: 900,
-              fontSize: 20,
-              letterSpacing: 6,
+              letterSpacing: 5,
               textTransform: "uppercase",
-              textShadow: `0 0 12px ${G.tealGlow}`,
             }}
           >
             Match Summary
@@ -666,61 +579,52 @@ export function GlassMatchSummaryCard({ state }: { state: MatchState }) {
             style={{
               height: 1,
               flex: 1,
-              background: `linear-gradient(90deg, ${G.tealGlow}, transparent)`,
+              background: `linear-gradient(90deg, ${B.lineHard}, transparent)`,
             }}
           />
         </div>
 
-        <GlassInningsPanel
+        <InningsPanel
           inningsNum={1}
           batTeam={inn1BatTeam}
           bowlTeam={inn1BowlTeam}
           batters={inn1Batters}
           bowlers={inn1Bowlers}
-          accent={G.cyan}
-          accentGlow={G.cyanGlow}
-          opponentAccent={G.pink}
-          opponentGlow={G.pinkGlow}
+          teamColor={isInn1T1 ? B.t1 : B.t2}
+          teamColorDim={isInn1T1 ? B.t1Dim : B.t2Dim}
+          teamColorMid={isInn1T1 ? B.t1Mid : B.t2Mid} // Added here
         />
-        {showInnings2 && (
-          <GlassInningsPanel
+        {showInn2 && (
+          <InningsPanel
             inningsNum={2}
             batTeam={inn2BatTeam}
             bowlTeam={inn2BowlTeam}
             batters={inn2Batters}
             bowlers={inn2Bowlers}
-            accent={G.pink}
-            accentGlow={G.pinkGlow}
-            opponentAccent={G.cyan}
-            opponentGlow={G.cyanGlow}
+            teamColor={isInn1T1 ? B.t2 : B.t1}
+            teamColorDim={isInn1T1 ? B.t2Dim : B.t1Dim}
+            teamColorMid={isInn1T1 ? B.t2Mid : B.t1Mid} // Added here
           />
         )}
 
-        {/* Status bar */}
+        {/* Result / status bar */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "16px 36px",
-            background: state.matchComplete
-              ? `linear-gradient(90deg, ${G.tealDim}, rgba(0,0,0,0.4), ${G.tealDim})` // Neon glow on complete
-              : G.bgDeep, // Recessed grey if ongoing
-            borderTop: `1px solid ${G.borderHighlight}`, // Light catches the bottom edge
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
+            padding: "16px 32px",
+            background: bar.win ? `${barColor}22` : B.panelBgDeep,
+            borderTop: `3px solid ${barColor}`,
           }}
         >
           <span
             style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: state.matchComplete ? G.teal : G.white,
+              color: bar.win ? barColor : B.white,
+              fontSize: bar.win ? 26 : 18,
               fontWeight: 900,
-              fontSize: state.matchComplete ? 24 : 18,
               letterSpacing: 2,
               textTransform: "uppercase",
-              textShadow: state.matchComplete
-                ? `0 0 14px ${G.tealGlow}, ${G.textGlow}`
-                : G.textGlow,
             }}
           >
             {bar.text}
@@ -728,13 +632,11 @@ export function GlassMatchSummaryCard({ state }: { state: MatchState }) {
           {bar.sub && (
             <span
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: state.matchComplete ? G.teal : G.w70,
-                fontWeight: 900,
-                fontSize: 18,
+                color: bar.win ? barColor : B.w70,
+                fontSize: 20,
+                fontWeight: 800,
                 letterSpacing: 2,
                 textTransform: "uppercase",
-                textShadow: G.textGlow,
               }}
             >
               {bar.sub}
@@ -745,3 +647,6 @@ export function GlassMatchSummaryCard({ state }: { state: MatchState }) {
     </div>
   );
 }
+
+// Re-export for backward compatibility with overlay page imports
+export { BroadcastMatchSummaryCard as GlassMatchSummaryCard };

@@ -22,7 +22,15 @@ import { useMatchWebSocket } from "@/hooks/useMatchWebSocket";
 import UpiCheckoutModal from "@/app/components/UpiCheckoutModal";
 import BrandingConfigPanel from "@/app/components/overlays/BrandingConfigPanel";
 import MediaAssetsPanel from "@/app/components/overlays/MediaAssetsPanel";
+import ThemeConfigPanel from "@/app/components/overlays/ThemeConfigPanel";
 import { fetchBrandingConfig, saveBrandingConfig } from "@/lib/brandingConfig";
+import {
+  ThemeConfig,
+  loadThemeConfig,
+  saveThemeConfig,
+  encodeThemeConfig,
+  hasOverrides,
+} from "@/lib/themeConfig";
 import { DEFAULT_BRANDING_CONFIG } from "@/app/overlays/premium/matchAddOn/BrandingOverlay";
 import { useObs } from "@/hooks/useObs";
 import { useVmix } from "@/hooks/useVmix";
@@ -1236,6 +1244,8 @@ export default function StreamDashboard() {
   const [previousBanner, setPreviousBanner] = useState<BannerType>("none");
   const [brandingOpen, setBrandingOpen] = useState(true);
   const [mediaReelOpen, setMediaReelOpen] = useState(true);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>({});
   const [templates, setTemplates] = useState<AddOnTemplate[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1300,9 +1310,21 @@ export default function StreamDashboard() {
 
   const [overlayUrl, setOverlayUrl] = useState("");
   const [streamSoftware, setStreamSoftware] = useState<"obs" | "vmix">("obs");
+
+  // Load saved theme config from localStorage on mount
   useEffect(() => {
-    setOverlayUrl(`${window.location.origin}/overlay/${matchId}`);
+    setThemeConfig(loadThemeConfig(matchId));
   }, [matchId]);
+
+  // Rebuild overlay URL whenever matchId or themeConfig changes
+  useEffect(() => {
+    const base = `${window.location.origin}/overlay/${matchId}`;
+    if (!hasOverrides(themeConfig)) {
+      setOverlayUrl(base);
+    } else {
+      setOverlayUrl(`${base}?tc=${encodeURIComponent(encodeThemeConfig(themeConfig))}`);
+    }
+  }, [matchId, themeConfig]);
 
   // ── OBS & vMix integration hooks ──
   const obs = useObs();
@@ -2267,6 +2289,66 @@ export default function StreamDashboard() {
                       onSave={async (cfg) => {
                         const ok = await saveBrandingConfig(matchId, cfg);
                         if (!ok) alert("Failed to save branding config.");
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* ── Theme Colour Customisation (shown when any bundle is purchased) ── */}
+              {(matchSub?.purchasedBundleIds ?? []).length > 0 && (
+                <div
+                  style={{
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    overflow: "hidden",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <button
+                    onClick={() => setThemeOpen((v) => !v)}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "13px 20px",
+                      background: "rgba(8,10,24,0.97)",
+                      border: "none",
+                      borderBottom: themeOpen
+                        ? "1px solid rgba(255,255,255,0.06)"
+                        : "none",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {hasOverrides(themeConfig) && (
+                        <span
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            background: "#F59E0B",
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                      <span style={{ color: "#F3F4F6", fontSize: 13, fontWeight: 600 }}>
+                        Overlay Colours
+                      </span>
+                    </span>
+                    <i
+                      className={`ri-arrow-${themeOpen ? "up" : "down"}-s-line`}
+                      style={{ color: "rgba(255,255,255,0.35)", fontSize: 18 }}
+                    />
+                  </button>
+                  {themeOpen && (
+                    <ThemeConfigPanel
+                      config={themeConfig}
+                      onChange={(cfg) => {
+                        setThemeConfig(cfg);
+                        saveThemeConfig(matchId, cfg);
                       }}
                     />
                   )}

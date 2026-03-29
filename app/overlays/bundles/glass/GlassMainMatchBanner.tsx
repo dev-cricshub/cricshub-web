@@ -1,9 +1,9 @@
 import { MatchState, MatchInfo } from "../types";
 import { fmt12, fmtDate } from "../helpers";
-import { G } from "./theme";
-import { GlassTeamBadge } from "./TeamBadge";
+import { B } from "./theme";
+import { BroadcastTeamBadge } from "./TeamBadge";
 
-export function GlassMainMatchBanner({
+export function BroadcastMainMatchBanner({
   info,
   state,
 }: {
@@ -20,110 +20,88 @@ export function GlassMainMatchBanner({
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        width: 1140,
-        animation: "glassScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
-        fontFamily: "'DM Sans', sans-serif",
+        width: 1200,
+        fontFamily: "'Barlow Condensed', 'DM Sans', sans-serif",
+        animation: "bcScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
       }}
     >
-      {/* Holographic Projector Pill (Tournament Info) */}
       {(info.tournamentName || info.stage) && (
         <div style={{ textAlign: "center", marginBottom: 16 }}>
           <span
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 12,
-              background: G.bgDeep, // Recessed core
-              backdropFilter: G.backdropBlur,
-              border: `1px solid ${G.borderSub}`,
+              gap: 14,
+              background: B.panelBgDeep,
+              border: `2px solid ${B.lineHard}`,
               borderRadius: 100,
               padding: "8px 32px",
-              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 15,
               fontWeight: 900,
-              fontSize: 14,
-              color: G.teal,
+              color: B.white,
               letterSpacing: 4,
               textTransform: "uppercase",
-              boxShadow: `inset 0 2px 4px rgba(0,0,0,0.5), 0 0 24px ${G.tealGlow}`, // Inner depth + outer glow
-              textShadow: `0 0 10px ${G.tealGlow}`,
+              boxShadow: `0 8px 24px rgba(0,0,0,0.5)`,
             }}
           >
             {info.tournamentName}
             {info.tournamentName && info.stage && (
-              <span style={{ color: G.w25, textShadow: "none" }}>◆</span>
+              <span style={{ color: B.w30 }}>/</span>
             )}
-            {info.stage && (
-              <span style={{ color: G.white, textShadow: G.textGlow }}>
-                {info.stage}
-              </span>
-            )}
+            {info.stage && <span style={{ color: B.gold }}>{info.stage}</span>}
           </span>
         </div>
       )}
 
-      {/* Main Holographic Plate */}
       <div
         style={{
-          background: G.bg,
-          backdropFilter: G.backdropBlur,
-          WebkitBackdropFilter: G.backdropBlur,
-          // 3D Glass Bevel
-          borderTop: `1px solid ${G.borderHighlight}`,
-          borderLeft: `1px solid ${G.borderHighlight}`,
-          borderBottom: `1px solid ${G.borderShadow}`,
-          borderRight: `1px solid ${G.borderShadow}`,
-          borderRadius: 24, // High-end curved glass
+          background: B.panelBg,
+          borderRadius: 8,
           overflow: "hidden",
-          boxShadow: G.panelShadow,
-          position: "relative",
+          boxShadow: `0 16px 40px rgba(0,0,0,0.6)`,
+          border: `1px solid ${B.lineHard}`,
         }}
       >
-        {/* Intense Top Rim Glow */}
+        <div style={{ display: "flex", height: 8 }}>
+          <div style={{ flex: 1, background: B.t1 }} />
+          <div style={{ flex: 1, background: B.t2 }} />
+        </div>
+
         <div
           style={{
-            position: "absolute",
-            top: 0,
-            left: "15%",
-            right: "15%",
-            height: 2,
-            background: `linear-gradient(90deg, transparent 0%, ${G.cyan} 25%, ${G.teal} 50%, ${G.pink} 75%, transparent 100%)`,
-            boxShadow: `0 0 24px ${G.teal}, 0 0 12px ${G.white}`,
-            opacity: 0.9,
+            display: "flex",
+            alignItems: "stretch",
+            minHeight: 300,
+            background: B.panelBgDeep,
           }}
-        />
-
-        {/* Teams Area */}
-        <div style={{ display: "flex", alignItems: "stretch", minHeight: 240 }}>
-          {/* Team 1 */}
+        >
+          {/* TEAM 1: Aggressive diagonal flood */}
           <div
             style={{
               flex: 1,
-              padding: "40px 48px",
-              // Localized neon flare behind the team
-              background: `radial-gradient(circle at 30% 50%, ${G.cyanDim} 0%, transparent 60%)`,
+              padding: "40px 50px",
+              background: `linear-gradient(135deg, ${B.t1Dim} 0%, ${B.t1Mid} 40%, transparent 80%)`,
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
-              gap: 16,
+              gap: 20,
             }}
           >
-            <GlassTeamBadge
+            <BroadcastTeamBadge
               name={state.team1.name}
               logoUrl={state.team1.logoUrl}
-              size={72} // Slightly larger for impact
-              accent={G.cyan}
-              glow={G.cyanGlow}
+              size={90}
+              teamColor={B.t1}
             />
             <div
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.white,
+                color: B.white,
+                fontSize: 56,
                 fontWeight: 900,
-                fontSize: 44,
                 textTransform: "uppercase",
-                letterSpacing: 1.5,
+                letterSpacing: 2,
                 lineHeight: 1,
-                textShadow: G.textGlow,
+                textShadow: `0 4px 12px rgba(0,0,0,0.5)`,
               }}
             >
               {state.team1.name}
@@ -132,22 +110,21 @@ export function GlassMainMatchBanner({
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                 <span
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.cyan,
+                    color: B.t1,
+                    fontSize: 76,
                     fontWeight: 900,
-                    fontSize: 64,
                     lineHeight: 1,
-                    textShadow: `0 0 20px ${G.cyanGlow}, ${G.textGlow}`, // Burns through the blur
+                    textShadow: `0 0 30px ${B.t1}80, 0 4px 10px rgba(0,0,0,0.8)`,
                   }}
                 >
                   {state.team1.score}/{state.team1.wickets}
                 </span>
                 <span
                   style={{
-                    color: G.w70,
-                    fontSize: 20,
-                    fontWeight: 700,
-                    textShadow: G.textGlow,
+                    color: B.white,
+                    opacity: 0.8,
+                    fontSize: 24,
+                    fontWeight: 800,
                   }}
                 >
                   ({state.team1.overs} ov)
@@ -156,7 +133,7 @@ export function GlassMainMatchBanner({
             )}
           </div>
 
-          {/* VS Column (Etched Divider) */}
+          {/* VS CENTRE */}
           <div
             style={{
               width: 120,
@@ -166,29 +143,28 @@ export function GlassMainMatchBanner({
               alignItems: "center",
               justifyContent: "center",
               gap: 16,
-              borderLeft: `1px solid ${G.borderSub}`,
-              borderRight: `1px solid ${G.borderSub}`,
-              background: G.bgLight, // Frosted center strip
+              background: B.panelBg,
+              borderLeft: `2px solid ${B.lineHard}`,
+              borderRight: `2px solid ${B.lineHard}`,
+              position: "relative",
+              zIndex: 10,
+              boxShadow: `0 0 30px rgba(0,0,0,0.5)`,
             }}
           >
-            {/* Etched VS Badge */}
             <div
               style={{
-                width: 64,
-                height: 64,
+                width: 68,
+                height: 68,
                 borderRadius: "50%",
-                border: `1px solid ${G.borderSub}`,
-                background: G.bgDeep, // Deep cutout
-                boxShadow: "inset 0 4px 12px rgba(0,0,0,0.8)", // Indented shadow
+                background: B.panelBgDeep,
+                border: `3px solid ${B.w30}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 22,
                 fontWeight: 900,
-                fontSize: 20,
-                color: G.w70,
+                color: B.white,
                 letterSpacing: 4,
-                textShadow: G.textGlow,
               }}
             >
               VS
@@ -196,11 +172,10 @@ export function GlassMainMatchBanner({
             {info.overs > 0 && (
               <div
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.w45,
-                  fontSize: 15,
-                  fontWeight: 800,
-                  letterSpacing: 2,
+                  color: B.gold,
+                  fontSize: 16,
+                  fontWeight: 900,
+                  letterSpacing: 3,
                 }}
               >
                 T{info.overs}
@@ -208,38 +183,35 @@ export function GlassMainMatchBanner({
             )}
           </div>
 
-          {/* Team 2 */}
+          {/* TEAM 2: Aggressive diagonal flood */}
           <div
             style={{
               flex: 1,
-              padding: "40px 48px",
-              // Localized neon flare behind the team
-              background: `radial-gradient(circle at 70% 50%, ${G.pinkDim} 0%, transparent 60%)`,
+              padding: "40px 50px",
+              background: `linear-gradient(225deg, ${B.t2Dim} 0%, ${B.t2Mid} 40%, transparent 80%)`,
               display: "flex",
               flexDirection: "column",
               alignItems: "flex-end",
               justifyContent: "center",
-              gap: 16,
+              gap: 20,
             }}
           >
-            <GlassTeamBadge
+            <BroadcastTeamBadge
               name={state.team2.name}
               logoUrl={state.team2.logoUrl}
-              size={72}
-              accent={G.pink}
-              glow={G.pinkGlow}
+              size={90}
+              teamColor={B.t2}
             />
             <div
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.white,
+                color: B.white,
+                fontSize: 56,
                 fontWeight: 900,
-                fontSize: 44,
                 textTransform: "uppercase",
-                letterSpacing: 1.5,
+                letterSpacing: 2,
                 lineHeight: 1,
                 textAlign: "right",
-                textShadow: G.textGlow,
+                textShadow: `0 4px 12px rgba(0,0,0,0.5)`,
               }}
             >
               {state.team2.name}
@@ -248,22 +220,21 @@ export function GlassMainMatchBanner({
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                 <span
                   style={{
-                    color: G.w70,
-                    fontSize: 20,
-                    fontWeight: 700,
-                    textShadow: G.textGlow,
+                    color: B.white,
+                    opacity: 0.8,
+                    fontSize: 24,
+                    fontWeight: 800,
                   }}
                 >
                   ({state.team2.overs} ov)
                 </span>
                 <span
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.pink,
+                    color: B.t2,
+                    fontSize: 76,
                     fontWeight: 900,
-                    fontSize: 64,
                     lineHeight: 1,
-                    textShadow: `0 0 20px ${G.pinkGlow}, ${G.textGlow}`,
+                    textShadow: `0 0 30px ${B.t2}80, 0 4px 10px rgba(0,0,0,0.8)`,
                   }}
                 >
                   {state.team2.score}/{state.team2.wickets}
@@ -273,29 +244,28 @@ export function GlassMainMatchBanner({
           </div>
         </div>
 
-        {/* Floating Meta Strip */}
+        {/* Info Footer */}
         <div
           style={{
             display: "flex",
             alignItems: "stretch",
-            borderTop: `1px solid ${G.borderHighlight}`, // Inverse light catches the bottom lip
-            background: G.bgDeep, // Deep recessed footer
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)", // Etched effect
+            background: B.panelBg,
+            borderTop: `2px solid ${B.lineHard}`,
           }}
         >
           {(
             [
-              info.venue ? { label: "Venue", value: info.venue } : null,
+              info.venue ? { label: "VENUE", value: info.venue } : null,
               info.matchDate
                 ? {
-                    label: "Date",
-                    value: `${fmtDate(info.matchDate)}${info.matchTime ? "  ·  " + fmt12(info.matchTime) : ""}`,
+                    label: "DATE & TIME",
+                    value: `${fmtDate(info.matchDate)}${info.matchTime ? "  /  " + fmt12(info.matchTime) : ""}`,
                   }
                 : null,
               state.tossWinner
                 ? {
-                    label: "Toss",
-                    value: `${state.tossWinner} won · chose to ${state.choice}`,
+                    label: "TOSS",
+                    value: `${state.tossWinner} WON — CHOSE TO ${state.choice}`,
                   }
                 : null,
             ] as const
@@ -306,34 +276,25 @@ export function GlassMainMatchBanner({
                 key={i}
                 style={{
                   flex: 1,
-                  padding: "16px 32px",
+                  padding: "18px 32px",
                   borderRight:
-                    i < arr.length - 1 ? `1px solid ${G.borderSub}` : "none",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
+                    i < arr.length - 1 ? `1px solid ${B.lineHard}` : "none",
+                  background: `linear-gradient(0deg, ${B.panelBgDeep} 0%, transparent 100%)`,
                 }}
               >
                 <div
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.w45,
-                    fontSize: 11,
-                    fontWeight: 800,
+                    color: B.w50,
+                    fontSize: 12,
+                    fontWeight: 900,
                     letterSpacing: 3,
                     textTransform: "uppercase",
+                    marginBottom: 6,
                   }}
                 >
                   {item.label}
                 </div>
-                <div
-                  style={{
-                    color: G.w90,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    textShadow: G.textGlow,
-                  }}
-                >
+                <div style={{ color: B.white, fontSize: 17, fontWeight: 800 }}>
                   {item.value}
                 </div>
               </div>
@@ -343,3 +304,5 @@ export function GlassMainMatchBanner({
     </div>
   );
 }
+
+export { BroadcastMainMatchBanner as GlassMainMatchBanner };

@@ -1,55 +1,67 @@
 import { MatchState, TeamDetails } from "../types";
 import { getBatTeam, getBowlTeam, ROLE_META } from "../helpers";
-import { G } from "./theme";
-import { GlassTeamBadge } from "./TeamBadge";
+import { B } from "./theme";
+import { BroadcastTeamBadge } from "./TeamBadge";
 
-function GlassTeamColumn({
+function TeamColumn({
   team,
-  accent,
-  glow,
+  teamColor,
+  teamColorDim,
+  teamColorMid,
+  side,
 }: {
   team: TeamDetails;
-  accent: string;
-  glow: string;
+  teamColor: string;
+  teamColorDim: string;
+  teamColorMid: string;
+  side: "left" | "right";
 }) {
   const captainId = team.captainId?.toString();
   return (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      {/* Floating Team Header */}
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        minWidth: 0,
+        background: `linear-gradient(180deg, ${teamColor}0A 0%, transparent 100%)`,
+      }}
+    >
+      {/* Heavy TV Header */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 16,
-          padding: "20px 24px",
-          background: `linear-gradient(180deg, ${accent}20 0%, transparent 100%)`, // Soft vertical glow
-          borderBottom: `1px solid ${G.borderHighlight}`, // Edge light
+          padding: "20px 28px",
+          background: `linear-gradient(${side === "left" ? "90deg" : "270deg"}, ${teamColorMid} 0%, ${teamColorDim} 70%, transparent 100%)`,
+          borderBottom: `2px solid ${teamColor}`,
+          borderLeft: side === "right" ? `6px solid ${teamColor}` : undefined,
+          borderRight: side === "left" ? `6px solid ${teamColor}` : undefined,
         }}
       >
-        <GlassTeamBadge
+        <BroadcastTeamBadge
           name={team.name}
           logoUrl={team.logoUrl}
-          size={54}
-          accent={accent}
-          glow={glow}
+          size={60}
+          teamColor={B.panelBgDeep}
+          textColor={teamColor}
         />
         <div
           style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            color: G.white,
+            color: B.white,
+            fontSize: 30,
             fontWeight: 900,
-            fontSize: 26,
             textTransform: "uppercase",
-            letterSpacing: 1.5,
+            letterSpacing: 1,
             lineHeight: 1,
-            textShadow: G.textGlow,
+            textShadow: `0 2px 10px rgba(0,0,0,0.5)`,
           }}
         >
           {team.name}
         </div>
       </div>
 
-      {/* Holographic Player Rows */}
       <div style={{ padding: "8px 0" }}>
         {team.playingXI.slice(0, 11).map((p, idx) => {
           const isCaptain = captainId && p.playerId?.toString() === captainId;
@@ -62,25 +74,22 @@ function GlassTeamColumn({
               style={{
                 display: "flex",
                 alignItems: "center",
-                padding: "0 24px",
-                height: 48,
-                // Soft gradient rows instead of solid alternates
-                background:
-                  idx % 2 === 0
-                    ? "transparent"
-                    : `linear-gradient(90deg, transparent 0%, ${G.bgLight} 50%, transparent 100%)`,
+                padding: "0 28px",
+                height: 50,
+                background: idx % 2 === 0 ? "transparent" : `${B.white}03`,
+                borderBottom: `1px solid ${B.lineDim}`,
               }}
             >
               <div
                 style={{
                   width: 28,
                   flexShrink: 0,
-                  color: G.w45, // Brighter index numbers
+                  color: teamColor,
                   fontSize: 14,
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontWeight: 800,
+                  fontWeight: 900,
                   textAlign: "right",
                   marginRight: 16,
+                  opacity: 0.8,
                 }}
               >
                 {idx + 1}
@@ -88,7 +97,6 @@ function GlassTeamColumn({
               <div
                 style={{
                   flex: 1,
-                  minWidth: 0,
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
@@ -97,51 +105,45 @@ function GlassTeamColumn({
               >
                 <span
                   style={{
-                    color: G.w90,
-                    fontSize: 18,
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
+                    color: B.white,
+                    fontSize: 20,
+                    fontWeight: 700,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
-                    textShadow: "0 1px 4px rgba(0,0,0,0.8)", // Localized shadow for legibility over gradients
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {p.name}
                 </span>
                 {isCaptain && (
-                  <div
+                  <span
                     style={{
-                      flexShrink: 0,
-                      background: "rgba(0, 0, 0, 0.4)", // Dark glass pill
-                      border: `1px solid ${G.teal}`, // Neon outline
-                      boxShadow: `inset 0 0 8px ${G.tealDim}, 0 0 8px ${G.tealGlow}`, // Glowing edge
-                      borderRadius: 4,
-                      padding: "2px 8px",
-                      color: G.teal,
                       fontSize: 11,
                       fontWeight: 900,
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      letterSpacing: 1.5,
+                      color: B.panelBg,
+                      background: teamColor,
+                      borderRadius: 3,
+                      padding: "2px 6px",
+                      letterSpacing: 1,
+                      flexShrink: 0,
                     }}
                   >
                     C
-                  </div>
+                  </span>
                 )}
               </div>
               {roleMeta && (
                 <div
                   style={{
-                    marginLeft: 12,
                     flexShrink: 0,
-                    background: "rgba(0, 0, 0, 0.4)", // Dark glass pill
-                    border: `1px solid ${roleMeta.color}`, // Neon outline matching role
-                    boxShadow: `inset 0 0 6px ${roleMeta.color}30, 0 0 6px ${roleMeta.color}30`,
+                    marginLeft: 10,
+                    background: `${teamColor}1A`,
+                    border: `1px solid ${teamColor}80`,
                     borderRadius: 4,
                     padding: "3px 12px",
-                    color: roleMeta.color,
-                    fontSize: 11,
-                    fontWeight: 800,
-                    fontFamily: "'Barlow Condensed', sans-serif",
+                    color: teamColor,
+                    fontSize: 12,
+                    fontWeight: 900,
                     letterSpacing: 1,
                     textTransform: "uppercase",
                   }}
@@ -157,7 +159,11 @@ function GlassTeamColumn({
   );
 }
 
-export function GlassPlayingXIBothTeamsCard({ state }: { state: MatchState }) {
+export function BroadcastPlayingXIBothTeamsCard({
+  state,
+}: {
+  state: MatchState;
+}) {
   const { team1, team2 } = state;
   const tossSet = !!state.battingFirst;
   const inProgress =
@@ -174,185 +180,161 @@ export function GlassPlayingXIBothTeamsCard({ state }: { state: MatchState }) {
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        width: 1280, // Slightly wider to accommodate the internal floating panels
-        animation: "glassScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
-        fontFamily: "'DM Sans', sans-serif",
+        width: 1360,
+        fontFamily: "'Barlow Condensed', 'DM Sans', sans-serif",
+        animation: "bcScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
       }}
     >
-      {/* Outer Holographic Container */}
       <div
         style={{
-          background: G.bg,
-          backdropFilter: G.backdropBlur,
-          WebkitBackdropFilter: G.backdropBlur,
-          border: `1px solid ${G.borderShadow}`,
-          borderTop: `1px solid ${G.borderHighlight}`, // Edge light
-          borderLeft: `1px solid ${G.borderHighlight}`, // Edge light
-          borderRadius: 24, // High tech curved edges
+          background: B.panelBg,
+          borderRadius: 6,
           overflow: "hidden",
-          boxShadow: G.panelShadow,
-          padding: "16px", // Internal padding to float the columns
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
+          boxShadow: `0 20px 50px rgba(0,0,0,0.7)`,
+          border: `1px solid ${B.lineHard}`,
         }}
       >
-        {/* Top Header / Title Panel */}
+        <div style={{ display: "flex", height: 6 }}>
+          <div style={{ flex: 1, background: B.t1 }} />
+          <div style={{ flex: 1, background: B.t2 }} />
+        </div>
+
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "8px 24px",
-            background: G.bgDeep, // Etched dark glass
-            borderRadius: 16,
-            border: `1px solid ${G.borderSub}`,
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)", // Indented look
+            padding: "16px 36px",
+            borderBottom: `2px solid ${B.lineHard}`,
+            background: B.panelBgDeep,
           }}
         >
-          <div
+          <span
             style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: G.w70,
-              fontSize: 14,
-              fontWeight: 800,
-              letterSpacing: 6,
+              color: B.white,
+              fontSize: 16,
+              fontWeight: 900,
+              letterSpacing: 5,
               textTransform: "uppercase",
             }}
           >
-            Playing XI
-          </div>
-
+            PLAYING XI
+          </span>
           <span
             style={{
-              color: G.w45,
+              color: B.white,
+              opacity: 0.8,
               fontSize: 14,
-              fontFamily: "'Barlow Condensed', sans-serif",
-              fontWeight: 600,
-              letterSpacing: 1,
+              fontWeight: 800,
               textTransform: "uppercase",
+              letterSpacing: 1.5,
             }}
           >
             {state.matchComplete && state.winner ? (
-              <span style={{ color: G.teal }}>
-                {state.winner} won{state.winBy ? ` — ${state.winBy}` : ""}
+              <span
+                style={{ color: B.gold, textShadow: `0 0 10px ${B.gold}80` }}
+              >
+                {state.winner} WON{state.winBy ? ` — ${state.winBy}` : ""}
               </span>
             ) : tossSet ? (
-              `Toss: ${state.tossWinner} won — elected to ${state.choice}`
+              `TOSS: ${state.tossWinner} WON — CHOSE TO ${state.choice}`
             ) : (
-              "Toss Pending"
+              "TOSS PENDING"
             )}
           </span>
         </div>
 
-        {/* Inner Floating Columns Area */}
-        <div
-          style={{
-            display: "flex",
-            gap: 16, // Creates space between the two team panels
-          }}
-        >
-          {/* Team 1 Floating Panel */}
+        <div style={{ display: "flex" }}>
+          <TeamColumn
+            team={team1}
+            teamColor={B.t1}
+            teamColorDim={B.t1Dim}
+            teamColorMid={B.t1Mid}
+            side="left"
+          />
           <div
             style={{
-              flex: 1,
-              background: G.bgDeep, // Frosted dark pane
-              borderRadius: 16,
-              border: `1px solid ${G.borderSub}`,
-              overflow: "hidden",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              width: 2,
+              background: B.lineHard,
+              flexShrink: 0,
+              boxShadow: `0 0 10px rgba(0,0,0,0.5)`,
             }}
-          >
-            <GlassTeamColumn team={team1} accent={G.cyan} glow={G.cyanGlow} />
-          </div>
-
-          {/* Team 2 Floating Panel */}
-          <div
-            style={{
-              flex: 1,
-              background: G.bgDeep, // Frosted dark pane
-              borderRadius: 16,
-              border: `1px solid ${G.borderSub}`,
-              overflow: "hidden",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-            }}
-          >
-            <GlassTeamColumn team={team2} accent={G.pink} glow={G.pinkGlow} />
-          </div>
+          />
+          <TeamColumn
+            team={team2}
+            teamColor={B.t2}
+            teamColorDim={B.t2Dim}
+            teamColorMid={B.t2Mid}
+            side="right"
+          />
         </div>
 
-        {/* Live Footer Panel */}
         {inProgress &&
           !state.matchComplete &&
           (() => {
             const bat = getBatTeam(state);
             const bowl = getBowlTeam(state);
+            const isBatT1 = bat.name === team1.name;
             return (
               <div
                 style={{
-                  padding: "16px 32px",
-                  background: G.bgDeep,
-                  borderRadius: 16,
-                  border: `1px solid ${G.borderSub}`,
+                  padding: "18px 36px",
+                  borderTop: `2px solid ${B.lineHard}`,
+                  background: B.panelBgDeep,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center", // Centered for impact
-                  gap: "clamp(12px, 1.5vw, 24px)",
-                  boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
+                  justifyContent: "center",
+                  gap: 24,
                 }}
               >
                 <div
                   style={{
-                    width: 8,
-                    height: 8,
+                    width: 10,
+                    height: 10,
                     borderRadius: "50%",
-                    background: G.coral,
-                    boxShadow: `0 0 12px ${G.coral}, 0 0 24px ${G.coral}`, // High bloom neon
+                    background: B.live,
                     animation: "reelPing 1.4s ease-in-out infinite",
                     flexShrink: 0,
+                    boxShadow: `0 0 15px ${B.live}`,
                   }}
                 />
                 <span
                   style={{
-                    color: G.cyan,
-                    fontSize: 20,
-                    fontFamily: "'Barlow Condensed', sans-serif",
+                    color: isBatT1 ? B.t1 : B.t2,
+                    fontSize: 24,
                     fontWeight: 900,
                     letterSpacing: 1,
                     textTransform: "uppercase",
-                    textShadow: G.cyanGlow,
                   }}
                 >
                   {bat.name}
                 </span>
                 <span
                   style={{
-                    color: G.white,
-                    fontSize: 36,
-                    fontFamily: "'Barlow Condensed', sans-serif",
+                    color: B.white,
+                    fontSize: 40,
                     fontWeight: 900,
                     letterSpacing: 1,
                     lineHeight: 1,
-                    textShadow: G.textGlow,
                   }}
                 >
                   {bat.score}/{bat.wickets}
                 </span>
                 <span
                   style={{
-                    color: G.w70,
-                    fontSize: 16,
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    fontWeight: 700,
+                    color: B.white,
+                    opacity: 0.8,
+                    fontSize: 18,
+                    fontWeight: 800,
                   }}
                 >
                   ({bat.overs} ov)
                 </span>
                 <span
                   style={{
-                    color: G.w25,
-                    fontSize: 16,
-                    fontWeight: 800,
+                    color: B.w50,
+                    fontSize: 18,
+                    fontWeight: 900,
                     margin: "0 12px",
                   }}
                 >
@@ -360,13 +342,11 @@ export function GlassPlayingXIBothTeamsCard({ state }: { state: MatchState }) {
                 </span>
                 <span
                   style={{
-                    color: G.pink,
-                    fontSize: 20,
-                    fontFamily: "'Barlow Condensed', sans-serif",
+                    color: isBatT1 ? B.t2 : B.t1,
+                    fontSize: 24,
                     fontWeight: 900,
                     letterSpacing: 1,
                     textTransform: "uppercase",
-                    textShadow: G.pinkGlow,
                   }}
                 >
                   {bowl.name}
@@ -378,3 +358,5 @@ export function GlassPlayingXIBothTeamsCard({ state }: { state: MatchState }) {
     </div>
   );
 }
+
+export { BroadcastPlayingXIBothTeamsCard as GlassPlayingXIBothTeamsCard };

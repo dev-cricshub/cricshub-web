@@ -1,15 +1,27 @@
 import { MatchState, TeamDetails, PlayerStats } from "../types";
 import { getBowlTeam, fmtOv, fmtEcon } from "../helpers";
-import { G } from "./theme";
-import { GlassTeamBadge } from "./TeamBadge";
+import { B } from "./theme";
+import { BroadcastTeamBadge } from "./TeamBadge";
 
-export function GlassBowlingCard({
+// ═══════════════════════════════════════════════════════════
+// BROADCAST BOWLING CARD
+// TV-standard bowling figures panel.
+// Bowling team color drives the header. Active bowler row
+// highlighted with team color left-bar + dim tint.
+// ═══════════════════════════════════════════════════════════
+
+export function BroadcastBowlingCard({
   team,
   state,
 }: {
   team: TeamDetails;
   state: MatchState;
 }) {
+  const isTeam1 = team.name === state.team1.name;
+  const teamColor = isTeam1 ? B.t1 : B.t2;
+  const teamColorDim = isTeam1 ? B.t1Dim : B.t2Dim;
+  const teamColorMid = isTeam1 ? B.t1Mid : B.t2Mid;
+
   const isPassedTeamBatFirst = team.name === state.battingFirst?.name;
   const bowlingOrderArr =
     (isPassedTeamBatFirst
@@ -33,12 +45,10 @@ export function GlassBowlingCard({
   });
 
   if (activeBowlerId && !placedIds.has(activeBowlerId)) {
-    const baseProfile = team.playingXI.find(
-      (p) => p.playerId === activeBowlerId,
-    );
-    if (baseProfile) {
+    const base = team.playingXI.find((p) => p.playerId === activeBowlerId);
+    if (base) {
       orderedBowlers.push({
-        ...baseProfile,
+        ...base,
         overs: 0,
         ballsBowled: 0,
         runsConceded: 0,
@@ -53,7 +63,7 @@ export function GlassBowlingCard({
     (a, b) => (b.ballsBowled || 0) - (a.ballsBowled || 0),
   );
   const currentBowlerId = state.currentBowler?.playerId;
-  const ROW_H = 56;
+  const ROW_H = 54;
 
   return (
     <div
@@ -63,85 +73,61 @@ export function GlassBowlingCard({
         left: "50%",
         transform: "translate(-50%, -50%)",
         width: 960,
-        animation: "glassScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'Barlow Condensed', 'DM Sans', sans-serif",
+        animation: "bcScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
       }}
     >
       <div
         style={{
-          background: G.bg,
-          backdropFilter: G.backdropBlur,
-          WebkitBackdropFilter: G.backdropBlur,
-          borderTop: `1px solid ${G.borderHighlight}`,
-          borderLeft: `1px solid ${G.borderHighlight}`,
-          borderBottom: `1px solid ${G.borderShadow}`,
-          borderRight: `1px solid ${G.borderShadow}`,
-          borderRadius: 24, // Holographic curved edges
+          background: B.panelBg,
+          borderRadius: 4,
           overflow: "hidden",
-          boxShadow: G.panelShadow,
-          position: "relative",
+          boxShadow: B.shadow,
+          border: `1px solid ${B.lineHard}`,
         }}
       >
-        {/* Holographic Top Rim Glow */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "20%",
-            right: "20%",
-            height: 2,
-            background: `linear-gradient(90deg, transparent, ${G.cyan}, ${G.pink}, transparent)`,
-            boxShadow: `0 0 20px ${G.pink}, 0 0 10px ${G.white}`,
-            opacity: 0.8,
-          }}
-        />
+        {/* Top color rail */}
+        <div style={{ height: 5, background: teamColor }} />
 
-        {/* Header - Recessed Glass */}
+        {/* Header */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "24px 36px",
-            background: G.bgDeep, // Recessed etching
-            borderBottom: `1px solid ${G.borderSub}`,
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
+            padding: "20px 32px",
+            background: `linear-gradient(90deg, ${teamColorMid} 0%, ${teamColorDim} 55%, transparent 100%)`,
+            borderBottom: `1px solid ${B.lineHard}`,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <GlassTeamBadge
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <BroadcastTeamBadge
               name={team.name}
               logoUrl={team.logoUrl}
-              size={64}
-              accent={G.pink}
-              glow={G.pinkGlow}
+              size={62}
+              teamColor={teamColor}
             />
             <div>
               <div
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.w45,
-                  fontSize: 14,
+                  color: teamColor,
+                  fontSize: 13,
                   fontWeight: 800,
-                  letterSpacing: 4,
+                  letterSpacing: 3,
                   textTransform: "uppercase",
-                  marginBottom: 4,
+                  marginBottom: 2,
                 }}
               >
-                <span style={{ color: G.pink, textShadow: G.pinkGlow }}>
-                  BOWLING
-                </span>
+                BOWLING
               </div>
               <div
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.white,
+                  color: B.white,
+                  fontSize: 38,
                   fontWeight: 900,
-                  fontSize: 40,
                   textTransform: "uppercase",
-                  letterSpacing: 1.5,
+                  letterSpacing: 1,
                   lineHeight: 1,
-                  textShadow: G.textGlow,
                 }}
               >
                 {team.name}
@@ -152,29 +138,33 @@ export function GlassBowlingCard({
             <div style={{ textAlign: "right" }}>
               <div
                 style={{
-                  color: G.w45,
-                  fontSize: 14,
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontWeight: 700,
+                  color: B.w50,
+                  fontSize: 13,
+                  fontWeight: 800,
                   letterSpacing: 2,
                   textTransform: "uppercase",
                   marginBottom: 3,
                 }}
               >
-                Target
+                {state.firstInnings ? "BATTING" : "TARGET"}
               </div>
               <div
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.white,
+                  color: B.white,
+                  fontSize: 38,
                   fontWeight: 900,
-                  fontSize: 40,
                   lineHeight: 1,
-                  textShadow: G.textGlow,
                 }}
               >
-                {opponent.score}/{opponent.wickets}{" "}
-                <span style={{ color: G.w70, fontSize: 20, fontWeight: 600 }}>
+                {opponent.score}/{opponent.wickets}
+                <span
+                  style={{
+                    color: B.w70,
+                    fontSize: 20,
+                    fontWeight: 600,
+                    marginLeft: 8,
+                  }}
+                >
                   ({opponent.overs})
                 </span>
               </div>
@@ -187,41 +177,39 @@ export function GlassBowlingCard({
           style={{
             display: "flex",
             alignItems: "center",
-            height: 44,
-            padding: "0 36px",
-            borderBottom: `1px solid ${G.borderSub}`,
-            background: G.bgLight,
+            height: 40,
+            padding: "0 32px",
+            borderBottom: `1px solid ${B.lineHard}`,
+            background: B.panelBgDeep,
           }}
         >
           <div
             style={{
               flex: 1,
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: G.w45,
-              fontSize: 13,
+              color: B.w50,
+              fontSize: 12,
               fontWeight: 800,
-              letterSpacing: 2.5,
+              letterSpacing: 2,
               textTransform: "uppercase",
             }}
           >
             BOWLER
           </div>
           {[
-            { h: "O", w: 88 },
-            { h: "R", w: 78 },
-            { h: "W", w: 70 },
-            { h: "ECON", w: 98 },
+            { h: "O", w: 80 },
+            { h: "R", w: 72 },
+            { h: "W", w: 64 },
+            { h: "ECON", w: 90 },
           ].map(({ h, w }) => (
             <div
               key={h}
               style={{
                 width: w,
                 textAlign: "right",
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
-                fontSize: 13,
+                color: B.w50,
+                fontSize: 12,
                 fontWeight: 800,
-                letterSpacing: 2.5,
+                letterSpacing: 2,
                 textTransform: "uppercase",
               }}
             >
@@ -230,13 +218,13 @@ export function GlassBowlingCard({
           ))}
         </div>
 
+        {/* Bowler rows */}
         {bowlers.length === 0 ? (
           <div
             style={{
               padding: "40px",
               textAlign: "center",
-              color: G.w45,
-              fontFamily: "'Barlow Condensed', sans-serif",
+              color: B.w50,
               fontSize: 18,
               letterSpacing: 1,
             }}
@@ -248,6 +236,8 @@ export function GlassBowlingCard({
             {bowlers.map((p, i) => {
               const isCurrent = p.playerId === currentBowlerId;
               const isCap = p.playerId === team.captainId;
+              const hasWickets = (p.wicketsTaken ?? 0) > 0;
+
               return (
                 <div
                   key={p.playerId}
@@ -255,18 +245,18 @@ export function GlassBowlingCard({
                     display: "flex",
                     alignItems: "center",
                     height: ROW_H,
-                    padding: "0 36px",
+                    padding: "0 32px",
                     background: isCurrent
-                      ? `linear-gradient(90deg, ${G.pinkDim} 0%, transparent 80%)`
+                      ? teamColorDim
                       : i % 2 === 0
                         ? "transparent"
-                        : G.bgLight,
+                        : B.panelBgMid,
                     borderBottom:
                       i < bowlers.length - 1
-                        ? `1px solid ${G.borderShadow}`
+                        ? `1px solid ${B.lineDim}`
                         : "none",
                     borderLeft: isCurrent
-                      ? `4px solid ${G.pink}`
+                      ? `4px solid ${teamColor}`
                       : "4px solid transparent",
                   }}
                 >
@@ -282,19 +272,17 @@ export function GlassBowlingCard({
                     {isCurrent && (
                       <div
                         style={{
-                          width: 8,
-                          height: 8,
+                          width: 7,
+                          height: 7,
                           borderRadius: "50%",
                           flexShrink: 0,
-                          background: G.pink,
-                          boxShadow: `0 0 12px ${G.pinkGlow}`,
+                          background: teamColor,
                         }}
                       />
                     )}
                     <span
                       style={{
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        color: isCurrent ? G.white : G.w70,
+                        color: isCurrent ? B.white : B.w70,
                         fontWeight: isCurrent ? 800 : 700,
                         fontSize: 22,
                         textTransform: "uppercase",
@@ -302,7 +290,6 @@ export function GlassBowlingCard({
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        textShadow: isCurrent ? G.textGlow : "none",
                       }}
                     >
                       {p.name}
@@ -310,17 +297,14 @@ export function GlassBowlingCard({
                     {isCap && (
                       <span
                         style={{
-                          fontFamily: "'Barlow Condensed', sans-serif",
                           fontSize: 11,
-                          fontWeight: 900,
-                          color: G.teal,
-                          border: `1px solid ${G.teal}`,
-                          boxShadow: `inset 0 0 6px ${G.tealGlow}, 0 0 6px ${G.tealGlow}`,
-                          borderRadius: 4,
-                          padding: "2px 8px",
-                          letterSpacing: 1.5,
+                          fontWeight: 800,
+                          color: teamColor,
+                          border: `1px solid ${teamColor}`,
+                          borderRadius: 3,
+                          padding: "1px 6px",
+                          letterSpacing: 1,
                           flexShrink: 0,
-                          background: "rgba(0,0,0,0.5)",
                         }}
                       >
                         C
@@ -329,12 +313,11 @@ export function GlassBowlingCard({
                   </div>
                   <div
                     style={{
-                      width: 88,
+                      width: 80,
                       textAlign: "right",
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      fontWeight: 700,
+                      color: isCurrent ? B.white : B.w70,
                       fontSize: 22,
-                      color: isCurrent ? G.white : G.w70,
+                      fontWeight: 700,
                       flexShrink: 0,
                     }}
                   >
@@ -342,12 +325,11 @@ export function GlassBowlingCard({
                   </div>
                   <div
                     style={{
-                      width: 78,
+                      width: 72,
                       textAlign: "right",
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      fontWeight: 700,
+                      color: isCurrent ? B.white : B.w70,
                       fontSize: 22,
-                      color: isCurrent ? G.white : G.w70,
+                      fontWeight: 700,
                       flexShrink: 0,
                     }}
                   >
@@ -355,29 +337,23 @@ export function GlassBowlingCard({
                   </div>
                   <div
                     style={{
-                      width: 70,
+                      width: 64,
                       textAlign: "right",
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      fontWeight: (p.wicketsTaken ?? 0) > 0 ? 900 : 700,
+                      color: hasWickets ? teamColor : B.w70,
                       fontSize: 24,
-                      color: (p.wicketsTaken ?? 0) > 0 ? G.pink : G.w70,
+                      fontWeight: hasWickets ? 900 : 700,
                       flexShrink: 0,
-                      textShadow:
-                        (p.wicketsTaken ?? 0) > 0
-                          ? `0 0 12px ${G.pinkGlow}`
-                          : "none",
                     }}
                   >
                     {p.wicketsTaken ?? 0}
                   </div>
                   <div
                     style={{
-                      width: 98,
+                      width: 90,
                       textAlign: "right",
-                      fontFamily: "'Barlow Condensed', sans-serif",
+                      color: B.w50,
+                      fontSize: 17,
                       fontWeight: 700,
-                      fontSize: 18,
-                      color: G.w45,
                       flexShrink: 0,
                     }}
                   >
@@ -394,21 +370,18 @@ export function GlassBowlingCard({
           style={{
             display: "flex",
             alignItems: "center",
-            padding: "16px 36px",
-            borderTop: `1px solid ${G.borderHighlight}`,
-            background: G.bgDeep,
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
-            gap: 0,
+            padding: "14px 32px",
+            borderTop: `1px solid ${B.lineHard}`,
+            background: B.panelBgDeep,
           }}
         >
           <div
-            style={{ flex: 1, display: "flex", alignItems: "center", gap: 14 }}
+            style={{ flex: 1, display: "flex", alignItems: "center", gap: 12 }}
           >
             <span
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
-                fontSize: 13,
+                color: B.w50,
+                fontSize: 12,
                 fontWeight: 800,
                 letterSpacing: 2,
                 textTransform: "uppercase",
@@ -416,42 +389,29 @@ export function GlassBowlingCard({
             >
               Overs
             </span>
-            <span
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w90,
-                fontSize: 22,
-                fontWeight: 900,
-                textShadow: G.textGlow,
-              }}
-            >
+            <span style={{ color: B.white, fontSize: 22, fontWeight: 900 }}>
               {opponent.overs} / {state.totalOvers}
             </span>
           </div>
           {(() => {
-            const extras = opponent.extras;
-            const total = extras
-              ? extras.wide +
-                extras.noBall +
-                extras.bye +
-                extras.legBye +
-                extras.penalty
+            const ex = opponent.extras;
+            const tot = ex
+              ? ex.wide + ex.noBall + ex.bye + ex.legBye + ex.penalty
               : 0;
-            return total > 0 ? (
+            return tot > 0 ? (
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  padding: "0 28px",
-                  borderLeft: `1px solid ${G.borderSub}`,
+                  padding: "0 24px",
+                  borderLeft: `1px solid ${B.lineHard}`,
                 }}
               >
                 <span
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.w45,
-                    fontSize: 13,
+                    color: B.w50,
+                    fontSize: 12,
                     fontWeight: 800,
                     letterSpacing: 2,
                     textTransform: "uppercase",
@@ -459,16 +419,8 @@ export function GlassBowlingCard({
                 >
                   Extras
                 </span>
-                <span
-                  style={{
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.white,
-                    fontSize: 22,
-                    fontWeight: 900,
-                    textShadow: G.textGlow,
-                  }}
-                >
-                  {total}
+                <span style={{ color: B.white, fontSize: 22, fontWeight: 900 }}>
+                  {tot}
                 </span>
               </div>
             ) : null;
@@ -478,3 +430,6 @@ export function GlassBowlingCard({
     </div>
   );
 }
+
+// Re-export for backward compatibility with overlay page imports
+export { BroadcastBowlingCard as GlassBowlingCard };
