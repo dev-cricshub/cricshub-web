@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { fetchMatchById, fetchMatchState, fetchStreamState } from "@/lib/api";
 import { fetchBrandingConfig } from "@/lib/brandingConfig";
+import { decodeThemeConfig, buildThemeCss } from "@/lib/themeConfig";
 
 // Premium add-ons (unchanged)
 import EventBurstOverlay from "@/app/overlays/premium/matchAddOn/EventBurstOverlay";
@@ -81,7 +82,15 @@ const H = 1080;
 
 export default function StreamOverlayPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const matchId = params?.matchId as string;
+
+  // Parse optional ?tc= theme config and build CSS variable overrides
+  const themeCss = (() => {
+    const tc = searchParams?.get("tc");
+    if (!tc) return "";
+    return buildThemeCss(decodeThemeConfig(tc));
+  })();
 
   const [info, setInfo] = useState<MatchInfo | null>(null);
   const [liveState, setLiveState] = useState<MatchState | null>(null);
@@ -386,7 +395,10 @@ export default function StreamOverlayPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
 
+        ${themeCss}
+
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
         html, body {
           background: transparent !important;
           overflow: hidden;

@@ -1,15 +1,20 @@
 import { MatchState, TeamDetails, PlayerStats } from "../types";
 import { dismissalText, fmtSR } from "../helpers";
-import { G } from "./theme";
-import { GlassTeamBadge } from "./TeamBadge";
+import { B } from "./theme";
+import { BroadcastTeamBadge } from "./TeamBadge";
 
-export function GlassBattingCard({
+export function BroadcastBattingCard({
   team,
   state,
 }: {
   team: TeamDetails;
   state: MatchState;
 }) {
+  const isTeam1 = team.name === state.team1.name;
+  const teamColor = isTeam1 ? B.t1 : B.t2;
+  const teamColorDim = isTeam1 ? B.t1Dim : B.t2Dim;
+  const teamColorMid = isTeam1 ? B.t1Mid : B.t2Mid;
+
   const battingFirstName = state.battingFirst?.name;
   const isInnings1Team = team.name === battingFirstName;
   const rawOrder: PlayerStats[] =
@@ -53,8 +58,7 @@ export function GlassBattingCard({
       team.extras.legBye +
       team.extras.penalty
     : 0;
-
-  const ROW_H = 52;
+  const ROW_H = 54;
 
   return (
     <div
@@ -63,86 +67,62 @@ export function GlassBattingCard({
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        width: 1140,
-        animation: "glassScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
-        fontFamily: "'DM Sans', sans-serif",
+        width: 1180,
+        fontFamily: "'Barlow Condensed', 'DM Sans', sans-serif",
+        animation: "bcScaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both",
       }}
     >
       <div
         style={{
-          background: G.bg,
-          backdropFilter: G.backdropBlur,
-          WebkitBackdropFilter: G.backdropBlur,
-          borderTop: `1px solid ${G.borderHighlight}`,
-          borderLeft: `1px solid ${G.borderHighlight}`,
-          borderBottom: `1px solid ${G.borderShadow}`,
-          borderRight: `1px solid ${G.borderShadow}`,
-          borderRadius: 24, // Holographic curved edges
+          background: B.panelBg,
+          borderRadius: 6,
           overflow: "hidden",
-          boxShadow: G.panelShadow,
-          position: "relative",
+          boxShadow: `0 20px 50px rgba(0,0,0,0.7)`,
+          border: `1px solid ${B.lineHard}`,
         }}
       >
-        {/* Holographic Top Rim Glow */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "20%",
-            right: "20%",
-            height: 2,
-            background: `linear-gradient(90deg, transparent, ${G.cyan}, ${G.teal}, ${G.cyan}, transparent)`,
-            boxShadow: `0 0 20px ${G.cyan}, 0 0 10px ${G.white}`,
-            opacity: 0.8,
-          }}
-        />
-
-        {/* Header - Recessed Glass */}
+        {/* Full Team Color Flood Header */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             padding: "24px 36px",
-            background: G.bgDeep, // Recessed etching
-            borderBottom: `1px solid ${G.borderSub}`,
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
+            background: `linear-gradient(135deg, ${teamColorMid} 0%, ${teamColorDim} 100%)`,
+            borderBottom: `4px solid ${teamColor}`,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <GlassTeamBadge
+            <BroadcastTeamBadge
               name={team.name}
               logoUrl={team.logoUrl}
-              size={64}
-              accent={G.cyan}
-              glow={G.cyanGlow}
+              size={70}
+              teamColor={B.panelBgDeep}
+              textColor={teamColor}
             />
             <div>
               <div
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.w45,
+                  color: B.white,
+                  opacity: 0.9,
                   fontSize: 14,
-                  fontWeight: 800,
+                  fontWeight: 900,
                   letterSpacing: 4,
                   textTransform: "uppercase",
-                  marginBottom: 4,
+                  marginBottom: 2,
                 }}
               >
-                <span style={{ color: G.cyan, textShadow: G.cyanGlow }}>
-                  BATTING
-                </span>
+                BATTING
               </div>
               <div
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.white,
+                  color: B.white,
+                  fontSize: 44,
                   fontWeight: 900,
-                  fontSize: 40,
                   textTransform: "uppercase",
-                  letterSpacing: 1.5,
+                  letterSpacing: 1,
                   lineHeight: 1,
-                  textShadow: G.textGlow,
+                  textShadow: `0 2px 10px rgba(0,0,0,0.4)`,
                 }}
               >
                 {team.name}
@@ -153,452 +133,402 @@ export function GlassBattingCard({
             <div style={{ textAlign: "right" }}>
               <div
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.cyan,
+                  color: B.white,
+                  fontSize: 60,
                   fontWeight: 900,
-                  fontSize: 56,
                   lineHeight: 1,
-                  textShadow: `0 0 24px ${G.cyanGlow}, ${G.textGlow}`,
+                  textShadow: `0 4px 16px rgba(0,0,0,0.6)`,
                 }}
               >
                 {team.score}/{team.wickets}
               </div>
               <div
                 style={{
-                  color: G.w70,
-                  fontSize: 18,
-                  fontWeight: 700,
+                  color: B.white,
+                  opacity: 0.8,
+                  fontSize: 20,
+                  fontWeight: 800,
                   marginTop: 4,
-                  textShadow: G.textGlow,
                 }}
               >
-                {team.overs} overs
+                {team.overs} OVERS
               </div>
             </div>
           )}
         </div>
 
-        {/* Column headers */}
+        {/* Global Sub-background tint to tie the team color */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            height: 44,
-            padding: "0 36px",
-            borderBottom: `1px solid ${G.borderSub}`,
-            background: G.bgLight,
+            background: `linear-gradient(to bottom, ${teamColor}0A, transparent)`,
           }}
         >
-          <div style={{ width: 30, flexShrink: 0 }} />
+          {/* Column Headers */}
           <div
             style={{
-              flex: 1,
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: G.w45,
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: 2.5,
-              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              height: 44,
+              padding: "0 36px",
+              borderBottom: `2px solid ${B.lineHard}`,
+              background: B.panelBgDeep,
             }}
           >
-            BATTER
-          </div>
-          <div
-            style={{
-              width: 280,
-              fontFamily: "'Barlow Condensed', sans-serif",
-              color: G.w45,
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: 2.5,
-              textTransform: "uppercase",
-            }}
-          />
-          {["R", "B", "4s", "6s", "SR"].map((h) => (
+            <div style={{ width: 32, flexShrink: 0 }} />
             <div
-              key={h}
               style={{
-                width: h === "SR" ? 82 : 60,
-                textAlign: "right",
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
+                flex: 1,
+                color: B.w50,
                 fontSize: 13,
-                fontWeight: 800,
-                letterSpacing: 2.5,
+                fontWeight: 900,
+                letterSpacing: 2,
                 textTransform: "uppercase",
               }}
             >
-              {h}
+              BATTER
             </div>
-          ))}
-        </div>
-
-        {/* Player rows */}
-        <div>
-          {players.map((p, i) => {
-            const isStriker = strikerId === p.playerId;
-            const isNonStriker = nonStrikerId === p.playerId;
-            const isAtCrease = isStriker || isNonStriker;
-            const isOut = !!p.wicketDetails && !isAtCrease;
-            const hasBat = (p.ballsFaced ?? 0) > 0;
-            const isNotOut = isAtCrease || (!isOut && hasBat);
-            const isCap = p.playerId === team.captainId;
-
-            const rowBg = isAtCrease
-              ? `linear-gradient(90deg, ${G.cyanDim} 0%, transparent 80%)`
-              : i % 2 === 0
-                ? "transparent"
-                : G.bgLight;
-
-            return (
+            <div style={{ width: 260, flexShrink: 0 }} />
+            {["R", "B", "4s", "6s", "SR"].map((h) => (
               <div
-                key={`${p.playerId}-${i}`}
+                key={h}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  minHeight: ROW_H,
-                  padding: "0 36px",
-                  background: rowBg,
-                  borderBottom:
-                    i < players.length - 1
-                      ? `1px solid ${G.borderShadow}`
-                      : "none",
-                  borderLeft: isAtCrease
-                    ? `4px solid ${G.cyan}`
-                    : "4px solid transparent",
-                  opacity: isOut ? 0.65 : 1, // Increased from 0.55 so text shadow works better over blur
+                  width: h === "SR" ? 82 : 60,
+                  textAlign: "right",
+                  color: teamColor,
+                  fontSize: 13,
+                  fontWeight: 900,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
                 }}
               >
+                {h}
+              </div>
+            ))}
+          </div>
+
+          {/* Rows */}
+          <div>
+            {players.map((p, i) => {
+              const isStriker = strikerId === p.playerId;
+              const isNonStriker = nonStrikerId === p.playerId;
+              const isAtCrease = isStriker || isNonStriker;
+              const isOut = !!p.wicketDetails && !isAtCrease;
+              const hasBat = (p.ballsFaced ?? 0) > 0;
+              const isNotOut = isAtCrease || (!isOut && hasBat);
+              const isCap = p.playerId === team.captainId;
+
+              return (
                 <div
+                  key={`${p.playerId}-${i}`}
                   style={{
-                    width: 30,
-                    flexShrink: 0,
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    color: G.w25,
-                    fontSize: 14,
-                    fontWeight: 800,
-                    textAlign: "right",
-                    paddingRight: 10,
-                  }}
-                >
-                  {i + 1}
-                </div>
-                <div
-                  style={{
-                    flex: 1,
                     display: "flex",
                     alignItems: "center",
-                    gap: 12,
-                    overflow: "hidden",
+                    minHeight: ROW_H,
+                    padding: "0 36px",
+                    background: isAtCrease
+                      ? `${teamColor}22`
+                      : i % 2 === 0
+                        ? "transparent"
+                        : `${B.white}03`,
+                    borderBottom:
+                      i < players.length - 1
+                        ? `1px solid ${B.lineDim}`
+                        : "none",
+                    borderLeft: isAtCrease
+                      ? `6px solid ${teamColor}`
+                      : "6px solid transparent",
+                    opacity: isOut ? 0.6 : 1,
+                    transition: "all 0.2s",
                   }}
                 >
-                  {isAtCrease && (
-                    <div
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        flexShrink: 0,
-                        background: isStriker ? G.cyan : G.w45,
-                        boxShadow: isStriker
-                          ? `0 0 8px ${G.cyan}, 0 0 16px ${G.cyanGlow}`
-                          : "none",
-                      }}
-                    />
-                  )}
-                  <span
+                  <div
                     style={{
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      color: isNotOut ? G.white : G.w70,
-                      fontWeight: isNotOut ? 800 : 700,
-                      fontSize: 22,
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      textShadow: isNotOut ? G.textGlow : "none",
+                      width: 32,
+                      flexShrink: 0,
+                      color: B.w30,
+                      fontSize: 14,
+                      fontWeight: 900,
+                      textAlign: "right",
+                      paddingRight: 10,
                     }}
                   >
-                    {p.name}
-                  </span>
-                  {isCap && (
+                    {i + 1}
+                  </div>
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {isAtCrease && (
+                      <div
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          flexShrink: 0,
+                          background: isStriker ? teamColor : B.w50,
+                          boxShadow: isStriker
+                            ? `0 0 10px ${teamColor}`
+                            : "none",
+                        }}
+                      />
+                    )}
                     <span
                       style={{
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontSize: 11,
-                        fontWeight: 900,
-                        color: G.teal,
-                        border: `1px solid ${G.teal}`,
-                        boxShadow: `inset 0 0 6px ${G.tealGlow}, 0 0 6px ${G.tealGlow}`,
-                        borderRadius: 4,
-                        padding: "2px 8px",
-                        letterSpacing: 1.5,
-                        flexShrink: 0,
-                        background: "rgba(0,0,0,0.5)",
-                      }}
-                    >
-                      C
-                    </span>
-                  )}
-                </div>
-                <div
-                  style={{
-                    width: 280,
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  {isNotOut && (
-                    <span
-                      style={{
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontSize: 12,
-                        fontWeight: 900,
-                        color: G.cyan,
-                        border: `1px solid ${G.cyan}`,
-                        boxShadow: `inset 0 0 6px ${G.cyanGlow}, 0 0 6px ${G.cyanGlow}`,
-                        borderRadius: 4,
-                        padding: "2px 10px",
-                        letterSpacing: 1,
+                        color: isNotOut ? B.white : B.w70,
+                        fontWeight: isNotOut ? 900 : 700,
+                        fontSize: 22,
                         textTransform: "uppercase",
-                        background: "rgba(0,0,0,0.4)",
+                        letterSpacing: 0.5,
                       }}
                     >
-                      NOT OUT
+                      {p.name}
                     </span>
-                  )}
-                  {isOut && (
-                    <span
-                      style={{
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: G.w45,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {dismissalText(p)}
-                    </span>
+                    {isCap && (
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 900,
+                          color: B.panelBg,
+                          background: teamColor,
+                          borderRadius: 3,
+                          padding: "2px 6px",
+                          flexShrink: 0,
+                          letterSpacing: 1,
+                        }}
+                      >
+                        C
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      width: 260,
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    {isNotOut && !isOut && hasBat && (
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 900,
+                          color: teamColor,
+                          border: `1px solid ${teamColor}`,
+                          borderRadius: 4,
+                          padding: "3px 10px",
+                          letterSpacing: 1.5,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        NOT OUT
+                      </span>
+                    )}
+                    {isOut && (
+                      <span
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: B.w50,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {dismissalText(p)}
+                      </span>
+                    )}
+                  </div>
+                  {hasBat || isAtCrease ? (
+                    <>
+                      <div
+                        style={{
+                          width: 60,
+                          textAlign: "right",
+                          color: teamColor,
+                          fontSize: 26,
+                          fontWeight: 900,
+                          flexShrink: 0,
+                          textShadow: isAtCrease
+                            ? `0 0 15px ${teamColor}80`
+                            : "none",
+                        }}
+                      >
+                        {p.runs ?? 0}
+                      </div>
+                      <div
+                        style={{
+                          width: 60,
+                          textAlign: "right",
+                          color: B.white,
+                          fontSize: 22,
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {p.ballsFaced ?? 0}
+                      </div>
+                      <div
+                        style={{
+                          width: 60,
+                          textAlign: "right",
+                          color: B.w70,
+                          fontSize: 22,
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {p.fours ?? 0}
+                      </div>
+                      <div
+                        style={{
+                          width: 60,
+                          textAlign: "right",
+                          color: B.w70,
+                          fontSize: 22,
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {p.sixes ?? 0}
+                      </div>
+                      <div
+                        style={{
+                          width: 82,
+                          textAlign: "right",
+                          color: B.w50,
+                          fontSize: 18,
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {fmtSR(p.strikeRate ?? 0)}
+                      </div>
+                    </>
+                  ) : (
+                    [60, 60, 60, 60, 82].map((w, j) => (
+                      <div
+                        key={j}
+                        style={{
+                          width: w,
+                          textAlign: "right",
+                          color: B.w12,
+                          fontSize: 18,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        —
+                      </div>
+                    ))
                   )}
                 </div>
-                {hasBat || isAtCrease ? (
-                  <>
-                    <div
-                      style={{
-                        width: 60,
-                        textAlign: "right",
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontWeight: 900,
-                        fontSize: 24,
-                        color: G.cyan,
-                        flexShrink: 0,
-                        textShadow: G.textGlow,
-                      }}
-                    >
-                      {p.runs ?? 0}
-                    </div>
-                    <div
-                      style={{
-                        width: 60,
-                        textAlign: "right",
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontWeight: 700,
-                        fontSize: 20,
-                        color: G.white,
-                        flexShrink: 0,
-                        textShadow: G.textGlow,
-                      }}
-                    >
-                      {p.ballsFaced ?? 0}
-                    </div>
-                    <div
-                      style={{
-                        width: 60,
-                        textAlign: "right",
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontWeight: 700,
-                        fontSize: 20,
-                        color: G.w70,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {p.fours ?? 0}
-                    </div>
-                    <div
-                      style={{
-                        width: 60,
-                        textAlign: "right",
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontWeight: 700,
-                        fontSize: 20,
-                        color: G.w70,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {p.sixes ?? 0}
-                    </div>
-                    <div
-                      style={{
-                        width: 82,
-                        textAlign: "right",
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontWeight: 700,
-                        fontSize: 18,
-                        color: G.w45,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {fmtSR(p.strikeRate ?? 0)}
-                    </div>
-                  </>
-                ) : (
-                  [60, 60, 60, 60, 82].map((w, j) => (
-                    <div
-                      key={j}
-                      style={{
-                        width: w,
-                        textAlign: "right",
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        fontWeight: 700,
-                        fontSize: 18,
-                        color: G.w12,
-                        flexShrink: 0,
-                      }}
-                    >
-                      —
-                    </div>
-                  ))
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* Footer */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            padding: "16px 36px",
-            borderTop: `1px solid ${G.borderHighlight}`,
-            background: G.bgDeep,
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)",
-            gap: 0,
-          }}
-        >
+          {/* Footer Bar */}
           <div
-            style={{ display: "flex", alignItems: "center", gap: 14, flex: 1 }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "16px 36px",
+              borderTop: `2px solid ${B.lineHard}`,
+              background: B.panelBgDeep,
+            }}
           >
-            <span
+            <div
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
-                fontSize: 13,
-                fontWeight: 800,
-                letterSpacing: 2,
-                textTransform: "uppercase",
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
               }}
             >
-              Extras
-            </span>
-            <span
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.white,
-                fontSize: 22,
-                fontWeight: 900,
-                textShadow: G.textGlow,
-              }}
-            >
-              {totalExtras}
-            </span>
-            {team.extras && (
               <span
                 style={{
-                  color: G.w45,
-                  fontSize: 14,
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontWeight: 600,
+                  color: B.w50,
+                  fontSize: 13,
+                  fontWeight: 900,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
                 }}
               >
-                (w {team.extras.wide}, nb {team.extras.noBall}, b{" "}
-                {team.extras.bye}, lb {team.extras.legBye})
+                EXTRAS
               </span>
-            )}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "0 32px",
-              borderLeft: `1px solid ${G.borderSub}`,
-              borderRight: `1px solid ${G.borderSub}`,
-            }}
-          >
-            <span
+              <span style={{ color: B.white, fontSize: 24, fontWeight: 900 }}>
+                {totalExtras}
+              </span>
+              {team.extras && (
+                <span style={{ color: B.w50, fontSize: 14, fontWeight: 700 }}>
+                  (W {team.extras.wide}, NB {team.extras.noBall}, B{" "}
+                  {team.extras.bye}, LB {team.extras.legBye})
+                </span>
+              )}
+            </div>
+            <div
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
-                fontSize: 13,
-                fontWeight: 800,
-                letterSpacing: 2,
-                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                padding: "0 32px",
+                borderLeft: `1px solid ${B.lineHard}`,
+                borderRight: `1px solid ${B.lineHard}`,
               }}
             >
-              Overs
-            </span>
-            <span
+              <span
+                style={{
+                  color: B.w50,
+                  fontSize: 13,
+                  fontWeight: 900,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                }}
+              >
+                OVERS
+              </span>
+              <span style={{ color: B.white, fontSize: 24, fontWeight: 900 }}>
+                {team.overs}
+              </span>
+            </div>
+            <div
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.white,
-                fontSize: 22,
-                fontWeight: 900,
-                textShadow: G.textGlow,
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                paddingLeft: 32,
               }}
             >
-              {team.overs}
-            </span>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-              paddingLeft: 32,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
-                fontSize: 13,
-                fontWeight: 800,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-              }}
-            >
-              Total
-            </span>
-            <span
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.cyan,
-                fontSize: 28,
-                fontWeight: 900,
-                letterSpacing: -0.5,
-                textShadow: `0 0 16px ${G.cyanGlow}, ${G.textGlow}`,
-              }}
-            >
-              {team.score}/{team.wickets}
-            </span>
+              <span
+                style={{
+                  color: B.w50,
+                  fontSize: 13,
+                  fontWeight: 900,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                }}
+              >
+                TOTAL
+              </span>
+              <span
+                style={{
+                  color: teamColor,
+                  fontSize: 32,
+                  fontWeight: 900,
+                  textShadow: `0 0 20px ${teamColor}80`,
+                }}
+              >
+                {team.score}/{team.wickets}
+              </span>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+export { BroadcastBattingCard as GlassBattingCard };

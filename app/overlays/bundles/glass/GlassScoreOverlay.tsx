@@ -1,16 +1,23 @@
 import { MatchState } from "../types";
 import { getBatTeam, getBowlTeam, fmtOv } from "../helpers";
-import { G, glassBallStyle } from "./theme";
-import { GlassTeamBadge } from "./TeamBadge";
+import { B, broadcastBallStyle } from "./theme";
+import { BroadcastTeamBadge } from "./TeamBadge";
 
-export function GlassScoreOverlay({ state }: { state: MatchState }) {
-  // --------------------------------------------------------------------------
-  // DATA LOGIC (Remains identical)
-  // --------------------------------------------------------------------------
+export function BroadcastScoreOverlay({ state }: { state: MatchState }) {
   const bat = getBatTeam(state);
   const bowl = getBowlTeam(state);
+  if (!bat || !bowl) return null;
+
+  const isBatTeam1 = bat.name === state.team1.name;
+
+  // Active team colors
+  const batColor = isBatTeam1 ? B.t1 : B.t2;
+  const batDim = isBatTeam1 ? B.t1Dim : B.t2Dim;
+  const bowlColor = isBatTeam1 ? B.t2 : B.t1;
+  const bowlDim = isBatTeam1 ? B.t2Dim : B.t1Dim;
+
   const crr =
-    (bat?.overs ?? 0 > 0) ? (bat!.score / bat!.overs).toFixed(2) : "0.00";
+    (bat?.overs ?? 0) > 0 ? (bat!.score / bat!.overs).toFixed(2) : "0.00";
   const target = (bowl?.score ?? 0) + 1;
   const runsNeeded = Math.max(0, target - (bat?.score ?? 0));
   const ballsLeft = Math.max(
@@ -18,9 +25,9 @@ export function GlassScoreOverlay({ state }: { state: MatchState }) {
     Math.round((state.totalOvers - (bat?.overs ?? 0)) * 6),
   );
   const rrr = ballsLeft > 0 ? ((runsNeeded / ballsLeft) * 6).toFixed(2) : "—";
-  const inning = state.firstInnings ? "1ST INN" : "2ND INN";
+  const inning = state.firstInnings ? "1st Inn" : "2nd Inn";
 
-  const displayBalls =
+  const displayBalls: string[] =
     state.currentOverBalls?.length > 0
       ? state.currentOverBalls
       : ((state.firstInnings ? state.innings1Overs : state.innings2Overs)
@@ -29,18 +36,17 @@ export function GlassScoreOverlay({ state }: { state: MatchState }) {
             (b: any) => b.shortBallOutcome ?? b.getShortBallOutcome?.() ?? "",
           ) ?? []);
 
-  const isBatTeam1 = bat?.name === state.team1.name;
-  const batOrder = isBatTeam1
-    ? state.innings1BattingOrder
-    : state.innings2BattingOrder;
-  const isBowlTeam1 = bowl?.name === state.team1.name;
-  const bowlOrder = isBowlTeam1
-    ? state.team1BowlingOrder
-    : state.team2BowlingOrder;
-
   const striker = state.currentStriker;
   const nonStriker = state.currentNonStriker;
   const bowler = state.currentBowler;
+
+  const batOrder = isBatTeam1
+    ? state.innings1BattingOrder
+    : state.innings2BattingOrder;
+  const isBowlT1 = bowl.name === state.team1.name;
+  const bowlOrder = isBowlT1
+    ? state.team1BowlingOrder
+    : state.team2BowlingOrder;
 
   const stS = striker
     ? batOrder?.find((p) => p.playerId === striker.playerId) ||
@@ -55,115 +61,118 @@ export function GlassScoreOverlay({ state }: { state: MatchState }) {
       bowl?.playingXI.find((p) => p.playerId === bowler.playerId)
     : null;
 
-  if (!bat || !bowl) return null;
-
-  // --------------------------------------------------------------------------
-  // RENDER LOGIC (Holographic Glass Theme)
-  // --------------------------------------------------------------------------
-  const divider = { borderRight: `1px solid ${G.borderSub}` };
-
   return (
     <div
       style={{
         position: "absolute",
-        bottom: 24, // Floats like a HUD visor
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "max-content",
-        maxWidth: "96%",
-        animation: "glassSlideUp 0.5s cubic-bezier(0.16,1,0.3,1) both",
-        fontFamily: "'DM Sans', sans-serif",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        fontFamily: "'Barlow Condensed', 'DM Sans', sans-serif",
+        animation: "bcSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both",
       }}
     >
-      {/* Main Glass Panel */}
-      <div
-        style={{
-          height: 104,
-          background: G.bg,
-          backdropFilter: G.backdropBlur,
-          WebkitBackdropFilter: G.backdropBlur,
-          borderRadius: 24, // Sleek curved visor edges
-          // 3D Edge Lighting Bevel
-          borderTop: `1px solid ${G.borderHighlight}`,
-          borderLeft: `1px solid ${G.borderHighlight}`,
-          borderBottom: `1px solid ${G.borderShadow}`,
-          borderRight: `1px solid ${G.borderShadow}`,
-          boxShadow: G.panelShadow,
-          display: "flex",
-          alignItems: "stretch",
-          padding: "0 32px",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Holographic Top Rim Glow */}
+      {/* Heavy TV-style accent rail */}
+      <div style={{ display: "flex", height: 6 }}>
         <div
           style={{
-            position: "absolute",
-            top: 0,
-            left: "15%",
-            right: "15%",
-            height: 2,
-            background: `linear-gradient(90deg, transparent 0%, ${G.cyan} 30%, ${G.teal} 50%, ${G.pink} 70%, transparent 100%)`,
-            boxShadow: `0 0 20px ${G.cyan}, 0 0 10px ${G.white}`,
-            opacity: 0.8,
+            flex: 1,
+            background: batColor,
+            boxShadow: `0 -2px 10px ${batColor}66`,
           }}
         />
+        <div
+          style={{
+            flex: 1,
+            background: bowlColor,
+            boxShadow: `0 -2px 10px ${bowlColor}66`,
+          }}
+        />
+      </div>
 
-        {/* BATTING TEAM + SCORE */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "stretch",
+          height: 80,
+          background: B.panelBg,
+          boxShadow: B.shadow,
+        }}
+      >
+        {/* LEFT: Solid Batting Team Block */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 18,
-            paddingRight: 28,
-            minWidth: 320,
+            gap: 16,
+            padding: "0 28px 0 20px",
+            background: `linear-gradient(135deg, ${batColor} 0%, ${batDim} 100%)`,
+            borderRight: `4px solid ${B.panelBgDeep}`,
+            flexShrink: 0,
+            boxShadow: `inset -10px 0 20px rgba(0,0,0,0.3)`,
           }}
         >
-          <GlassTeamBadge
+          <BroadcastTeamBadge
             name={bat.name}
             logoUrl={bat.logoUrl}
-            size={64}
-            accent={G.cyan}
-            glow={G.cyanGlow}
+            size={54}
+            teamColor={B.panelBgDeep}
+            textColor={batColor}
           />
           <div>
             <div
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w70,
-                fontSize: 14,
-                fontWeight: 800,
-                letterSpacing: 2.5,
-                textTransform: "uppercase",
-                marginBottom: 1,
-                textShadow: G.textGlow,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: -2,
               }}
             >
-              {bat.name}&nbsp;·&nbsp;
-              <span style={{ color: G.teal }}>{inning}</span>
+              <span
+                style={{
+                  color: B.white,
+                  fontSize: 15,
+                  fontWeight: 900,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                }}
+              >
+                {bat.name}
+              </span>
+              <span
+                style={{
+                  background: B.white,
+                  color: batColor,
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: 1,
+                  padding: "2px 6px",
+                  borderRadius: 3,
+                  textTransform: "uppercase",
+                }}
+              >
+                {inning}
+              </span>
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <span
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.white,
+                  color: B.white,
+                  fontSize: 48,
                   fontWeight: 900,
-                  fontSize: 56,
                   lineHeight: 1,
                   letterSpacing: -1,
-                  textShadow: G.textGlow,
+                  textShadow: `0 4px 10px rgba(0,0,0,0.5)`,
                 }}
               >
                 {bat.score}/{bat.wickets}
               </span>
               <span
                 style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  color: G.cyan,
-                  fontSize: 20,
+                  color: B.white,
+                  opacity: 0.8,
+                  fontSize: 22,
                   fontWeight: 800,
-                  textShadow: G.textGlow,
                 }}
               >
                 ({bat.overs})
@@ -172,54 +181,44 @@ export function GlassScoreOverlay({ state }: { state: MatchState }) {
           </div>
         </div>
 
-        {/* ETCHED INNER GLASS PANEL (Middle Data) */}
+        {/* CENTRE: Match Stats */}
         <div
           style={{
+            flex: 1,
             display: "flex",
-            alignItems: "stretch",
-            background: G.bgDeep, // Darker glass layer to create depth
-            margin: "12px 0",
-            borderRadius: 16,
-            border: `1px solid ${G.borderShadow}`,
-            borderTop: `1px solid ${G.borderSub}`, // Inverse lighting for indentation
-            boxShadow: "inset 0 4px 12px rgba(0,0,0,0.5)", // Creates the 'etched' cutout look
-            padding: "0 12px",
+            alignItems: "center",
+            padding: "0 16px",
+            gap: 0,
+            overflow: "hidden",
           }}
         >
-          {/* CRR / RRR */}
+          {/* Rate block */}
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: 4,
               padding: "0 20px",
-              ...divider,
-              minWidth: 110,
+              borderRight: `1px solid ${B.lineHard}`,
+              flexShrink: 0,
             }}
           >
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 8,
+                marginBottom: 3,
+              }}
+            >
               <span
                 style={{
-                  color: G.w45,
+                  color: B.w50,
                   fontSize: 12,
                   fontWeight: 800,
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  fontFamily: "'Barlow Condensed', sans-serif",
+                  letterSpacing: 1.5,
                 }}
               >
                 CRR
               </span>
-              <span
-                style={{
-                  color: G.teal,
-                  fontWeight: 900,
-                  fontSize: 26,
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  textShadow: G.tealGlow,
-                }}
-              >
+              <span style={{ color: B.white, fontSize: 26, fontWeight: 900 }}>
                 {crr}
               </span>
             </div>
@@ -227,118 +226,58 @@ export function GlassScoreOverlay({ state }: { state: MatchState }) {
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                 <span
                   style={{
-                    color: G.w45,
+                    color: B.w50,
                     fontSize: 12,
                     fontWeight: 800,
-                    letterSpacing: 2,
-                    textTransform: "uppercase",
-                    fontFamily: "'Barlow Condensed', sans-serif",
+                    letterSpacing: 1.5,
                   }}
                 >
                   RRR
                 </span>
-                <span
-                  style={{
-                    color: G.coral,
-                    fontWeight: 900,
-                    fontSize: 26,
-                    fontFamily: "'Barlow Condensed', sans-serif",
-                    textShadow: `0 0 12px ${G.coral}`,
-                  }}
-                >
+                <span style={{ color: B.live, fontSize: 24, fontWeight: 900 }}>
                   {rrr}
                 </span>
               </div>
             )}
           </div>
 
-          {/* TARGET */}
-          {!state.firstInnings && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                gap: 2,
-                padding: "0 20px",
-                ...divider,
-                minWidth: 140,
-              }}
-            >
-              <div
-                style={{
-                  color: G.w45,
-                  fontSize: 12,
-                  fontWeight: 800,
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                }}
-              >
-                Target
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontWeight: 900,
-                  fontSize: 32,
-                  color: G.white,
-                  lineHeight: 1,
-                  textShadow: G.textGlow,
-                }}
-              >
-                {target}{" "}
-                <span style={{ color: G.w70, fontSize: 16, fontWeight: 700 }}>
-                  ({ballsLeft}b)
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* THIS OVER */}
+          {/* Over dots */}
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: 8,
               padding: "0 20px",
-              minWidth: 260,
+              borderRight: `1px solid ${B.lineHard}`,
+              flexShrink: 0,
             }}
           >
             <div
               style={{
-                color: G.w45,
+                color: B.w50,
                 fontSize: 12,
                 fontWeight: 800,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                fontFamily: "'Barlow Condensed', sans-serif",
+                letterSpacing: 1.5,
+                marginBottom: 5,
               }}
             >
-              Over {Math.min(state.completedOvers + 1, state.totalOvers)}
+              OVR {Math.min(state.completedOvers + 1, state.totalOvers)}
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 6 }}>
               {displayBalls.map((b: string, i: number) => {
-                const s = glassBallStyle(b);
+                const s = broadcastBallStyle(b);
                 return (
                   <div
                     key={i}
                     style={{
-                      width: 36,
-                      height: 36,
+                      width: 32,
+                      height: 32,
                       borderRadius: "50%",
                       background: s.bg,
                       border: s.border,
-                      boxShadow: s.shadow,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontFamily: "'Barlow Condensed', sans-serif",
                       fontWeight: 900,
-                      fontSize: 15,
+                      fontSize: 14,
                       color: s.fg,
-                      textShadow: "0 1px 4px rgba(0,0,0,0.8)",
                     }}
                   >
                     {b}
@@ -350,182 +289,150 @@ export function GlassScoreOverlay({ state }: { state: MatchState }) {
                   <div
                     key={`ep${i}`}
                     style={{
-                      width: 36,
-                      height: 36,
+                      width: 32,
+                      height: 32,
                       borderRadius: "50%",
-                      background: G.bgLight,
-                      border: `1px solid ${G.borderSub}`,
-                      boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3)",
+                      background: "rgba(255,255,255,0.03)",
+                      border: `1px solid ${B.lineSoft}`,
                     }}
                   />
                 ),
               )}
             </div>
           </div>
-        </div>
 
-        {/* BATTERS */}
-        {(striker || nonStriker) && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: 12,
-              padding: "0 26px 0 20px",
-              borderRight: `1px solid ${G.borderSub}`,
-              minWidth: 300,
-            }}
-          >
-            {[
-              { p: striker, stats: stS, isOn: true },
-              { p: nonStriker, stats: nsS, isOn: false },
-            ]
-              .filter((x) => x.p)
-              .map(({ p, stats, isOn }) => (
-                <div
-                  key={p!.playerId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    width: "100%",
-                  }}
-                >
+          {/* Batters Highlighted */}
+          {(striker || nonStriker) && (
+            <div
+              style={{
+                padding: "0 20px",
+                borderRight: `1px solid ${B.lineHard}`,
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+              }}
+            >
+              {[
+                { p: striker, stats: stS, on: true },
+                { p: nonStriker, stats: nsS, on: false },
+              ]
+                .filter((x) => x.p)
+                .map(({ p, stats, on }) => (
                   <div
+                    key={p!.playerId}
                     style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      flexShrink: 0,
-                      background: isOn ? G.teal : G.w25,
-                      boxShadow: isOn ? G.tealGlow : "none",
-                    }}
-                  />
-                  <span
-                    style={{
-                      color: isOn ? G.white : G.w70,
-                      fontWeight: isOn ? 800 : 600,
-                      fontSize: isOn ? 18 : 16,
-                      flex: 1,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      textShadow: G.textGlow,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      marginBottom: on ? 4 : 0,
                     }}
                   >
-                    {p!.name}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      color: isOn ? G.teal : G.w70,
-                      fontWeight: 900,
-                      fontSize: isOn ? 24 : 20,
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                      minWidth: 65,
-                      textAlign: "right",
-                      textShadow: G.textGlow,
-                    }}
-                  >
-                    {stats ? (
-                      <>
-                        {stats.runs}
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: on ? batColor : B.w30,
+                        flexShrink: 0,
+                        boxShadow: on ? `0 0 8px ${batColor}` : "none",
+                      }}
+                    />
+                    <span
+                      style={{
+                        color: on ? B.white : B.w70,
+                        fontSize: on ? 18 : 15,
+                        fontWeight: on ? 900 : 600,
+                        flex: 1,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {p!.name}
+                    </span>
+                    <span
+                      style={{
+                        color: on ? batColor : B.w50,
+                        fontSize: on ? 22 : 18,
+                        fontWeight: 900,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {stats ? `${stats.runs}` : "—"}
+                      {stats && (
                         <span
                           style={{
-                            color: G.w45,
+                            color: B.w50,
+                            fontSize: 13,
                             fontWeight: 700,
-                            fontSize: 14,
-                            marginLeft: 4,
                           }}
                         >
+                          {" "}
                           ({stats.ballsFaced})
                         </span>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </span>
-                </div>
-              ))}
-          </div>
-        )}
+                      )}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
 
-        {/* BOWLER */}
-        {bowler && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: 6,
-              padding: "0 26px",
-              minWidth: 180,
-            }}
-          >
-            <div
-              style={{
-                color: G.w45,
-                fontSize: 12,
-                fontWeight: 800,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                fontFamily: "'Barlow Condensed', sans-serif",
-              }}
-            >
-              Bowling
-            </div>
-            <div
-              style={{
-                color: G.white,
-                fontWeight: 800,
-                fontSize: 18,
-                whiteSpace: "nowrap",
-                textShadow: G.textGlow,
-              }}
-            >
-              {bowler.name}
-            </div>
-            {bowS && (
+          {/* Bowler */}
+          {bowler && (
+            <div style={{ padding: "0 20px", flexShrink: 0 }}>
               <div
                 style={{
-                  color: G.w70,
-                  fontSize: 16,
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontWeight: 700,
-                  letterSpacing: 0.5,
-                  textShadow: G.textGlow,
+                  color: B.w50,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: 1.5,
+                  marginBottom: 3,
                 }}
               >
-                {fmtOv(bowS.overs)} ov ·{" "}
-                <span style={{ color: G.pink }}>{bowS.wicketsTaken}w</span> ·{" "}
-                {bowS.runsConceded}r
+                BOWLING
               </div>
-            )}
-          </div>
-        )}
+              <div
+                style={{
+                  color: bowlColor,
+                  fontSize: 18,
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                  textTransform: "uppercase",
+                }}
+              >
+                {bowler.name}
+              </div>
+              {bowS && (
+                <div style={{ color: B.w70, fontSize: 15, fontWeight: 800 }}>
+                  {fmtOv(bowS.overs)}ov · {bowS.wicketsTaken}w ·{" "}
+                  {bowS.runsConceded}r
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
-        {/* FIELDING TEAM */}
+        {/* RIGHT: Solid Fielding Team Block */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 16,
-            marginLeft: "auto",
-            paddingLeft: 28,
-            borderLeft: `1px solid ${G.borderSub}`,
+            padding: "0 20px 0 28px",
+            background: `linear-gradient(225deg, ${bowlColor} 0%, ${bowlDim} 100%)`,
+            borderLeft: `4px solid ${B.panelBgDeep}`,
+            flexShrink: 0,
+            boxShadow: `inset 10px 0 20px rgba(0,0,0,0.3)`,
           }}
         >
           <div style={{ textAlign: "right" }}>
             <div
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.w45,
-                fontSize: 13,
-                fontWeight: 800,
-                letterSpacing: 2.5,
-                textTransform: "uppercase",
+                color: B.white,
+                opacity: 0.8,
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: 1.5,
                 marginBottom: 2,
               }}
             >
@@ -533,28 +440,28 @@ export function GlassScoreOverlay({ state }: { state: MatchState }) {
             </div>
             <div
               style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                color: G.white,
+                color: B.white,
+                fontSize: 26,
                 fontWeight: 900,
-                fontSize: 28,
-                lineHeight: 1,
-                letterSpacing: 0.5,
                 textTransform: "uppercase",
-                textShadow: G.textGlow,
+                letterSpacing: 0.5,
+                textShadow: `0 2px 8px rgba(0,0,0,0.4)`,
               }}
             >
               {bowl.name}
             </div>
           </div>
-          <GlassTeamBadge
+          <BroadcastTeamBadge
             name={bowl.name}
             logoUrl={bowl.logoUrl}
-            size={64}
-            accent={G.pink}
-            glow={G.pinkGlow}
+            size={54}
+            teamColor={B.panelBgDeep}
+            textColor={bowlColor}
           />
         </div>
       </div>
     </div>
   );
 }
+
+export { BroadcastScoreOverlay as GlassScoreOverlay };
