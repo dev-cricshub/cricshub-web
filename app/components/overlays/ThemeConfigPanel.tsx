@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { ThemeConfig, BundleId } from "@/lib/themeConfig";
+import { useState, useCallback, useMemo } from "react";
+import {
+  ThemeConfig,
+  BundleId,
+  MasterColors,
+  BallColors,
+  DEFAULT_MASTER_COLORS,
+  DEFAULT_BALL_COLORS,
+  buildConfigFromSimplified,
+} from "@/lib/themeConfig";
 
 // ═══════════════════════════════════════════════════════════
-// THEME CONFIG PANEL
-// Lets users customise overlay colors per bundle.
-// Changes propagate up via onChange; persisted externally.
+// THEME CONFIG PANEL — Fixed for 300-340px sidebar
 // ═══════════════════════════════════════════════════════════
 
 interface Props {
@@ -14,437 +20,217 @@ interface Props {
   onChange: (config: ThemeConfig) => void;
 }
 
-// ── Field & group metadata ───────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────
 
-interface ThemeField {
-  key: string;   // CSS var suffix after the prefix, e.g. "bg", "ball-W-fg"
-  label: string;
-  default: string;
+function getLightness(hex: string): number {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return 50;
+  const r = parseInt(result[1], 16);
+  const g = parseInt(result[2], 16);
+  const b = parseInt(result[3], 16);
+  return Math.sqrt(0.299 * r ** 2 + 0.587 * g ** 2 + 0.114 * b ** 2) / 2.55;
 }
-interface ThemeGroup { name: string; fields: ThemeField[] }
 
-const BASIC_GROUPS: ThemeGroup[] = [
-  {
-    name: "Panel",
-    fields: [
-      { key: "bg",     label: "Background",     default: "rgba(6, 8, 16, 0.97)" },
-      { key: "border", label: "Border",          default: "rgba(255,255,255,0.08)" },
-    ],
-  },
-  {
-    name: "Accents",
-    fields: [
-      { key: "gold",       label: "Gold",               default: "#E2B94B" },
-      { key: "goldDim",    label: "Gold Dim",            default: "rgba(226,185,75,0.35)" },
-      { key: "blue",       label: "Blue (Team 1)",       default: "#4A9EF5" },
-      { key: "blueDim",    label: "Blue Dim",            default: "rgba(74,158,245,0.25)" },
-      { key: "purple",     label: "Purple (Team 2)",     default: "#A855F7" },
-      { key: "purpleDim",  label: "Purple Dim",          default: "rgba(168,85,247,0.25)" },
-      { key: "red",        label: "Alert / Wicket",      default: "#F87171" },
-    ],
-  },
-  {
-    name: "Text",
-    fields: [
-      { key: "white", label: "White 100%", default: "#FFFFFF" },
-      { key: "w80",   label: "White 80%",  default: "rgba(255,255,255,0.80)" },
-      { key: "w55",   label: "White 55%",  default: "rgba(255,255,255,0.55)" },
-      { key: "w35",   label: "White 35%",  default: "rgba(255,255,255,0.35)" },
-      { key: "w20",   label: "White 20%",  default: "rgba(255,255,255,0.20)" },
-      { key: "w10",   label: "White 10%",  default: "rgba(255,255,255,0.10)" },
-      { key: "w06",   label: "White 6%",   default: "rgba(255,255,255,0.06)" },
-      { key: "w04",   label: "White 4%",   default: "rgba(255,255,255,0.04)" },
-    ],
-  },
-  {
-    name: "Ball — Wicket (W)",
-    fields: [
-      { key: "ball-W-bg",   label: "Background", default: "#7F1D1D" },
-      { key: "ball-W-fg",   label: "Text",        default: "#FCA5A5" },
-      { key: "ball-W-ring", label: "Ring",        default: "#EF4444" },
-    ],
-  },
-  {
-    name: "Ball — Six (6)",
-    fields: [
-      { key: "ball-6-bg",   label: "Background", default: "#4C1D95" },
-      { key: "ball-6-fg",   label: "Text",        default: "#DDD6FE" },
-      { key: "ball-6-ring", label: "Ring",        default: "#8B5CF6" },
-    ],
-  },
-  {
-    name: "Ball — Four (4)",
-    fields: [
-      { key: "ball-4-bg",   label: "Background", default: "#1E3A5F" },
-      { key: "ball-4-fg",   label: "Text",        default: "#93C5FD" },
-      { key: "ball-4-ring", label: "Ring",        default: "#3B82F6" },
-    ],
-  },
-  {
-    name: "Ball — Wide / No-Ball",
-    fields: [
-      { key: "ball-Wd-bg",   label: "Background", default: "#78350F" },
-      { key: "ball-Wd-fg",   label: "Text",        default: "#FDE68A" },
-      { key: "ball-Wd-ring", label: "Ring",        default: "#F59E0B" },
-    ],
-  },
-  {
-    name: "Ball — Dot (0)",
-    fields: [
-      { key: "ball-0-bg",   label: "Background", default: "rgba(255,255,255,0.05)" },
-      { key: "ball-0-fg",   label: "Text",        default: "rgba(255,255,255,0.35)" },
-      { key: "ball-0-ring", label: "Ring",        default: "rgba(255,255,255,0.12)" },
-    ],
-  },
-  {
-    name: "Ball — Runs (1–3)",
-    fields: [
-      { key: "ball-run-bg",   label: "Background", default: "#064E2E" },
-      { key: "ball-run-fg",   label: "Text",        default: "#6EE7B7" },
-      { key: "ball-run-ring", label: "Ring",        default: "#10B981" },
-    ],
-  },
-];
+function getContrastText(bg: string): string {
+  return getLightness(bg) > 55 ? "#111827" : "#FFFFFF";
+}
 
-const GLASS_GROUPS: ThemeGroup[] = [
-  {
-    name: "Panel Backgrounds",
-    fields: [
-      { key: "bg",      label: "Main Panel",      default: "rgba(15, 23, 42, 0.45)" },
-      { key: "bgDeep",  label: "Deep / Anchors",  default: "rgba(2, 6, 23, 0.65)" },
-      { key: "bgLight", label: "Row Highlight",   default: "rgba(255, 255, 255, 0.08)" },
-      { key: "bgDark",  label: "Footer",          default: "rgba(0, 0, 0, 0.55)" },
-    ],
-  },
-  {
-    name: "Borders",
-    fields: [
-      { key: "borderHighlight", label: "Edge Highlight",   default: "rgba(255, 255, 255, 0.35)" },
-      { key: "borderShadow",    label: "Edge Shadow",      default: "rgba(255, 255, 255, 0.05)" },
-      { key: "borderSub",       label: "Inner Divider",    default: "rgba(255, 255, 255, 0.15)" },
-    ],
-  },
-  {
-    name: "Accents",
-    fields: [
-      { key: "teal",     label: "Teal (Primary)",    default: "#00F5D4" },
-      { key: "tealDim",  label: "Teal Dim",          default: "rgba(0, 245, 212, 0.15)" },
-      { key: "tealGlow", label: "Teal Glow",         default: "0 0 15px rgba(0, 245, 212, 0.4)" },
-      { key: "cyan",     label: "Cyan (Team 1)",     default: "#00E5FF" },
-      { key: "cyanDim",  label: "Cyan Dim",          default: "rgba(0, 229, 255, 0.15)" },
-      { key: "cyanGlow", label: "Cyan Glow",         default: "0 0 15px rgba(0, 229, 255, 0.4)" },
-      { key: "pink",     label: "Pink (Team 2)",     default: "#FF007F" },
-      { key: "pinkDim",  label: "Pink Dim",          default: "rgba(255, 0, 127, 0.15)" },
-      { key: "pinkGlow", label: "Pink Glow",         default: "0 0 15px rgba(255, 0, 127, 0.4)" },
-      { key: "coral",    label: "Alert / Wicket",    default: "#FF3366" },
-      { key: "coralDim", label: "Alert Dim",         default: "rgba(255, 51, 102, 0.15)" },
-    ],
-  },
-  {
-    name: "Text",
-    fields: [
-      { key: "white", label: "White 100%", default: "#FFFFFF" },
-      { key: "w90",   label: "White 92%",  default: "rgba(255,255,255,0.92)" },
-      { key: "w70",   label: "White 75%",  default: "rgba(255,255,255,0.75)" },
-      { key: "w45",   label: "White 55%",  default: "rgba(255,255,255,0.55)" },
-      { key: "w25",   label: "White 35%",  default: "rgba(255,255,255,0.35)" },
-      { key: "w12",   label: "White 15%",  default: "rgba(255,255,255,0.15)" },
-      { key: "textGlow", label: "Text Glow (shadow)", default: "0 2px 4px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.9)" },
-    ],
-  },
-  {
-    name: "Ball — Wicket (W)",
-    fields: [
-      { key: "ball-W-bg",     label: "Background", default: "rgba(255, 51, 102, 0.2)" },
-      { key: "ball-W-fg",     label: "Text",        default: "#FF3366" },
-      { key: "ball-W-border", label: "Border",      default: "1px solid rgba(255, 51, 102, 0.6)" },
-      { key: "ball-W-shadow", label: "Shadow",      default: "0 0 12px rgba(255, 51, 102, 0.4)" },
-    ],
-  },
-  {
-    name: "Ball — Six (6)",
-    fields: [
-      { key: "ball-6-bg",     label: "Background", default: "rgba(189, 0, 255, 0.2)" },
-      { key: "ball-6-fg",     label: "Text",        default: "#BD00FF" },
-      { key: "ball-6-border", label: "Border",      default: "1px solid rgba(189, 0, 255, 0.6)" },
-      { key: "ball-6-shadow", label: "Shadow",      default: "0 0 12px rgba(189, 0, 255, 0.4)" },
-    ],
-  },
-  {
-    name: "Ball — Four (4)",
-    fields: [
-      { key: "ball-4-bg",     label: "Background", default: "rgba(0, 229, 255, 0.2)" },
-      { key: "ball-4-fg",     label: "Text",        default: "#00E5FF" },
-      { key: "ball-4-border", label: "Border",      default: "1px solid rgba(0, 229, 255, 0.6)" },
-      { key: "ball-4-shadow", label: "Shadow",      default: "0 0 12px rgba(0, 229, 255, 0.4)" },
-    ],
-  },
-  {
-    name: "Ball — Wide / No-Ball",
-    fields: [
-      { key: "ball-Wd-bg",     label: "Background", default: "rgba(255, 204, 0, 0.2)" },
-      { key: "ball-Wd-fg",     label: "Text",        default: "#FFCC00" },
-      { key: "ball-Wd-border", label: "Border",      default: "1px solid rgba(255, 204, 0, 0.6)" },
-      { key: "ball-Wd-shadow", label: "Shadow",      default: "0 0 12px rgba(255, 204, 0, 0.4)" },
-    ],
-  },
-  {
-    name: "Ball — Dot (0)",
-    fields: [
-      { key: "ball-0-bg",     label: "Background", default: "rgba(255,255,255,0.05)" },
-      { key: "ball-0-fg",     label: "Text",        default: "rgba(255,255,255,0.5)" },
-      { key: "ball-0-border", label: "Border",      default: "1px solid rgba(255,255,255,0.2)" },
-      { key: "ball-0-shadow", label: "Shadow",      default: "none" },
-    ],
-  },
-  {
-    name: "Ball — Runs (1–3)",
-    fields: [
-      { key: "ball-run-bg",     label: "Background", default: "rgba(0, 245, 212, 0.15)" },
-      { key: "ball-run-fg",     label: "Text",        default: "#00F5D4" },
-      { key: "ball-run-border", label: "Border",      default: "1px solid rgba(0, 245, 212, 0.5)" },
-      { key: "ball-run-shadow", label: "Shadow",      default: "0 0 10px rgba(0, 245, 212, 0.3)" },
-    ],
-  },
-];
-
-const MATERIAL_GROUPS: ThemeGroup[] = [
-  {
-    name: "Panel Backgrounds",
-    fields: [
-      { key: "bg",      label: "Main Panel",     default: "#111827" },
-      { key: "bgDeep",  label: "Deep Sections",  default: "#030712" },
-      { key: "bgLight", label: "Row Alternate",  default: "#1F2937" },
-      { key: "bgDark",  label: "Header / Footer",default: "#0F172A" },
-    ],
-  },
-  {
-    name: "Borders",
-    fields: [
-      { key: "border",    label: "Separator",       default: "#374151" },
-      { key: "borderSub", label: "Inner Separator", default: "#1F2937" },
-    ],
-  },
-  {
-    name: "Accents",
-    fields: [
-      { key: "teal",     label: "Teal (Primary)", default: "#009688" },
-      { key: "tealDim",  label: "Teal Dim",       default: "#004D40" },
-      { key: "cyan",     label: "Cyan (Team 1)",  default: "#00BCD4" },
-      { key: "cyanDim",  label: "Cyan Dim",       default: "#006064" },
-      { key: "pink",     label: "Pink (Team 2)",  default: "#E91E63" },
-      { key: "pinkDim",  label: "Pink Dim",       default: "#880E4F" },
-      { key: "coral",    label: "Alert / Wicket", default: "#DC2626" },
-      { key: "coralDim", label: "Alert Dim",      default: "#7F1D1D" },
-    ],
-  },
-  {
-    name: "Text",
-    fields: [
-      { key: "white", label: "White",       default: "#FFFFFF" },
-      { key: "w90",   label: "Primary",     default: "#F3F4F6" },
-      { key: "w70",   label: "Secondary",   default: "#D1D5DB" },
-      { key: "w45",   label: "Muted",       default: "#9CA3AF" },
-      { key: "w25",   label: "Disabled",    default: "#6B7280" },
-      { key: "w12",   label: "Faint",       default: "#4B5563" },
-      { key: "w06",   label: "Very Faint",  default: "#374151" },
-    ],
-  },
-  {
-    name: "Ball — Wicket (W)",
-    fields: [
-      { key: "ball-W-bg",     label: "Background", default: "#DC2626" },
-      { key: "ball-W-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-W-border", label: "Border",      default: "1px solid #991B1B" },
-      { key: "ball-W-shadow", label: "Shadow",      default: "0 2px 4px rgba(0,0,0,0.3)" },
-    ],
-  },
-  {
-    name: "Ball — Six (6)",
-    fields: [
-      { key: "ball-6-bg",     label: "Background", default: "#6D28D9" },
-      { key: "ball-6-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-6-border", label: "Border",      default: "1px solid #4C1D95" },
-      { key: "ball-6-shadow", label: "Shadow",      default: "0 2px 4px rgba(0,0,0,0.3)" },
-    ],
-  },
-  {
-    name: "Ball — Four (4)",
-    fields: [
-      { key: "ball-4-bg",     label: "Background", default: "#0284C7" },
-      { key: "ball-4-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-4-border", label: "Border",      default: "1px solid #075985" },
-      { key: "ball-4-shadow", label: "Shadow",      default: "0 2px 4px rgba(0,0,0,0.3)" },
-    ],
-  },
-  {
-    name: "Ball — Wide / No-Ball",
-    fields: [
-      { key: "ball-Wd-bg",     label: "Background", default: "#D97706" },
-      { key: "ball-Wd-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-Wd-border", label: "Border",      default: "1px solid #92400E" },
-      { key: "ball-Wd-shadow", label: "Shadow",      default: "0 2px 4px rgba(0,0,0,0.3)" },
-    ],
-  },
-  {
-    name: "Ball — Dot (0)",
-    fields: [
-      { key: "ball-0-bg",     label: "Background", default: "#374151" },
-      { key: "ball-0-fg",     label: "Text",        default: "#D1D5DB" },
-      { key: "ball-0-border", label: "Border",      default: "1px solid #1F2937" },
-      { key: "ball-0-shadow", label: "Shadow",      default: "inset 0 1px 2px rgba(0,0,0,0.2)" },
-    ],
-  },
-  {
-    name: "Ball — Runs (1–3)",
-    fields: [
-      { key: "ball-run-bg",     label: "Background", default: "#059669" },
-      { key: "ball-run-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-run-border", label: "Border",      default: "1px solid #065F46" },
-      { key: "ball-run-shadow", label: "Shadow",      default: "0 2px 4px rgba(0,0,0,0.3)" },
-    ],
-  },
-];
-
-const AERO_GROUPS: ThemeGroup[] = [
-  {
-    name: "Panel Backgrounds",
-    fields: [
-      { key: "bg",      label: "Main Card",       default: "#FFFFFF" },
-      { key: "bgDeep",  label: "Header / Footer", default: "#F3F4F6" },
-      { key: "bgLight", label: "Row Alternate",   default: "#FAFAFA" },
-      { key: "bgDark",  label: "Emphasis",        default: "#E5E7EB" },
-    ],
-  },
-  {
-    name: "Borders",
-    fields: [
-      { key: "border",    label: "Structural",    default: "#E5E7EB" },
-      { key: "borderSub", label: "Inner Separator", default: "#F3F4F6" },
-    ],
-  },
-  {
-    name: "Accents",
-    fields: [
-      { key: "teal",     label: "Teal (Primary)",  default: "#0D9488" },
-      { key: "tealDim",  label: "Teal Dim",        default: "#CCFBF1" },
-      { key: "cyan",     label: "Sky (Team 1)",    default: "#0284C7" },
-      { key: "cyanDim",  label: "Sky Dim",         default: "#E0F2FE" },
-      { key: "pink",     label: "Rose (Team 2)",   default: "#E11D48" },
-      { key: "pinkDim",  label: "Rose Dim",        default: "#FFE4E6" },
-      { key: "coral",    label: "Alert / Wicket",  default: "#EF4444" },
-      { key: "coralDim", label: "Alert Dim",       default: "#FEE2E2" },
-    ],
-  },
-  {
-    name: "Text",
-    fields: [
-      { key: "textMain", label: "Primary (Near Black)", default: "#111827" },
-      { key: "t90",      label: "Standard",             default: "#1F2937" },
-      { key: "t70",      label: "Secondary",            default: "#4B5563" },
-      { key: "t45",      label: "Muted Labels",         default: "#6B7280" },
-      { key: "t25",      label: "Disabled",             default: "#9CA3AF" },
-      { key: "t12",      label: "Faint",                default: "#D1D5DB" },
-      { key: "t06",      label: "Very Faint",           default: "#E5E7EB" },
-    ],
-  },
-  {
-    name: "Ball — Wicket (W)",
-    fields: [
-      { key: "ball-W-bg",     label: "Background", default: "#EF4444" },
-      { key: "ball-W-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-W-border", label: "Border",      default: "none" },
-      { key: "ball-W-shadow", label: "Shadow",      default: "0 2px 6px rgba(239,68,68,0.25)" },
-    ],
-  },
-  {
-    name: "Ball — Six (6)",
-    fields: [
-      { key: "ball-6-bg",     label: "Background", default: "#8B5CF6" },
-      { key: "ball-6-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-6-border", label: "Border",      default: "none" },
-      { key: "ball-6-shadow", label: "Shadow",      default: "0 2px 6px rgba(139,92,246,0.25)" },
-    ],
-  },
-  {
-    name: "Ball — Four (4)",
-    fields: [
-      { key: "ball-4-bg",     label: "Background", default: "#0EA5E9" },
-      { key: "ball-4-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-4-border", label: "Border",      default: "none" },
-      { key: "ball-4-shadow", label: "Shadow",      default: "0 2px 6px rgba(14,165,233,0.25)" },
-    ],
-  },
-  {
-    name: "Ball — Wide / No-Ball",
-    fields: [
-      { key: "ball-Wd-bg",     label: "Background", default: "#F59E0B" },
-      { key: "ball-Wd-fg",     label: "Text",        default: "#FFFFFF" },
-      { key: "ball-Wd-border", label: "Border",      default: "none" },
-      { key: "ball-Wd-shadow", label: "Shadow",      default: "0 2px 6px rgba(245,158,11,0.25)" },
-    ],
-  },
-  {
-    name: "Ball — Dot (0)",
-    fields: [
-      { key: "ball-0-bg",     label: "Background", default: "#FFFFFF" },
-      { key: "ball-0-fg",     label: "Text",        default: "#9CA3AF" },
-      { key: "ball-0-border", label: "Border",      default: "1px solid #E5E7EB" },
-      { key: "ball-0-shadow", label: "Shadow",      default: "none" },
-    ],
-  },
-  {
-    name: "Ball — Runs (1–3)",
-    fields: [
-      { key: "ball-run-bg",     label: "Background", default: "#F3F4F6" },
-      { key: "ball-run-fg",     label: "Text",        default: "#374151" },
-      { key: "ball-run-border", label: "Border",      default: "1px solid #E5E7EB" },
-      { key: "ball-run-shadow", label: "Shadow",      default: "none" },
-    ],
-  },
-];
-
-const BUNDLE_GROUPS: Record<BundleId, ThemeGroup[]> = {
-  basic:    BASIC_GROUPS,
-  glass:    GLASS_GROUPS,
-  material: MATERIAL_GROUPS,
-  aero:     AERO_GROUPS,
-};
-
-const BUNDLE_LABELS: Record<BundleId, string> = {
-  basic:    "Basic",
-  glass:    "Glass",
-  material: "Material",
-  aero:     "Aero",
-};
-
-// ── Colour helpers ────────────────────────────────────────────
-
-// Try to extract a hex string from any CSS colour for the <input type="color"> swatch.
-// Returns #808080 as fallback for complex values (rgba, shadows, etc).
-function toHexForPicker(cssValue: string): string {
-  const trimmed = cssValue.trim();
-  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(trimmed)) return trimmed;
-  const rgba = trimmed.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
-  if (rgba) {
-    const hex = (n: string) => parseInt(n).toString(16).padStart(2, "0");
-    return `#${hex(rgba[1])}${hex(rgba[2])}${hex(rgba[3])}`;
+function toHex(value: string): string {
+  const t = value.trim();
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t)) return t;
+  const m = t.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (m) {
+    const h = (n: string) => parseInt(n).toString(16).padStart(2, "0");
+    return `#${h(m[1])}${h(m[2])}${h(m[3])}`;
   }
   return "#808080";
 }
 
-// ── Sub-components ────────────────────────────────────────────
+// ── Bundle metadata ─────────────────────────────────────────
+
+const BUNDLE_LABELS: Record<BundleId, string> = {
+  basic: "Basic",
+  glass: "Glass",
+  material: "Material",
+  aero: "Aero",
+};
+
+const BUNDLE_DESCRIPTIONS: Record<BundleId, string> = {
+  basic: "Dark premium · gold accents",
+  glass: "Holographic neon glassmorphism",
+  material: "Clean flat Material Design",
+  aero: "Light airy minimalism",
+};
+
+// ── Field definitions ───────────────────────────────────────
+
+const MASTER_FIELDS: {
+  key: keyof MasterColors;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    key: "team1",
+    label: "Team 1",
+    desc: "Team 1 badges, headers & score highlights",
+  },
+  {
+    key: "team2",
+    label: "Team 2",
+    desc: "Team 2 badges, headers & score highlights",
+  },
+  {
+    key: "accent",
+    label: "Accent",
+    desc: "Key stats, borders & important highlights",
+  },
+  {
+    key: "alert",
+    label: "Alert",
+    desc: "Wickets, warnings & critical moments",
+  },
+  { key: "bg", label: "Background", desc: "Main overlay panels and cards" },
+  { key: "text", label: "Text", desc: "Primary text, numbers and labels" },
+];
+
+const BALL_FIELDS: {
+  key: keyof BallColors;
+  label: string;
+  short: string;
+  desc: string;
+}[] = [
+  {
+    key: "wicket",
+    label: "Wicket",
+    short: "W",
+    desc: "Shown when a wicket falls",
+  },
+  { key: "six", label: "Six", short: "6", desc: "Shown for a maximum" },
+  { key: "four", label: "Four", short: "4", desc: "Shown for a boundary" },
+  { key: "wide", label: "Wide/No-ball", short: "Wd", desc: "Shown for extras" },
+];
+
+// ── Tooltip ─────────────────────────────────────────────────
+
+function Tip({ text, children }: { text: string; children: React.ReactNode }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+      }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 6px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            padding: "5px 9px",
+            background: "rgba(0,0,0,0.96)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 6,
+            color: "#FFF",
+            fontSize: 10,
+            lineHeight: "15px",
+            whiteSpace: "nowrap",
+            zIndex: 200,
+            pointerEvents: "none",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+          }}
+        >
+          {text}
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: "50%",
+              transform: "translateX(-50%)",
+              borderWidth: 4,
+              borderStyle: "solid",
+              borderColor:
+                "rgba(0,0,0,0.96) transparent transparent transparent",
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section header ──────────────────────────────────────────
+
+function SectionLabel({
+  children,
+  badge,
+}: {
+  children: React.ReactNode;
+  badge?: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        marginBottom: 8,
+        paddingBottom: 6,
+        borderBottom: "1px solid rgba(217,119,6,0.18)",
+      }}
+    >
+      <span
+        style={{
+          color: "#D97706",
+          fontSize: 9,
+          fontWeight: 800,
+          letterSpacing: 2.2,
+          textTransform: "uppercase",
+          flex: 1,
+        }}
+      >
+        {children}
+      </span>
+      {badge}
+    </div>
+  );
+}
+
+// ── Color row — compact single-line layout ──────────────────
+// Layout: [label 90px] [swatch 22px] [hex input 76px] [reset 16px]
+// Total: ~220px — safe at 280px+ after padding
 
 function ColorRow({
-  field,
+  label,
+  desc,
   value,
+  defaultValue,
   onChange,
 }: {
-  field: ThemeField;
+  label: string;
+  desc: string;
   value: string;
-  onChange: (val: string) => void;
+  defaultValue: string;
+  onChange: (v: string) => void;
 }) {
-  const isModified = value !== field.default;
+  const [localHex, setLocalHex] = useState(value);
+  const modified = value !== defaultValue;
+  const hex = toHex(value);
+
+  // Keep local in sync when value changes externally (bundle switch)
+  if (localHex !== value && document.activeElement?.id !== `hex-${label}`) {
+    setLocalHex(value);
+  }
+
+  const commit = (raw: string) => {
+    const h = toHex(raw);
+    if (/^#[0-9a-f]{6}$/i.test(h)) onChange(h);
+  };
 
   return (
     <div
@@ -456,22 +242,51 @@ function ColorRow({
         borderBottom: "1px solid rgba(255,255,255,0.04)",
       }}
     >
-      {/* Color swatch / picker */}
-      <label style={{ position: "relative", cursor: "pointer", flexShrink: 0 }}>
+      {/* Label */}
+      <Tip text={desc}>
+        <span
+          style={{
+            color: modified ? "#F3F4F6" : "rgba(255,255,255,0.6)",
+            fontSize: 12,
+            fontWeight: modified ? 600 : 400,
+            width: 82,
+            flexShrink: 0,
+            cursor: "help",
+            borderBottom: "1px dotted rgba(255,255,255,0.25)",
+            lineHeight: "16px",
+          }}
+        >
+          {label}
+        </span>
+      </Tip>
+
+      {/* Color swatch (native picker) */}
+      <label
+        style={{
+          position: "relative",
+          width: 22,
+          height: 22,
+          flexShrink: 0,
+          cursor: "pointer",
+        }}
+      >
         <div
           style={{
-            width: 24,
-            height: 24,
-            borderRadius: 6,
+            width: 22,
+            height: 22,
+            borderRadius: 5,
             background: value,
-            border: "1px solid rgba(255,255,255,0.15)",
-            cursor: "pointer",
+            border: `1.5px solid ${modified ? "#F59E0B" : "rgba(255,255,255,0.18)"}`,
+            boxSizing: "border-box",
           }}
         />
         <input
           type="color"
-          value={toHexForPicker(value)}
-          onChange={(e) => onChange(e.target.value)}
+          value={hex}
+          onChange={(e) => {
+            setLocalHex(e.target.value);
+            onChange(e.target.value);
+          }}
           style={{
             position: "absolute",
             inset: 0,
@@ -483,263 +298,700 @@ function ColorRow({
         />
       </label>
 
-      {/* Label */}
-      <span
+      {/* Hex text input */}
+      <input
+        id={`hex-${label}`}
+        type="text"
+        value={localHex}
+        maxLength={7}
+        onChange={(e) => setLocalHex(e.target.value)}
+        onBlur={(e) => commit(e.target.value)}
+        onKeyDown={(e) =>
+          e.key === "Enter" && commit((e.target as HTMLInputElement).value)
+        }
+        placeholder="#000000"
         style={{
           flex: 1,
-          color: isModified ? "#F3F4F6" : "rgba(255,255,255,0.5)",
-          fontSize: 12,
-          fontWeight: isModified ? 600 : 400,
           minWidth: 0,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {field.label}
-      </span>
-
-      {/* Text input */}
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          width: 160,
-          background: "rgba(255,255,255,0.06)",
-          border: `1px solid ${isModified ? "rgba(217,119,6,0.5)" : "rgba(255,255,255,0.08)"}`,
-          borderRadius: 6,
-          color: isModified ? "#FCD34D" : "rgba(255,255,255,0.5)",
+          background: "rgba(255,255,255,0.05)",
+          border: `1px solid ${modified ? "rgba(217,119,6,0.4)" : "rgba(255,255,255,0.1)"}`,
+          borderRadius: 4,
+          color: modified ? "#FCD34D" : "rgba(255,255,255,0.55)",
           fontSize: 11,
           fontFamily: "monospace",
           padding: "4px 7px",
           outline: "none",
+          boxSizing: "border-box",
         }}
       />
 
-      {/* Reset button */}
-      {isModified && (
+      {/* Reset — only takes space when modified */}
+      <div
+        style={{
+          width: 18,
+          flexShrink: 0,
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        {modified && (
+          <button
+            onClick={() => {
+              setLocalHex(defaultValue);
+              onChange(defaultValue);
+            }}
+            title="Reset to default"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#F59E0B",
+              fontSize: 14,
+              padding: 0,
+              lineHeight: 1,
+            }}
+          >
+            ↺
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Ball badge picker ────────────────────────────────────────
+
+function BallBadge({
+  label,
+  short,
+  desc,
+  value,
+  defaultValue,
+  onChange,
+}: {
+  label: string;
+  short: string;
+  desc: string;
+  value: string;
+  defaultValue: string;
+  onChange: (v: string) => void;
+}) {
+  const textColor = getContrastText(value);
+  const modified = value !== defaultValue;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 7,
+        padding: "7px 8px",
+        borderRadius: 7,
+        background: modified
+          ? "rgba(245,158,11,0.07)"
+          : "rgba(255,255,255,0.02)",
+        border: `1px solid ${modified ? "rgba(217,119,6,0.28)" : "rgba(255,255,255,0.06)"}`,
+      }}
+    >
+      {/* Badge preview */}
+      <Tip text={desc}>
+        <div
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 7,
+            background: value,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: textColor,
+            fontSize: short.length > 1 ? 10 : 13,
+            fontWeight: 700,
+            flexShrink: 0,
+            cursor: "help",
+          }}
+        >
+          {short}
+        </div>
+      </Tip>
+
+      {/* Label */}
+      <span
+        style={{
+          color: "rgba(255,255,255,0.7)",
+          fontSize: 11,
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </span>
+
+      {/* Reset */}
+      {modified && (
         <button
-          onClick={() => onChange(field.default)}
-          title="Reset to default"
+          onClick={() => onChange(defaultValue)}
+          title="Reset"
           style={{
             background: "none",
             border: "none",
             cursor: "pointer",
-            color: "rgba(255,255,255,0.3)",
-            fontSize: 14,
+            color: "#F59E0B",
+            fontSize: 13,
+            padding: 0,
             lineHeight: 1,
-            padding: 2,
             flexShrink: 0,
           }}
         >
           ↺
         </button>
       )}
-    </div>
-  );
-}
 
-function GroupSection({
-  group,
-  overrides,
-  onFieldChange,
-  initialOpen = false,
-}: {
-  group: ThemeGroup;
-  overrides: Record<string, string>;
-  onFieldChange: (key: string, val: string) => void;
-  initialOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(initialOpen);
-  const hasAnyModified = group.fields.some(
-    (f) => overrides[f.key] !== undefined && overrides[f.key] !== f.default,
-  );
-
-  return (
-    <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-      <button
-        onClick={() => setOpen((v) => !v)}
+      {/* Swatch picker */}
+      <label
         style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "9px 16px",
-          background: "rgba(8,10,24,0.97)",
-          border: "none",
+          position: "relative",
+          width: 22,
+          height: 22,
           cursor: "pointer",
-          fontFamily: "inherit",
+          flexShrink: 0,
         }}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {hasAnyModified && (
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: "#F59E0B",
-                flexShrink: 0,
-              }}
-            />
-          )}
-          <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {group.name}
-          </span>
-        </span>
-        <i
-          className={`ri-arrow-${open ? "up" : "down"}-s-line`}
-          style={{ color: "rgba(255,255,255,0.25)", fontSize: 16 }}
+        <div
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 4,
+            background: value,
+            border: `1.5px solid ${modified ? "#F59E0B" : "rgba(255,255,255,0.2)"}`,
+            boxSizing: "border-box",
+          }}
         />
-      </button>
-      {open && (
-        <div style={{ padding: "0 16px 8px", background: "rgba(8,10,24,0.97)" }}>
-          {group.fields.map((field) => (
-            <ColorRow
-              key={field.key}
-              field={field}
-              value={overrides[field.key] ?? field.default}
-              onChange={(val) => onFieldChange(field.key, val)}
-            />
-          ))}
-        </div>
-      )}
+        <input
+          type="color"
+          value={toHex(value)}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            position: "absolute",
+            inset: 0,
+            opacity: 0,
+            width: "100%",
+            height: "100%",
+            cursor: "pointer",
+          }}
+        />
+      </label>
     </div>
   );
 }
 
-// ── Main component ────────────────────────────────────────────
+// ── Advanced token row (compact) ─────────────────────────────
+
+function AdvRow({
+  tokenKey,
+  value,
+  onChange,
+}: {
+  tokenKey: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "5px 0",
+        borderBottom: "1px solid rgba(255,255,255,0.04)",
+      }}
+    >
+      <label
+        style={{
+          position: "relative",
+          width: 18,
+          height: 18,
+          cursor: "pointer",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 3,
+            background: toHex(value),
+            border: "1px solid rgba(255,255,255,0.15)",
+            boxSizing: "border-box",
+          }}
+        />
+        <input
+          type="color"
+          value={toHex(value)}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            position: "absolute",
+            inset: 0,
+            opacity: 0,
+            cursor: "pointer",
+          }}
+        />
+      </label>
+      <span
+        style={{
+          color: "rgba(255,255,255,0.4)",
+          fontSize: 10,
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {tokenKey.replace(/-/g, " ")}
+      </span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: 72,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 4,
+          color: "rgba(255,255,255,0.55)",
+          fontSize: 10,
+          fontFamily: "monospace",
+          padding: "3px 6px",
+          outline: "none",
+          flexShrink: 0,
+          boxSizing: "border-box",
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────
 
 export default function ThemeConfigPanel({ config, onChange }: Props) {
   const [activeBundle, setActiveBundle] = useState<BundleId>("basic");
+  const [advOpen, setAdvOpen] = useState(false);
 
-  const handleFieldChange = useCallback(
-    (key: string, val: string) => {
-      const bundleOverrides = { ...(config[activeBundle] ?? {}) };
-      bundleOverrides[key] = val;
-      onChange({ ...config, [activeBundle]: bundleOverrides });
+  // Derive master colors from bundle config
+  const currentMaster = useMemo<MasterColors>(() => {
+    const def = DEFAULT_MASTER_COLORS[activeBundle];
+    const bc = config[activeBundle];
+    if (!bc || Object.keys(bc).length === 0) return { ...def };
+    // Try known derived key names, fall back to defaults
+    return {
+      team1: bc.blue ?? bc.cyan ?? bc["badge-team1"] ?? def.team1,
+      team2: bc.purple ?? bc.pink ?? bc["badge-team2"] ?? def.team2,
+      accent: bc.gold ?? bc.teal ?? bc["border-main"] ?? def.accent,
+      alert: bc.red ?? bc.coral ?? bc["wicket-dot"] ?? def.alert,
+      bg: bc.bg ?? bc["panel-bg"] ?? def.bg,
+      text: bc.white ?? bc.textMain ?? bc["text-primary"] ?? def.text,
+    };
+  }, [config, activeBundle]);
+
+  const currentBalls = useMemo<BallColors>(() => {
+    const def = DEFAULT_BALL_COLORS;
+    const bc = config[activeBundle];
+    if (!bc) return { ...def };
+    return {
+      wicket: bc["ball-W-fg"] ?? def.wicket,
+      six: bc["ball-6-fg"] ?? def.six,
+      four: bc["ball-4-fg"] ?? def.four,
+      wide: bc["ball-Wd-fg"] ?? def.wide,
+    };
+  }, [config, activeBundle]);
+
+  const handleMasterChange = useCallback(
+    (key: keyof MasterColors, value: string) => {
+      const newMaster = { ...currentMaster, [key]: value };
+      const derived = buildConfigFromSimplified(
+        activeBundle,
+        newMaster,
+        currentBalls,
+      );
+      onChange({ ...config, [activeBundle]: derived });
+    },
+    [config, activeBundle, currentMaster, currentBalls, onChange],
+  );
+
+  const handleBallChange = useCallback(
+    (key: keyof BallColors, value: string) => {
+      const newBalls = { ...currentBalls, [key]: value };
+      const derived = buildConfigFromSimplified(
+        activeBundle,
+        currentMaster,
+        newBalls,
+      );
+      onChange({ ...config, [activeBundle]: derived });
+    },
+    [config, activeBundle, currentMaster, currentBalls, onChange],
+  );
+
+  const handleAdvChange = useCallback(
+    (key: string, value: string) => {
+      const bc = config[activeBundle] ?? {};
+      onChange({ ...config, [activeBundle]: { ...bc, [key]: value } });
     },
     [config, activeBundle, onChange],
   );
 
-  const handleResetBundle = useCallback(() => {
-    const next = { ...config };
-    delete next[activeBundle];
-    onChange(next);
+  const handleResetAll = useCallback(() => {
+    const derived = buildConfigFromSimplified(
+      activeBundle,
+      DEFAULT_MASTER_COLORS[activeBundle],
+      DEFAULT_BALL_COLORS,
+    );
+    onChange({ ...config, [activeBundle]: derived });
   }, [config, activeBundle, onChange]);
 
-  const bundleOverrides = config[activeBundle] ?? {};
-  const bundles = (["basic", "glass", "material", "aero"] as BundleId[]);
+  const bundleHasOverrides = !!(
+    config[activeBundle] && Object.keys(config[activeBundle]).length > 0
+  );
+
+  // Advanced token entries — exclude the primary keys used for master/ball
+  const EXCLUDED_ADV_KEYS = new Set([
+    "bg",
+    "gold",
+    "blue",
+    "purple",
+    "red",
+    "white",
+    "cyan",
+    "pink",
+    "coral",
+    "teal",
+    "textMain",
+    "panel-bg",
+    "text-primary",
+    "badge-team1",
+    "badge-team2",
+    "border-main",
+    "wicket-dot",
+    "ball-W-fg",
+    "ball-6-fg",
+    "ball-4-fg",
+    "ball-Wd-fg",
+  ]);
+  const advEntries = Object.entries(config[activeBundle] ?? {})
+    .filter(([k]) => !EXCLUDED_ADV_KEYS.has(k))
+    .slice(0, 30);
+
+  // ── Shared style tokens ──
+  const S = {
+    scrollBody: {
+      maxHeight: 460,
+      overflowY: "auto" as const,
+      overflowX: "hidden" as const,
+    },
+    section: {
+      padding: "14px 14px 0",
+    },
+    sectionLast: {
+      padding: "14px",
+    },
+    divider: {
+      borderTop: "1px solid rgba(255,255,255,0.06)",
+    },
+  };
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "rgba(8,10,24,0.97)", color: "#FFFFFF" }}>
-      {/* Bundle tabs */}
+    <div
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        background: "rgba(8,10,24,0.98)",
+        color: "#FFFFFF",
+        overflow: "hidden",
+        // No fixed width — fills whatever container it's in
+      }}
+    >
+      {/* ── Bundle tabs ── */}
       <div
         style={{
-          display: "flex",
-          gap: 0,
           background: "rgba(0,0,0,0.3)",
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          padding: "4px 4px 4px",
+          display: "flex",
+          gap: 3,
         }}
       >
-        {bundles.map((id) => {
-          const hasOverride =
-            config[id] && Object.keys(config[id]!).length > 0;
-          const isActive = id === activeBundle;
+        {(Object.keys(BUNDLE_LABELS) as BundleId[]).map((id) => {
+          const active = id === activeBundle;
           return (
             <button
               key={id}
               onClick={() => setActiveBundle(id)}
               style={{
                 flex: 1,
-                padding: "10px 0",
-                background: isActive ? "rgba(255,255,255,0.07)" : "none",
-                border: "none",
-                borderBottom: isActive
-                  ? "2px solid #D97706"
-                  : "2px solid transparent",
-                color: isActive ? "#F3F4F6" : "rgba(255,255,255,0.35)",
-                fontSize: 12,
-                fontWeight: 600,
+                padding: "8px 4px",
+                background: active ? "rgba(255,255,255,0.09)" : "transparent",
+                border: `1px solid ${active ? "rgba(255,255,255,0.12)" : "transparent"}`,
+                borderRadius: 6,
+                color: active ? "#FFFFFF" : "rgba(255,255,255,0.4)",
+                fontSize: 11,
+                fontWeight: active ? 700 : 500,
                 cursor: "pointer",
                 fontFamily: "inherit",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 5,
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
               }}
             >
-              {hasOverride && !isActive && (
-                <span
-                  style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    background: "#F59E0B",
-                    flexShrink: 0,
-                  }}
-                />
-              )}
               {BUNDLE_LABELS[id]}
             </button>
           );
         })}
       </div>
 
-      {/* Reset bundle row */}
-      {Object.keys(bundleOverrides).length > 0 && (
+      {/* ── Description + reset bar ── */}
+      <div
+        style={{
+          padding: "7px 12px",
+          background: "rgba(255,255,255,0.02)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          minHeight: 32,
+          boxSizing: "border-box",
+        }}
+      >
+        <span
+          style={{
+            color: "rgba(255,255,255,0.45)",
+            fontSize: 10,
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {BUNDLE_DESCRIPTIONS[activeBundle]}
+        </span>
+        {bundleHasOverrides && (
+          <button
+            onClick={handleResetAll}
+            style={{
+              background: "rgba(217,119,6,0.12)",
+              border: "1px solid rgba(217,119,6,0.28)",
+              borderRadius: 4,
+              color: "#FCD34D",
+              fontSize: 10,
+              padding: "3px 9px",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontWeight: 600,
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+            }}
+          >
+            ↺ Reset
+          </button>
+        )}
+      </div>
+
+      {/* ── Scrollable body ── */}
+      <div className="tcp-scroll" style={S.scrollBody}>
+        {/* Essential Colors */}
+        <div style={S.section}>
+          <SectionLabel
+            badge={
+              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9 }}>
+                hover label for info
+              </span>
+            }
+          >
+            Essential Colors
+          </SectionLabel>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.018)",
+              borderRadius: 8,
+              padding: "4px 10px",
+              border: "1px solid rgba(255,255,255,0.05)",
+              marginBottom: 14,
+            }}
+          >
+            {MASTER_FIELDS.map((f, i) => (
+              <div
+                key={f.key}
+                style={{
+                  borderBottom:
+                    i < MASTER_FIELDS.length - 1 ? undefined : "none",
+                }}
+              >
+                <ColorRow
+                  label={f.label}
+                  desc={f.desc}
+                  value={currentMaster[f.key]}
+                  defaultValue={DEFAULT_MASTER_COLORS[activeBundle][f.key]}
+                  onChange={(v) => handleMasterChange(f.key, v)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Ball Badges */}
+        <div style={{ ...S.sectionLast, ...S.divider, paddingTop: 14 }}>
+          <SectionLabel
+            badge={
+              <span
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  color: "rgba(255,255,255,0.45)",
+                  fontSize: 9,
+                  padding: "2px 6px",
+                  borderRadius: 3,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Auto contrast
+              </span>
+            }
+          >
+            Ball Badges
+          </SectionLabel>
+          {/* 2-column grid — safe at 280px+ */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+              gap: 6,
+            }}
+          >
+            {BALL_FIELDS.map((f) => (
+              <BallBadge
+                key={f.key}
+                label={f.label}
+                short={f.short}
+                desc={f.desc}
+                value={currentBalls[f.key]}
+                defaultValue={DEFAULT_BALL_COLORS[f.key]}
+                onChange={(v) => handleBallChange(f.key, v)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Advanced mode toggle */}
         <div
           style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            padding: "8px 16px",
-            background: "rgba(8,10,24,0.97)",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            ...S.divider,
+            padding: "10px 12px",
+            background: "rgba(0,0,0,0.15)",
+            marginTop: 14,
           }}
         >
           <button
-            onClick={handleResetBundle}
+            onClick={() => setAdvOpen((v) => !v)}
             style={{
-              background: "none",
-              border: "1px solid rgba(255,255,255,0.12)",
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "8px 12px",
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: 6,
-              color: "rgba(255,255,255,0.45)",
+              color: "rgba(255,255,255,0.5)",
               fontSize: 11,
-              padding: "4px 10px",
+              fontWeight: 500,
               cursor: "pointer",
               fontFamily: "inherit",
+              transition: "all 0.15s",
+              boxSizing: "border-box",
             }}
           >
-            Reset {BUNDLE_LABELS[activeBundle]} to defaults
+            <span>Advanced mode</span>
+            <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 13 }}>
+              {advOpen ? "▴" : "▾"}
+            </span>
           </button>
         </div>
-      )}
 
-      {/* Groups */}
-      <div style={{ maxHeight: 400, overflowY: "auto", background: "rgba(8,10,24,0.97)" }}>
-        {BUNDLE_GROUPS[activeBundle].map((group, i) => (
-          <GroupSection
-            key={`${activeBundle}-${group.name}`}
-            group={group}
-            overrides={bundleOverrides}
-            onFieldChange={handleFieldChange}
-            initialOpen={i < 2}
-          />
-        ))}
+        {/* Advanced: fine-tune tokens */}
+        {advOpen && (
+          <div
+            style={{
+              ...S.divider,
+              padding: "12px 14px",
+              background: "rgba(0,0,0,0.18)",
+            }}
+          >
+            <p
+              style={{
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 10,
+                margin: "0 0 10px",
+                lineHeight: 1.5,
+              }}
+            >
+              Override individual derived tokens. These take precedence over the
+              essential colors above.
+            </p>
+            {advEntries.length === 0 ? (
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.25)",
+                  fontSize: 11,
+                  textAlign: "center",
+                  padding: "10px 0",
+                  margin: 0,
+                }}
+              >
+                No derived tokens yet. Adjust essential colors first.
+              </p>
+            ) : (
+              advEntries.map(([key, value]) => (
+                <AdvRow
+                  key={key}
+                  tokenKey={key}
+                  value={value as string}
+                  onChange={(v) => handleAdvChange(key, v)}
+                />
+              ))
+            )}
+          </div>
+        )}
       </div>
 
+      {/* ── Footer tip ── */}
       <div
         style={{
-          padding: "10px 16px",
-          background: "rgba(8,10,24,0.98)",
+          padding: "9px 14px",
+          background: "rgba(0,0,0,0.22)",
           borderTop: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, margin: 0, lineHeight: "16px" }}>
-          Changes apply to all overlays in the OBS URL. Copy the updated URL after editing.
+        <p
+          style={{
+            color: "rgba(255,255,255,0.35)",
+            fontSize: 10,
+            margin: 0,
+            lineHeight: 1.5,
+          }}
+        >
+          Tip: Set the 6 essential colors — all dim variants, glows, and shadows
+          are auto-derived.
         </p>
       </div>
+
+      <style>{`
+        .tcp-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+        .tcp-scroll::-webkit-scrollbar { width: 4px; }
+        .tcp-scroll::-webkit-scrollbar-track { background: transparent; }
+        .tcp-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .tcp-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+      `}</style>
     </div>
   );
 }

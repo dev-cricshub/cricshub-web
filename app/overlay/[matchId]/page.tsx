@@ -392,10 +392,13 @@ export default function StreamOverlayPage() {
         </div>
       </div>
 
-      <style>{`${themeCss}
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
 
+        ${themeCss}
+
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
         html, body {
           background: transparent !important;
           overflow: hidden;

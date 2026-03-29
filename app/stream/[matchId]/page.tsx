@@ -1322,7 +1322,7 @@ export default function StreamDashboard() {
     if (!hasOverrides(themeConfig)) {
       setOverlayUrl(base);
     } else {
-      setOverlayUrl(`${base}?tc=${encodeThemeConfig(themeConfig)}`);
+      setOverlayUrl(`${base}?tc=${encodeURIComponent(encodeThemeConfig(themeConfig))}`);
     }
   }, [matchId, themeConfig]);
 
