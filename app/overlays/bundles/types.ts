@@ -35,6 +35,7 @@ export interface PlayerStats {
   sixes: number;
   strikeRate: number;
   wicketDetails: WicketDetails | null;
+  retiredHurt?: boolean;
   overs: number;
   ballsBowled: number;
   runsConceded: number;

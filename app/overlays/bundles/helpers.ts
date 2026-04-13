@@ -58,6 +58,7 @@ export const fmtEcon = (v: number) => (v > 0 ? v.toFixed(2) : "—");
 export const fmtOv = (v: number) => (v > 0 ? v.toFixed(1) : "0.0");
 
 export function dismissalText(p: PlayerStats): string {
+  if (p.retiredHurt === true) return "Retired Hurt";
   const d = p.wicketDetails;
   if (!d) return "";
   if (d.dismissalType === "Bowled") return `b ${d.bowlerId?.name ?? ""}`;
