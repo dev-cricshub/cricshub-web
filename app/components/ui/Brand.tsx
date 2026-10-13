@@ -29,7 +29,7 @@ export function Logo({
       {showWordmark && (
         <span className={cn("font-extrabold leading-none tracking-[-0.03em]", text)}>
           <span className="text-fg">CRICS</span>
-          <span className="text-primary">HUB</span>
+          <span className="text-brand">HUB</span>
         </span>
       )}
       <span className="sr-only">CricsHub home</span>
@@ -65,6 +65,7 @@ export const initials = (n: string) =>
     .toUpperCase();
 
 function hash(s: string) {
+  s = s || "";
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
@@ -95,7 +96,7 @@ export function Avatar({
   if (src) {
     return (
       <span className={cn("relative flex-shrink-0 overflow-hidden bg-surface-2 ring-1 ring-line", s, radius, className)}>
-        <Image src={src} alt={name} fill sizes="80px" className="object-cover" />
+        <Image src={src} alt={name || ""} fill sizes="80px" className="object-cover" />
       </span>
     );
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/app/components/ui";
 
 interface Props {
   lastScreenshot: string | null;
@@ -20,35 +21,33 @@ export default function ObsScreenshot({ lastScreenshot, currentScene, onTake }: 
   };
 
   return (
-    <div>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-        <i className="ri-screenshot-line mr-1" />
-        Screenshot
-      </p>
-      <button
+    <div className="space-y-3">
+      <Button
+        variant="outline"
+        block
+        icon="ri-camera-line"
+        loading={taking}
+        disabled={!currentScene}
         onClick={handleTake}
-        disabled={taking || !currentScene}
-        className="w-full py-2.5 rounded-xl bg-gray-50 text-gray-600 text-xs font-bold hover:bg-gray-100 transition-all border border-gray-200 disabled:opacity-50"
       >
-        {taking ? (
-          <>
-            <i className="ri-loader-4-line animate-spin mr-1" />
-            Capturing...
-          </>
-        ) : (
-          <>
-            <i className="ri-camera-line mr-1" />
-            Take Screenshot
-          </>
-        )}
-      </button>
-      {lastScreenshot && (
-        <div className="mt-2 rounded-xl overflow-hidden border border-gray-200">
-          <img
-            src={lastScreenshot}
-            alt="Screenshot"
-            className="w-full h-auto"
-          />
+        {taking ? "Capturing…" : "Take screenshot"}
+      </Button>
+      {lastScreenshot ? (
+        <figure className="overflow-hidden rounded-xl border border-line bg-surface-2 animate-fade-in">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lastScreenshot} alt={`Screenshot of ${currentScene || "current scene"}`} className="h-auto w-full" />
+          {currentScene && (
+            <figcaption className="truncate border-t border-line px-3 py-1.5 text-xs text-fg-subtle">
+              {currentScene}
+            </figcaption>
+          )}
+        </figure>
+      ) : (
+        <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-line-strong bg-surface-2 text-xs text-fg-subtle">
+          <span className="flex items-center gap-1.5">
+            <i className="ri-image-line text-base" aria-hidden />
+            No screenshot yet
+          </span>
         </div>
       )}
     </div>

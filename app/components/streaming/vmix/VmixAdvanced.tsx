@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { VmixInput } from "@/lib/streaming/types";
+import { Button, Field, controlClasses, cn } from "@/app/components/ui";
+import { RangeSlider, SubLabel, selectClasses } from "../StudioKit";
 
 interface Props {
   inputs: VmixInput[];
@@ -32,109 +34,108 @@ export default function VmixAdvanced({
   return (
     <div className="space-y-5">
       {/* PTZ Camera Control */}
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          <i className="ri-webcam-line mr-1" />
-          PTZ Camera Control
-        </p>
+      <div className="space-y-3">
+        <SubLabel icon="ri-webcam-line" className="mb-0">
+          PTZ camera control
+        </SubLabel>
 
-        <select
-          value={ptzInput ?? ""}
-          onChange={(e) => setPtzInput(parseInt(e.target.value) || null)}
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-600 mb-3"
-        >
-          <option value="">Select camera input...</option>
-          {inputs.map((inp) => (
-            <option key={inp.key} value={inp.number}>
-              {inp.number}. {inp.title || inp.type}
-            </option>
-          ))}
-        </select>
+        <Field label="Camera input">
+          {({ id }) => (
+            <select
+              id={id}
+              value={ptzInput ?? ""}
+              onChange={(e) => setPtzInput(parseInt(e.target.value) || null)}
+              className={controlClasses(false, selectClasses)}
+            >
+              <option value="">Select camera input…</option>
+              {inputs.map((inp) => (
+                <option key={inp.key} value={inp.number}>
+                  {inp.number}. {inp.title || inp.type}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
 
         {ptzInput && (
-          <>
+          <div className="space-y-3 rounded-xl border border-line bg-surface-2 p-3 animate-fade-in">
             {/* Direction pad */}
-            <div className="grid grid-cols-3 gap-1.5 w-32 mx-auto mb-3">
+            <div className="mx-auto grid w-fit grid-cols-3 gap-1.5" role="group" aria-label="Pan and tilt">
               {PTZ_DIRECTIONS.map((d) => (
                 <button
                   key={d.dir}
+                  type="button"
                   onClick={() =>
-                    d.isHome
-                      ? onPtzHome(ptzInput)
-                      : onPtzMove(ptzInput, d.dir, ptzSpeed)
+                    d.isHome ? onPtzHome(ptzInput) : onPtzMove(ptzInput, d.dir, ptzSpeed)
                   }
-                  className={`${d.col} w-10 h-10 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition-all`}
+                  aria-label={d.isHome ? "Home position" : `Move ${d.dir.toLowerCase()}`}
+                  className={cn(
+                    d.col,
+                    "flex h-11 w-11 items-center justify-center rounded-xl border text-lg transition-[background-color,color,transform] duration-150 ease-out active:scale-95",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-2",
+                    d.isHome
+                      ? "border-primary/30 bg-primary-soft text-primary-soft-fg hover:bg-primary hover:text-primary-fg"
+                      : "border-line-strong bg-surface text-fg-muted hover:bg-surface-3 hover:text-fg",
+                  )}
                 >
-                  <i className={d.icon} />
+                  <i className={d.icon} aria-hidden />
                 </button>
               ))}
             </div>
 
             {/* Zoom */}
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={() => onPtzZoomOut(ptzInput, ptzSpeed)}
-                className="flex-1 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-200 transition-all"
-              >
-                <i className="ri-zoom-out-line mr-1" />
-                Zoom Out
-              </button>
-              <button
-                onClick={() => onPtzZoomIn(ptzInput, ptzSpeed)}
-                className="flex-1 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-200 transition-all"
-              >
-                <i className="ri-zoom-in-line mr-1" />
-                Zoom In
-              </button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" icon="ri-zoom-out-line" onClick={() => onPtzZoomOut(ptzInput, ptzSpeed)}>
+                Zoom out
+              </Button>
+              <Button variant="outline" icon="ri-zoom-in-line" onClick={() => onPtzZoomIn(ptzInput, ptzSpeed)}>
+                Zoom in
+              </Button>
             </div>
 
             {/* Speed control */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-400 font-semibold uppercase">Speed</span>
-              <input
-                type="range"
+            <div className="flex items-center gap-3">
+              <span className="flex-shrink-0 text-2xs font-semibold uppercase tracking-wider text-fg-subtle">
+                Speed
+              </span>
+              <RangeSlider
                 min={0.1}
                 max={1}
                 step={0.1}
                 value={ptzSpeed}
-                onChange={(e) => setPtzSpeed(parseFloat(e.target.value))}
-                className="flex-1 h-1.5 accent-[#34B8FF] cursor-pointer"
+                onChange={(v) => setPtzSpeed(v)}
+                ariaLabel="PTZ speed"
               />
-              <span className="text-[10px] text-gray-400 font-mono w-8 text-right">
+              <span className="w-8 flex-shrink-0 text-right font-mono text-xs tabular-nums text-fg-muted">
                 {ptzSpeed.toFixed(1)}
               </span>
             </div>
-          </>
+          </div>
         )}
       </div>
 
       {/* Virtual Set Info */}
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          <i className="ri-landscape-line mr-1" />
-          Virtual Sets
-        </p>
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-3">
-          <p className="text-xs text-gray-500 leading-relaxed">
-            Virtual sets are configured directly in vMix. Add a Virtual Set input in vMix and use the
-            input switcher above to switch to it. Use PTZ controls to adjust the virtual camera position.
-          </p>
-        </div>
-      </div>
+      <InfoBlock icon="ri-landscape-line" title="Virtual sets">
+        Virtual sets are configured directly in vMix. Add a Virtual Set input in vMix and use the input
+        switcher above to switch to it. Use PTZ controls to adjust the virtual camera position.
+      </InfoBlock>
 
       {/* NDI Info */}
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          <i className="ri-broadcast-line mr-1" />
-          NDI Output
-        </p>
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-3">
-          <p className="text-xs text-gray-500 leading-relaxed">
-            NDI output is controlled via External Output above. Enable it in vMix Settings → Outputs → NDI.
-            Once enabled, use "Start External Output" in the Stream & Record section.
-          </p>
-        </div>
-      </div>
+      <InfoBlock icon="ri-broadcast-line" title="NDI output">
+        NDI output is controlled via External Output above. Enable it in vMix Settings → Outputs → NDI. Once
+        enabled, use &ldquo;Start external output&rdquo; in the Stream &amp; record section.
+      </InfoBlock>
+    </div>
+  );
+}
+
+function InfoBlock({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <SubLabel icon={icon}>{title}</SubLabel>
+      <p className="rounded-xl border border-line bg-surface-2 p-3 text-xs leading-relaxed text-fg-muted">
+        {children}
+      </p>
     </div>
   );
 }

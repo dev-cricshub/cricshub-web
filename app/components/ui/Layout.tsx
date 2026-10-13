@@ -18,7 +18,7 @@ export function PageHeader({
     <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="min-w-0">
         {eyebrow && <p className="mb-1.5 text-sm font-medium text-fg-muted">{eyebrow}</p>}
-        <h1 className="text-2xl font-semibold tracking-tight text-fg sm:text-3xl">{title}</h1>
+        <h1 className="font-display text-3xl font-bold uppercase leading-none tracking-[-0.005em] text-fg sm:text-4xl">{title}</h1>
         {description && <p className="mt-1.5 max-w-2xl text-sm text-fg-muted sm:text-base">{description}</p>}
       </div>
       {actions && <div className="flex flex-shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -47,7 +47,7 @@ export function SectionTitle({
   return (
     <div className={cn("mb-4 flex items-end justify-between gap-4", className)}>
       <div className="min-w-0">
-        <h2 id={id} className="flex items-center gap-2 text-base font-semibold tracking-tight text-fg sm:text-lg">
+        <h2 id={id} className="flex items-center gap-2 font-display text-lg font-bold uppercase tracking-wide text-fg sm:text-xl">
           {icon}
           {title}
           {count !== undefined && (
@@ -80,7 +80,7 @@ export function MarketingHeading({
   return (
     <div className={cn(align === "center" ? "mx-auto max-w-2xl text-center" : "max-w-2xl", className)}>
       {eyebrow && <p className="eyebrow mb-3">{eyebrow}</p>}
-      <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-4xl">{title}</h2>
+      <h2 className="font-display text-4xl font-bold uppercase leading-[0.95] text-fg sm:text-5xl">{title}</h2>
       {lead && <p className="mt-4 text-base leading-relaxed text-fg-muted sm:text-lg">{lead}</p>}
     </div>
   );
@@ -110,7 +110,7 @@ export function StatTile({
     success: "text-success",
   }[tone];
   return (
-    <div className={cn("rounded-2xl border border-line bg-surface p-4 shadow-card sm:p-5", className)}>
+    <div className={cn("rounded-card border border-line bg-surface p-4 shadow-card sm:p-5", className)}>
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-xs font-medium text-fg-muted sm:text-sm">{label}</p>
         {icon && <i className={cn(icon, "text-base", toneCls)} aria-hidden />}
@@ -118,7 +118,7 @@ export function StatTile({
       {loading ? (
         <div className="skeleton mt-3 h-7 w-12" aria-hidden />
       ) : (
-        <p className="mt-2 font-mono text-2xl font-semibold tabular-nums tracking-tight text-fg sm:text-3xl">{value}</p>
+        <p className="mt-2 font-display text-3xl font-bold tabular-nums leading-none text-fg sm:text-4xl">{value}</p>
       )}
     </div>
   );

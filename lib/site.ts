@@ -1,5 +1,8 @@
 // Shared marketing/site constants so links stay consistent across header, footer and pages.
 
+/** Backend origin. Override with NEXT_PUBLIC_API_URL when pointing at another host. */
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://api.cricshub.com";
+
 export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=dev.cricshub.team";
 export const SUPPORT_EMAIL = "support@cricshub.com";
 

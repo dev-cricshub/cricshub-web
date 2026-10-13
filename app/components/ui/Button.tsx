@@ -19,9 +19,10 @@ const base =
   "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-primary-fg shadow-xs hover:bg-primary-hover",
+  primary:
+    "bg-primary text-primary-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.14)] hover:bg-primary-hover",
   secondary: "bg-surface-2 text-fg hover:bg-surface-3",
-  outline: "border border-line-strong bg-surface text-fg shadow-xs hover:border-fg-subtle hover:bg-surface-2",
+  outline: "border border-line-strong bg-surface text-fg shadow-xs hover:border-primary/50 hover:bg-primary-soft hover:text-fg",
   ghost: "text-fg-muted hover:bg-surface-2 hover:text-fg",
   danger: "bg-danger text-white shadow-xs hover:bg-danger/90",
   inverse: "bg-surface-inverse text-fg-inverse shadow-xs hover:bg-surface-inverse/90",
@@ -30,16 +31,16 @@ const variants: Record<ButtonVariant, string> = {
 
 const sizes: Record<ButtonSize, string> = {
   xs: "h-7 rounded-md px-2.5 text-xs",
-  sm: "h-8 rounded-lg px-3 text-sm",
-  md: "h-10 rounded-lg px-4 text-sm",
-  lg: "h-12 rounded-xl px-6 text-base",
+  sm: "h-8 rounded-control px-3 text-sm",
+  md: "h-10 rounded-control px-4 text-sm",
+  lg: "h-12 rounded-control px-6 text-base",
 };
 
 const iconOnlySizes: Record<ButtonSize, string> = {
   xs: "h-7 w-7 rounded-md text-sm",
-  sm: "h-8 w-8 rounded-lg text-base",
-  md: "h-10 w-10 rounded-lg text-lg",
-  lg: "h-12 w-12 rounded-xl text-xl",
+  sm: "h-8 w-8 rounded-control text-base",
+  md: "h-10 w-10 rounded-control text-lg",
+  lg: "h-12 w-12 rounded-control text-xl",
 };
 
 export function buttonClasses({

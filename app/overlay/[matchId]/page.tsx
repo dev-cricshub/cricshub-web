@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { fetchMatchById, fetchMatchState, fetchStreamState } from "@/lib/api";
+import { API_BASE } from "@/lib/site";
 import { fetchBrandingConfig } from "@/lib/brandingConfig";
 import { decodeThemeConfig, buildThemeCss } from "@/lib/themeConfig";
 
@@ -118,7 +119,7 @@ export default function StreamOverlayPage() {
 
   useEffect(() => {
     if (!matchId) return;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    const API_URL = API_BASE;
 
     Promise.all([
       fetchMatchById(matchId, { skipAuthRedirect: true }),

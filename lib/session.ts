@@ -2,7 +2,7 @@
 // The real JWT lives in an httpOnly cookie on the API domain; these keys only
 // drive UI state and the `sessionActive` cookie that middleware.ts checks.
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "@/lib/site";
 
 const SESSION_KEYS = ["userUUID", "userName", "hasSubscription", "jwtToken"] as const;
 

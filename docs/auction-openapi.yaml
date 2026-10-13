@@ -1,0 +1,1059 @@
+openapi: 3.0.3
+info:
+  title: CricsHub Auction API
+  version: 0.1.0
+  description: >
+    Draft contract for the auction module. Derived from the frontend in
+    app/(site)/auctions and lib/auction. Not implemented on the server.
+    See docs/auction-api-requirements.md for rules, concurrency, and the UI map.
+servers:
+  - url: https://api.cricshub.com/api/v1
+tags:
+  - name: Auctions
+  - name: Teams
+  - name: Players
+  - name: Live
+  - name: Results
+paths:
+  /auctions:
+    get:
+      tags: [Auctions]
+      summary: List the caller's auctions
+      parameters:
+        - $ref: "#/components/parameters/q"
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [draft, scheduled, live, paused, completed, cancelled, archived]
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [updatedAt, -updatedAt, startsAt, -startsAt, name, -name]
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/pageSize"
+      responses:
+        "200":
+          description: Page of summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuctionPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Auctions]
+      summary: Create a draft auction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuctionWrite"
+            example:
+              name: Sunday Smash
+              tournament: Sunday Smash
+              description: ""
+              startsAt: "2026-12-06T07:30:00.000Z"
+              timezone: Asia/Kolkata
+              visibility: private
+              format: player
+      responses:
+        "201":
+          description: Draft auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "422":
+          $ref: "#/components/responses/Validation"
+  /auctions/{auctionId}:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    get:
+      tags: [Auctions]
+      summary: Auction detail for setup, console, and spectator
+      responses:
+        "200":
+          description: Full auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Auctions]
+      summary: Update details before the auction starts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuctionWrite"
+      responses:
+        "200":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auctions/{auctionId}/rules:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    put:
+      tags: [Auctions]
+      summary: Replace auction rules before start
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuctionRules"
+      responses:
+        "200":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/validate:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Auctions]
+      summary: Config issues shown on the review step
+      responses:
+        "200":
+          description: Issue list, empty when publish is allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [issues]
+                properties:
+                  issues:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConfigIssue"
+  /auctions/{auctionId}/publish:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Auctions]
+      summary: Draft to scheduled
+      responses:
+        "200":
+          description: Scheduled auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "422":
+          $ref: "#/components/responses/Validation"
+  /auctions/{auctionId}/start:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Live]
+      summary: Start and present the first player
+      parameters:
+        - $ref: "#/components/parameters/idempotencyKey"
+      responses:
+        "200":
+          description: Live auction with a current player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/pause:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Live]
+      summary: Pause a live auction
+      responses:
+        "200":
+          description: Paused auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/resume:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Live]
+      summary: Resume a paused auction
+      responses:
+        "200":
+          description: Live auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/complete:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - $ref: "#/components/parameters/idempotencyKey"
+    post:
+      tags: [Live]
+      summary: End the auction when every player is resolved
+      responses:
+        "200":
+          description: Completed auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auctions/{auctionId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Auctions]
+      summary: Cancel when no sales exist
+      responses:
+        "200":
+          description: Cancelled auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auctions/{auctionId}/archive:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Auctions]
+      summary: Hide from the active dashboard list
+      responses:
+        "200":
+          description: Archived auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/teams:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Teams]
+      summary: Add a team before the auction starts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamWrite"
+            example:
+              name: Mumbai Strikers
+              shortName: MUM
+              ownerName: Rohan Mehta
+              color: "#1E88E5"
+              purseOverride: null
+      responses:
+        "201":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auctions/{auctionId}/teams/{teamId}:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - $ref: "#/components/parameters/teamId"
+    get:
+      tags: [Teams]
+      summary: Team squad, purse, and related activity
+      responses:
+        "200":
+          description: Team view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamDetail"
+    patch:
+      tags: [Teams]
+      summary: Edit a team before start
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamWrite"
+      responses:
+        "200":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+    delete:
+      tags: [Teams]
+      summary: Remove a team before start
+      responses:
+        "200":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/players:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    get:
+      tags: [Players]
+      summary: Filterable player pool
+      parameters:
+        - $ref: "#/components/parameters/q"
+        - in: query
+          name: role
+          schema:
+            $ref: "#/components/schemas/PlayerRole"
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/PlayerState"
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [queueOrder, basePrice, name]
+      responses:
+        "200":
+          description: Players
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Player"
+    post:
+      tags: [Players]
+      summary: Register a player before start
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerWrite"
+            example:
+              name: Ishaan Nair
+              role: AR
+              nationality: India
+              overseas: false
+              category: B
+              basePrice: 50000
+              matches: 30
+              battingAvg: "18.2"
+              bowlingAvg: "27.1"
+      responses:
+        "201":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/players/import:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Players]
+      summary: Import players from CSV
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+          application/json:
+            schema:
+              type: object
+              required: [csv]
+              properties:
+                csv:
+                  type: string
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [imported, errors]
+                properties:
+                  imported:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        row:
+                          type: integer
+                        message:
+                          type: string
+  /auctions/{auctionId}/players/{playerId}:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - $ref: "#/components/parameters/playerId"
+    patch:
+      tags: [Players]
+      summary: Edit a player before start
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerWrite"
+      responses:
+        "200":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+    delete:
+      tags: [Players]
+      summary: Remove a player before start
+      responses:
+        "200":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/players/{playerId}/withdraw:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - $ref: "#/components/parameters/playerId"
+    post:
+      tags: [Players]
+      summary: Withdraw an eligible player
+      responses:
+        "200":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auctions/{auctionId}/players/{playerId}/reopen:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - $ref: "#/components/parameters/playerId"
+    post:
+      tags: [Players]
+      summary: Return an unsold or deferred player to the queue
+      responses:
+        "200":
+          description: Updated auction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/lots/next:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Live]
+      summary: Present the next available player
+      responses:
+        "200":
+          description: Auction with the new lot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auctions/{auctionId}/bids:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - $ref: "#/components/parameters/idempotencyKey"
+    post:
+      tags: [Live]
+      summary: Bid the next legal amount for a team
+      description: The server computes the amount. Do not accept a client price.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [teamId]
+              properties:
+                teamId:
+                  type: string
+            example:
+              teamId: team_mum
+      responses:
+        "201":
+          description: Recorded bid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bid:
+                    $ref: "#/components/schemas/Bid"
+                  auctionRevision:
+                    type: integer
+              example:
+                bid:
+                  id: bid_01
+                  playerId: plyr_dev
+                  teamId: team_mum
+                  amount: 125000
+                  at: "2026-10-18T08:42:01.000Z"
+                  voided: false
+                auctionRevision: 18
+        "409":
+          description: Purse, squad, role, overseas, pause, duplicate, or stale lot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error:
+                  code: INSUFFICIENT_PURSE
+                  message: MUM does not have enough purse for ₹1,25,000.
+  /auctions/{auctionId}/lots/sell:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - $ref: "#/components/parameters/idempotencyKey"
+    post:
+      tags: [Live]
+      summary: Sell the current player to the leading team
+      responses:
+        "200":
+          description: Auction after the sale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auctions/{auctionId}/lots/unsold:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Live]
+      summary: Mark the current player unsold when there is no bid
+      responses:
+        "200":
+          description: Auction after the unsold
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auctions/{auctionId}/lots/defer:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    post:
+      tags: [Live]
+      summary: Defer the current player when there is no bid
+      responses:
+        "200":
+          description: Auction after defer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/undo:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - $ref: "#/components/parameters/idempotencyKey"
+    post:
+      tags: [Live]
+      summary: Revert the latest reversible action and keep the audit line
+      responses:
+        "200":
+          description: Auction after undo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+  /auctions/{auctionId}/results:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    get:
+      tags: [Results]
+      summary: Squads, purses, sold and unsold lists
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Results"
+  /auctions/{auctionId}/results.csv:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+    get:
+      tags: [Results]
+      summary: Sold players as CSV
+      responses:
+        "200":
+          description: team,player,role,soldPrice,basePrice
+          content:
+            text/csv:
+              schema:
+                type: string
+  /auctions/{auctionId}/events:
+    parameters:
+      - $ref: "#/components/parameters/auctionId"
+      - in: query
+        name: limit
+        schema:
+          type: integer
+    get:
+      tags: [Results]
+      summary: Audit timeline, newest first
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuctionEvent"
+components:
+  parameters:
+    auctionId:
+      in: path
+      name: auctionId
+      required: true
+      schema:
+        type: string
+    teamId:
+      in: path
+      name: teamId
+      required: true
+      schema:
+        type: string
+    playerId:
+      in: path
+      name: playerId
+      required: true
+      schema:
+        type: string
+    q:
+      in: query
+      name: q
+      schema:
+        type: string
+    page:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    pageSize:
+      in: query
+      name: pageSize
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 6
+    idempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        type: string
+  responses:
+    Unauthorized:
+      description: Missing session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Unknown auction, team, or player
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Illegal transition, purse, or squad rule
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Validation:
+      description: Field or config validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            fields:
+              type: array
+              items:
+                type: object
+                properties:
+                  path:
+                    type: string
+                  message:
+                    type: string
+    AuctionStatus:
+      type: string
+      enum: [draft, scheduled, live, paused, completed, cancelled]
+    PlayerRole:
+      type: string
+      enum: [BAT, BOWL, AR, WK]
+    PlayerState:
+      type: string
+      enum: [available, in_auction, sold, unsold, withdrawn, deferred]
+    AuctionWrite:
+      type: object
+      required: [name, tournament, startsAt, timezone, visibility, format]
+      properties:
+        name:
+          type: string
+        tournament:
+          type: string
+        description:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        visibility:
+          type: string
+          enum: [private, link]
+        format:
+          type: string
+          enum: [player]
+    BidIncrement:
+      type: object
+      required: [step]
+      properties:
+        upTo:
+          type: integer
+          nullable: true
+        step:
+          type: integer
+          minimum: 1
+    RoleLimit:
+      type: object
+      required: [role, min]
+      properties:
+        role:
+          $ref: "#/components/schemas/PlayerRole"
+        min:
+          type: integer
+          minimum: 0
+        max:
+          type: integer
+          nullable: true
+    AuctionRules:
+      type: object
+      required: [pursePerTeam, minSquad, maxSquad, allowPurseOverride, increments, roleLimits]
+      properties:
+        pursePerTeam:
+          type: integer
+        minSquad:
+          type: integer
+        maxSquad:
+          type: integer
+        overseasLimit:
+          type: integer
+          nullable: true
+        allowPurseOverride:
+          type: boolean
+        increments:
+          type: array
+          items:
+            $ref: "#/components/schemas/BidIncrement"
+        roleLimits:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleLimit"
+    TeamWrite:
+      type: object
+      required: [name, shortName, color]
+      properties:
+        name:
+          type: string
+        shortName:
+          type: string
+        ownerName:
+          type: string
+        color:
+          type: string
+        purseOverride:
+          type: integer
+          nullable: true
+    Team:
+      allOf:
+        - $ref: "#/components/schemas/TeamWrite"
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+    PlayerWrite:
+      type: object
+      required: [name, role, nationality, overseas, category, basePrice]
+      properties:
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/PlayerRole"
+        nationality:
+          type: string
+        overseas:
+          type: boolean
+        category:
+          type: string
+        basePrice:
+          type: integer
+          minimum: 1
+        matches:
+          type: integer
+        battingAvg:
+          type: string
+        bowlingAvg:
+          type: string
+    Player:
+      allOf:
+        - $ref: "#/components/schemas/PlayerWrite"
+        - type: object
+          required: [id, status, queueOrder]
+          properties:
+            id:
+              type: string
+            status:
+              $ref: "#/components/schemas/PlayerState"
+            queueOrder:
+              type: integer
+            soldToTeamId:
+              type: string
+              nullable: true
+            soldPrice:
+              type: integer
+              nullable: true
+    Bid:
+      type: object
+      required: [id, playerId, teamId, amount, at, voided]
+      properties:
+        id:
+          type: string
+        playerId:
+          type: string
+        teamId:
+          type: string
+        amount:
+          type: integer
+        at:
+          type: string
+          format: date-time
+        voided:
+          type: boolean
+    AuctionEvent:
+      type: object
+      required: [id, type, at, message, reverted]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        at:
+          type: string
+          format: date-time
+        message:
+          type: string
+        reverted:
+          type: boolean
+        payload:
+          type: object
+          additionalProperties: true
+    AuctionSummary:
+      type: object
+      required: [id, name, tournament, status, archived, startsAt, timezone, teamCount, playerCount, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        tournament:
+          type: string
+        status:
+          $ref: "#/components/schemas/AuctionStatus"
+        archived:
+          type: boolean
+        startsAt:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        teamCount:
+          type: integer
+        playerCount:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+    AuctionPage:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuctionSummary"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+    Auction:
+      type: object
+      required: [id, name, status, rules, teams, players, bids, events, revision]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        tournament:
+          type: string
+        description:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        format:
+          type: string
+          enum: [player]
+        visibility:
+          type: string
+          enum: [private, link]
+        status:
+          $ref: "#/components/schemas/AuctionStatus"
+        archived:
+          type: boolean
+        rules:
+          $ref: "#/components/schemas/AuctionRules"
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/Team"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        bids:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bid"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuctionEvent"
+        currentPlayerId:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [auctioneer, viewer]
+        revision:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        pausedAt:
+          type: string
+          format: date-time
+          nullable: true
+        pausedMs:
+          type: integer
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+    TeamDetail:
+      type: object
+      properties:
+        team:
+          $ref: "#/components/schemas/Team"
+        budget:
+          type: integer
+        spent:
+          type: integer
+        remaining:
+          type: integer
+        squad:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuctionEvent"
+    ConfigIssue:
+      type: object
+      required: [step, message]
+      properties:
+        step:
+          type: string
+          enum: [details, rules, teams, players]
+        message:
+          type: string
+    Results:
+      type: object
+      properties:
+        soldCount:
+          type: integer
+        unsoldCount:
+          type: integer
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamDetail"
+        unsold:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"

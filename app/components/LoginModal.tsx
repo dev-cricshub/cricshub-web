@@ -12,17 +12,19 @@ interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  theme?: "dark" | "light";
 }
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 30;
 // Hardcoded for India as requested
-const COUNTRY_DATA = { code: "+91", flag: "🇮🇳", label: "IN" };
+const COUNTRY_DATA = { code: "+91", label: "IN" };
 
 export default function LoginModal({
   isOpen,
   onClose,
   onSuccess,
+  theme,
 }: LoginModalProps) {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -196,6 +198,7 @@ export default function LoginModal({
       hideClose={step === "success"}
       dismissible={step !== "success"}
       ariaLabel="Log in to CricsHub"
+      theme={theme}
       padded={false}
     >
       <div className="px-6 pb-8 pt-2 sm:px-8 sm:pt-0">
@@ -210,7 +213,7 @@ export default function LoginModal({
               handleSendOtp();
             }}
           >
-            <h2 className="text-2xl font-semibold tracking-tight text-fg">Log in or sign up</h2>
+            <h2 className="font-display text-3xl font-bold uppercase leading-none text-fg">Log in or sign up</h2>
             <p className="mt-1.5 text-sm text-fg-muted">
               We&apos;ll text a 6-digit code to your phone. No password needed.
             </p>
@@ -227,8 +230,10 @@ export default function LoginModal({
                 )}
               >
                 <span className="flex h-full items-center gap-1.5 border-r border-line bg-surface-2 px-3.5 text-sm font-medium text-fg-muted">
-                  <span aria-hidden>{COUNTRY_DATA.flag}</span>
-                  {COUNTRY_DATA.code}
+                  <span className="text-2xs font-semibold uppercase tracking-wider text-fg-subtle" aria-hidden>
+                    {COUNTRY_DATA.label}
+                  </span>
+                  <span className="font-mono tabular-nums">{COUNTRY_DATA.code}</span>
                 </span>
                 <input
                   id="login-phone"
@@ -237,7 +242,16 @@ export default function LoginModal({
                   inputMode="numeric"
                   autoComplete="tel-national"
                   placeholder="98765 43210"
+                  maxLength={10}
+                  pattern="[0-9]{10}"
                   value={phone}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const digits = e.clipboardData.getData("text").replace(/\D/g, "");
+                    const national = digits.length > 10 && digits.startsWith("91") ? digits.slice(2) : digits;
+                    setPhone(national.slice(0, 10));
+                    setError("");
+                  }}
                   onChange={(e) => {
                     setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
                     setError("");
@@ -277,11 +291,11 @@ export default function LoginModal({
 
             <p className="mt-6 text-center text-xs leading-relaxed text-fg-subtle">
               By continuing, you agree to CricsHub&apos;s{" "}
-              <Link href="/terms-of-service" className="font-medium text-fg-muted underline underline-offset-2 hover:text-fg">
+              <Link href="/terms-of-service" className="rounded-sm font-medium text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 Terms
               </Link>{" "}
               and{" "}
-              <Link href="/privacy-policy" className="font-medium text-fg-muted underline underline-offset-2 hover:text-fg">
+              <Link href="/privacy-policy" className="rounded-sm font-medium text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 Privacy Policy
               </Link>
               .
@@ -299,16 +313,16 @@ export default function LoginModal({
                 setError("");
                 setOtp(Array(OTP_LENGTH).fill(""));
               }}
-              className="-ml-1 mb-5 inline-flex items-center gap-1 rounded-md px-1 text-sm font-medium text-fg-muted transition-colors hover:text-fg"
+              className="-ml-1 mb-5 inline-flex items-center gap-1 rounded-md px-1 text-sm font-medium text-fg-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <i className="ri-arrow-left-line" aria-hidden />
               Change number
             </button>
 
-            <h2 className="text-2xl font-semibold tracking-tight text-fg">Enter verification code</h2>
+            <h2 className="font-display text-3xl font-bold uppercase leading-none text-fg">Enter verification code</h2>
             <p className="mt-1.5 text-sm text-fg-muted">
               Sent to{" "}
-              <span className="font-medium tabular-nums text-fg">
+              <span className="font-mono font-medium tabular-nums text-fg">
                 {COUNTRY_DATA.code} {phone}
               </span>
             </p>
@@ -373,8 +387,10 @@ export default function LoginModal({
                     startResendTimer();
                     otpRefs.current[0]?.focus();
                   }}
-                  className="font-medium text-primary underline-offset-2 hover:underline"
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded font-medium text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
+                  {loading && <i className="ri-loader-4-line animate-spin" aria-hidden />}
                   Resend code
                 </button>
               )}
@@ -388,7 +404,7 @@ export default function LoginModal({
             <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-success-soft text-success ring-8 ring-success-soft/40 animate-pop">
               <i className="ri-check-line text-4xl" aria-hidden />
             </div>
-            <h2 className="text-xl font-semibold tracking-tight text-fg">You&apos;re signed in</h2>
+            <h2 className="font-display text-3xl font-bold uppercase leading-none text-fg">You&apos;re signed in</h2>
             <p className="mt-1.5 flex items-center justify-center gap-2 text-sm text-fg-muted">
               <i className="ri-loader-4-line animate-spin" aria-hidden />
               Taking you to your dashboard…

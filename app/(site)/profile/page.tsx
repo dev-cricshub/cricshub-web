@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   fetchCurrentUserProfile,
@@ -9,6 +8,26 @@ import {
   fetchMySubscription,
   fetchTransactionHistory,
 } from "@/lib/api";
+import { logout } from "@/lib/session";
+import { AppHeader } from "@/app/components/layout/AppHeader";
+import {
+  Alert,
+  Avatar,
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  IconTile,
+  Input,
+  PageHeader,
+  SectionTitle,
+  Skeleton,
+  cn,
+  useToast,
+} from "@/app/components/ui";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -54,15 +73,6 @@ const fmtDate = (d: string) => {
     year: "numeric",
   });
 };
-const initials = (n: string) =>
-  n
-    ? n
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "U";
 
 function calcDaysRemaining(dateStr: string): number {
   if (!dateStr) return 0;
@@ -72,92 +82,228 @@ function calcDaysRemaining(dateStr: string): number {
   return remaining > 0 ? remaining : 0;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const SECTIONS = [
+  { id: "personal", label: "Personal details", icon: "ri-user-line" },
+  { id: "subscription", label: "Subscription", icon: "ri-vip-crown-line" },
+  { id: "overlays", label: "Overlays", icon: "ri-layout-top-2-line" },
+  { id: "billing", label: "Billing history", icon: "ri-receipt-line" },
+  { id: "account", label: "Sign out", icon: "ri-logout-box-r-line" },
+] as const;
+
+const BENEFITS = [
+  { icon: "ri-layout-grid-line", text: "IPL Bundle auto-unlocked for every match" },
+  { icon: "ri-price-tag-3-line", text: "No ₹99/match fee — overlays activate instantly" },
+  { icon: "ri-layout-top-2-line", text: "Main Match Banner & Live Score Overlay" },
+  { icon: "ri-file-list-3-line", text: "Match Summary with top batters & bowlers" },
+  { icon: "ri-team-line", text: "Playing XI — combined, batting & bowling (×4)" },
+  { icon: "ri-stack-line", text: "All 8 IPL Bundle overlays per match" },
+];
+
+// Preview gradients represent the real broadcast overlays' look (data, not chrome).
+const BUNDLE_OVERLAYS = [
+  {
+    icon: "ri-layout-top-2-line",
+    name: "Main Match Banner",
+    desc: "Tournament name, both teams, venue, date and toss result. Perfect opening graphic.",
+    bg: "linear-gradient(135deg,#34B8FF,#1E88E5)",
+  },
+  {
+    icon: "ri-bar-chart-line",
+    name: "Live Score Overlay",
+    desc: "Always-on bottom bar — live score, batters, bowler and ball-by-ball over tracker.",
+    bg: "linear-gradient(135deg,#0a1628,#1E88E5)",
+  },
+  {
+    icon: "ri-file-list-3-line",
+    name: "Match Summary",
+    desc: "Top batters & bowlers from both teams. Shows required rate or final result at bottom.",
+    bg: "linear-gradient(135deg,#E2B94B,#8B6914)",
+  },
+  {
+    icon: "ri-team-line",
+    name: "Playing XI — Both Teams",
+    desc: "Side-by-side full lineup with player roles, captain badge and live match footer.",
+    bg: "linear-gradient(135deg,#4A9EF5,#A855F7)",
+  },
+  {
+    icon: "ri-group-line",
+    name: "Batting XI — Team 1",
+    desc: "Full batting lineup for Team 1 — live runs, strike rate and dismissal info.",
+    bg: "linear-gradient(135deg,#00b4d8,#0077b6)",
+  },
+  {
+    icon: "ri-group-line",
+    name: "Batting XI — Team 2",
+    desc: "Full batting lineup for Team 2 — live runs, strike rate and dismissal info.",
+    bg: "linear-gradient(135deg,#00b4d8,#0077b6)",
+  },
+  {
+    icon: "ri-group-2-line",
+    name: "Bowling XI — Team 1",
+    desc: "Bowling lineup for Team 1 — overs bowled, wickets taken and economy rate.",
+    bg: "linear-gradient(135deg,#8E54E9,#4776E6)",
+  },
+  {
+    icon: "ri-group-2-line",
+    name: "Bowling XI — Team 2",
+    desc: "Bowling lineup for Team 2 — overs bowled, wickets taken and economy rate.",
+    bg: "linear-gradient(135deg,#8E54E9,#4776E6)",
+  },
+];
+
+function txMeta(description: string | undefined) {
+  const desc = description?.toLowerCase() ?? "";
+  const isBundle = desc.includes("bundle");
+  const isAddon = !isBundle && (desc.includes("overlay") || desc.includes("addon"));
+  const isSub =
+    !isBundle && !isAddon && (desc.includes("plan") || desc.includes("subscription"));
+  if (isBundle) return { label: "Bundle", icon: "ri-layout-grid-line", tone: "primary" as const };
+  if (isAddon) return { label: "Add-on", icon: "ri-vip-crown-line", tone: "warning" as const };
+  if (isSub) return { label: "Subscription", icon: "ri-broadcast-line", tone: "success" as const };
+  return { label: "Payment", icon: "ri-money-rupee-circle-line", tone: "neutral" as const };
+}
+
 // ═══════════════════════════════════════════════════════════
 // COMPONENTS
 // ═══════════════════════════════════════════════════════════
 
-function SectionHeader({
-  icon,
+function SubBadge({ status }: { status: SubscriptionStatus }) {
+  if (status === "active")
+    return (
+      <Badge tone="success" icon="ri-checkbox-circle-fill">
+        Active
+      </Badge>
+    );
+  if (status === "expired")
+    return (
+      <Badge tone="danger" icon="ri-close-circle-line">
+        Expired
+      </Badge>
+    );
+  return (
+    <Badge tone="neutral" icon="ri-minus-circle-line">
+      No plan
+    </Badge>
+  );
+}
+
+function TxStatusBadge({ status }: { status: Transaction["status"] }) {
+  if (status === "SUCCESS")
+    return (
+      <Badge tone="success" icon="ri-checkbox-circle-fill">
+        Paid
+      </Badge>
+    );
+  if (status === "FAILED")
+    return (
+      <Badge tone="danger" icon="ri-close-circle-fill">
+        Failed
+      </Badge>
+    );
+  if (status === "PENDING")
+    return (
+      <Badge tone="warning" icon="ri-time-fill">
+        Pending
+      </Badge>
+    );
+  return (
+    <Badge tone="neutral" icon="ri-arrow-go-back-line">
+      Reversed
+    </Badge>
+  );
+}
+
+/** Section wrapper with an anchor target for the side navigation. */
+function Section({
+  id,
   title,
-  sub,
+  description,
   action,
+  children,
 }: {
-  icon: string;
+  id: string;
   title: string;
-  sub?: string;
+  description?: string;
   action?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start sm:items-center justify-between mb-5 gap-3 flex-wrap">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#34B8FF] to-[#1E88E5] flex items-center justify-center shadow-md shadow-blue-200 flex-shrink-0">
-          <i className={`${icon} text-white text-base`} />
-        </div>
-        <div>
-          <h2 className="font-black text-gray-900 text-lg leading-none">
-            {title}
-          </h2>
-          {sub && (
-            <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-              {sub}
-            </p>
-          )}
-        </div>
-      </div>
-      {action && <div className="ml-12 sm:ml-0">{action}</div>}
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24">
+      <SectionTitle
+        id={`${id}-title`}
+        title={title}
+        description={description}
+        action={action}
+        className="mb-3 flex-wrap gap-3"
+      />
+      {children}
+    </section>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  icon,
+  muted,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-3.5 first:pt-0 last:pb-0 sm:grid sm:grid-cols-[180px_1fr]">
+      <dt className="flex items-center gap-2 text-sm text-fg-muted max-sm:w-20 max-sm:flex-shrink-0">
+        <i className={cn(icon, "text-base text-fg-subtle")} aria-hidden />
+        {label}
+      </dt>
+      <dd className={cn("min-w-0 truncate text-sm font-medium", muted ? "text-fg-subtle" : "text-fg")}>
+        {value}
+      </dd>
     </div>
   );
 }
 
-function SubBadge({ status }: { status: SubscriptionStatus }) {
-  if (status === "active")
-    return (
-      <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black px-3 py-1 rounded-full whitespace-nowrap">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-        Active
-      </span>
-    );
-  if (status === "expired")
-    return (
-      <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-black px-3 py-1 rounded-full whitespace-nowrap">
-        <i className="ri-close-circle-line" />
-        Expired
-      </span>
-    );
+function ProfileSkeleton() {
   return (
-    <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
-      <i className="ri-minus-circle-line" />
-      No Plan
-    </span>
-  );
-}
-
-function Toast({
-  message,
-  type,
-  onDone,
-}: {
-  message: string;
-  type: "success" | "error";
-  onDone: () => void;
-}) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3000);
-    return () => clearTimeout(t);
-  }, [onDone]);
-  return (
-    <div
-      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl shadow-2xl text-white text-sm font-bold w-[calc(100%-2rem)] max-w-sm
-      ${type === "success" ? "bg-emerald-500" : "bg-red-500"}`}
-    >
-      <i
-        className={
-          type === "success"
-            ? "ri-checkbox-circle-fill text-lg flex-shrink-0"
-            : "ri-close-circle-fill text-lg flex-shrink-0"
-        }
-      />
-      <span className="truncate">{message}</span>
+    <div className="container-page py-6 sm:py-10" aria-busy="true" aria-label="Loading your profile">
+      <span className="sr-only">Loading your profile…</span>
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="mt-2 h-4 w-72 max-w-full" />
+      <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
+        <Card padding="md" className="h-fit">
+          <div className="flex items-center gap-4 lg:flex-col lg:items-start">
+            <Skeleton className="h-14 w-14 rounded-card lg:h-20 lg:w-20" />
+            <div className="flex-1 space-y-2 lg:w-full">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+          <div className="mt-6 hidden space-y-2 lg:block">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full" />
+            ))}
+          </div>
+        </Card>
+        <div className="space-y-8">
+          {[3, 4, 3].map((rows, i) => (
+            <div key={i}>
+              <Skeleton className="mb-3 h-5 w-40" />
+              <Card padding="md" className="space-y-4">
+                {Array.from({ length: rows }).map((_, j) => (
+                  <div key={j} className="flex items-center gap-4">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 flex-1" />
+                  </div>
+                ))}
+              </Card>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -167,27 +313,25 @@ function Toast({
 // ═══════════════════════════════════════════════════════════
 
 export default function ProfilePage() {
+  const toast = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "overlays" | "billing"
-  >("overview");
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [activeSection, setActiveSection] = useState<string>("personal");
   const [showAllTx, setShowAllTx] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const showToast = (message: string, type: "success" | "error" = "success") =>
-    setToast({ message, type });
+    toast(message, { tone: type });
 
   useEffect(() => {
     const loadData = async () => {
@@ -206,7 +350,7 @@ export default function ProfilePage() {
           email: userDto.email !== "default" ? userDto.email : null,
         };
         setProfile(pData);
-        setEditName(pData.name);
+        setEditName(pData.name ?? "");
         setEditEmail(pData.email ?? "");
 
         const subData = await fetchMySubscription(currentUserId);
@@ -235,9 +379,10 @@ export default function ProfilePage() {
         }
 
         const txData = await fetchTransactionHistory();
-        setTransactions(txData);
+        setTransactions(Array.isArray(txData) ? txData : []);
       } catch (err) {
         console.error("Failed to load profile data", err);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
@@ -245,6 +390,34 @@ export default function ProfilePage() {
 
     loadData();
   }, []);
+
+  // Highlight the section currently in view in the side navigation.
+  useEffect(() => {
+    if (loading || !profile) return;
+    const els = SECTIONS.map((s) => document.getElementById(s.id)).filter(
+      (el): el is HTMLElement => !!el,
+    );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActiveSection(visible[0].target.id);
+      },
+      { rootMargin: "-96px 0px -55% 0px" },
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [loading, profile]);
+
+  const nameError = !editName.trim() ? "Name is required" : undefined;
+  const emailError =
+    editEmail.trim() && !EMAIL_RE.test(editEmail.trim())
+      ? "Enter a valid email address"
+      : undefined;
+  const isDirty =
+    !!profile &&
+    (editName !== profile.name || editEmail !== (profile.email ?? ""));
 
   const handleSaveProfile = async () => {
     if (!profile) return;
@@ -260,6 +433,7 @@ export default function ProfilePage() {
         );
         localStorage.setItem("userName", editName);
         setEditMode(false);
+        setSubmitAttempted(false);
         showToast("Profile updated successfully");
       } else {
         showToast(res.message || "Failed to update profile", "error");
@@ -270,762 +444,691 @@ export default function ProfilePage() {
     setSavingProfile(false);
   };
 
+  const onSubmitProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitAttempted(true);
+    if (nameError || emailError || !isDirty) return;
+    handleSaveProfile();
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setSubmitAttempted(false);
+    setEditName(profile?.name ?? "");
+    setEditEmail(profile?.email ?? "");
+  };
+
   const handleLogout = async () => {
-    await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"}/api/v1/auth/logout`,
-      { method: "POST", credentials: "include" },
-    ).catch(() => {});
-    localStorage.removeItem("userUUID");
-    localStorage.removeItem("userName");
-    localStorage.removeItem("hasSubscription");
-    document.cookie = "sessionActive=; path=/; Max-Age=0";
-    window.location.href = "/";
+    setSigningOut(true);
+    await logout();
   };
 
   if (loading)
     return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#34B8FF] to-[#1E88E5] flex items-center justify-center shadow-xl animate-pulse">
-            <i className="ri-user-line text-white text-3xl" />
-          </div>
-          <p className="font-semibold text-gray-500">Loading your profile…</p>
-        </div>
+      <div className="min-h-screen bg-canvas">
+        <AppHeader />
+        <ProfileSkeleton />
+      </div>
+    );
+
+  if (!profile)
+    return (
+      <div className="min-h-screen bg-canvas">
+        <AppHeader />
+        <main className="container-page py-10 sm:py-16">
+          <EmptyState
+            icon="ri-wifi-off-line"
+            title="We couldn't load your profile"
+            description="Check your connection and try again. If the problem continues, sign out and back in."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  icon="ri-refresh-line"
+                  onClick={() => window.location.reload()}
+                >
+                  Try again
+                </Button>
+                <Button
+                  variant="outline"
+                  icon="ri-logout-box-r-line"
+                  loading={signingOut}
+                  onClick={handleLogout}
+                >
+                  Sign out
+                </Button>
+              </div>
+            }
+          />
+        </main>
       </div>
     );
 
   const displayedTx = showAllTx ? transactions : transactions.slice(0, 3);
+  const isActive = subscription?.status === "active";
+  const cycleDays = subscription?.cycle === "monthly" ? 30 : 180;
   const subProgress =
     subscription && subscription.status === "active"
       ? Math.max(
           0,
           Math.min(
             100,
-            (((subscription.cycle === "monthly" ? 30 : 180) -
-              subscription.daysRemaining) /
-              (subscription.cycle === "monthly" ? 30 : 180)) *
-              100,
+            ((cycleDays - subscription.daysRemaining) / cycleDays) * 100,
           ),
         )
       : 0;
+  const expiringSoon = isActive && (subscription?.daysRemaining ?? 0) <= 7;
+  const successfulTx = transactions.filter((t) => t.status === "SUCCESS");
+  const totalSpent = successfulTx.reduce((s, t) => s + t.amount, 0);
+  const txLoadFailed = loadError && transactions.length === 0;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onDone={() => setToast(null)}
+    <div className="min-h-screen bg-canvas">
+      <AppHeader
+        user={{
+          id: profile.id,
+          name: profile.name,
+          hasSubscription: isActive,
+        }}
+      />
+
+      <main className="container-page py-6 sm:py-10">
+        <PageHeader
+          className="animate-fade-in"
+          title="Account"
+          description="Manage your profile, subscription and billing."
         />
-      )}
 
-      {/* Navbar */}
-      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 font-semibold transition-colors flex-shrink-0"
-            >
-              <i className="ri-arrow-left-line" />
-              <span className="hidden xs:inline">Dashboard</span>
-            </Link>
-            <span className="text-gray-200 hidden sm:block">|</span>
-            <div className="hidden sm:flex items-center gap-2">
-              <Image
-                src="/images/iconLogo.png"
-                alt="Cricshub"
-                width={26}
-                height={26}
-                className="rounded-md"
-              />
-              <span className="font-black text-gray-900 text-sm">
-                My Profile
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            {subscription && <SubBadge status={subscription.status} />}
-            <button
-              onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-              title="Logout"
-            >
-              <i className="ri-logout-circle-line text-lg sm:text-xl" />
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container mx-auto px-4 sm:px-6 py-5 sm:py-8 max-w-5xl space-y-5 sm:space-y-8">
-        {/* ── PROFILE HERO ── */}
-        <div className="relative bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl shadow-blue-200">
-          <div className="absolute -top-10 -right-10 w-56 h-56 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -left-8 w-36 h-36 rounded-full bg-white/10" />
-          <div className="relative z-10 px-5 sm:px-8 py-6 sm:py-8">
-            <div className="flex items-start gap-4 sm:gap-6">
-              {/* Avatar */}
-              <div className="relative flex-shrink-0">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-lg">
-                  {profile ? initials(profile.name) : "U"}
-                </div>
-                {subscription?.status === "active" && (
-                  <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-md">
-                    <i className="ri-vip-crown-fill text-white text-[10px] sm:text-xs" />
-                  </div>
-                )}
-              </div>
-
-              {/* Details + Edit button stacked */}
-              <div className="flex-1 min-w-0">
-                {editMode ? (
-                  <div className="space-y-2 max-w-sm">
-                    <input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      placeholder="Full name"
-                      className="w-full px-3 py-2 rounded-xl bg-white/20 border border-white/40 text-white placeholder:text-white/50 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-white/50"
-                    />
-                    <input
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      placeholder="Email (optional)"
-                      className="w-full px-3 py-2 rounded-xl bg-white/20 border border-white/40 text-white placeholder:text-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                    />
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={handleSaveProfile}
-                        disabled={savingProfile}
-                        className="flex items-center gap-1.5 bg-white text-[#1E88E5] font-black text-xs px-4 py-2 rounded-xl hover:bg-white/90 transition-all disabled:opacity-60"
-                      >
-                        {savingProfile ? (
-                          <>
-                            <i className="ri-loader-4-line animate-spin" />
-                            Saving…
-                          </>
-                        ) : (
-                          <>
-                            <i className="ri-check-line" />
-                            Save
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditMode(false);
-                          setEditName(profile?.name ?? "");
-                          setEditEmail(profile?.email ?? "");
-                        }}
-                        className="flex items-center gap-1 bg-white/20 text-white font-bold text-xs px-4 py-2 rounded-xl hover:bg-white/30 transition-all"
-                      >
-                        <i className="ri-close-line" />
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h1 className="text-xl sm:text-2xl font-black text-white mb-0.5 truncate">
-                        {profile?.name}
-                      </h1>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-white/70 text-sm">
-                        <span className="flex items-center gap-1">
-                          <i className="ri-phone-line flex-shrink-0" />
-                          {profile?.phone}
-                        </span>
-                        {profile?.email && (
-                          <span className="flex items-center gap-1 min-w-0">
-                            <i className="ri-mail-line flex-shrink-0" />
-                            <span className="truncate">{profile.email}</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setEditMode(true)}
-                      className="flex-shrink-0 flex items-center gap-1.5 bg-white/20 hover:bg-white/30 border border-white/40 text-white text-xs sm:text-sm font-bold px-3 sm:px-4 py-2 rounded-xl transition-all"
+        <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
+          {/* ── SUMMARY + SECTION NAV ── */}
+          <aside className="lg:sticky lg:top-24 lg:h-fit">
+            <Card padding="md" className="animate-fade-up">
+              <div className="flex items-center gap-4 lg:flex-col lg:items-start">
+                <div className="relative flex-shrink-0">
+                  <Avatar name={profile.name || "User"} size="xl" className="max-lg:h-14 max-lg:w-14 max-lg:text-base" />
+                  {isActive && (
+                    <span
+                      className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gold text-xs text-canvas ring-2 ring-surface"
+                      title="Subscriber"
                     >
-                      <i className="ri-edit-line" />
-                      <span className="hidden sm:inline">Edit Profile</span>
-                      <span className="sm:hidden">Edit</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── TABS — full-width grid, no scroll ── */}
-        <div className="bg-white border border-gray-100 shadow-sm p-1.5 rounded-2xl grid grid-cols-3 gap-1.5">
-          {[
-            {
-              key: "overview",
-              icon: "ri-home-4-line",
-              label: "Sub",
-              fullLabel: "Subscription",
-            },
-            {
-              key: "overlays",
-              icon: "ri-layout-top-2-line",
-              label: "Overlays",
-              fullLabel: "My Overlays",
-            },
-            {
-              key: "billing",
-              icon: "ri-receipt-line",
-              label: "Billing",
-              fullLabel: "Billing History",
-            },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 min-w-0
-                                ${activeTab === tab.key ? "bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white shadow-md" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"}`}
-            >
-              <i className={`${tab.icon} text-sm flex-shrink-0`} />
-              <span className="min-[480px]:inline hidden truncate">
-                {tab.fullLabel}
-              </span>
-              <span className="min-[480px]:hidden truncate">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* ══════════════════════════════════════════════════ */}
-        {/* TAB: SUBSCRIPTION OVERVIEW */}
-        {/* ══════════════════════════════════════════════════ */}
-        {activeTab === "overview" && (
-          <div className="space-y-5 sm:space-y-6">
-            {/* Free tier callout */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 flex items-start gap-3 sm:gap-4">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-                <i className="ri-broadcast-line text-emerald-600 text-base sm:text-lg" />
-              </div>
-              <div>
-                <p className="font-black text-gray-900 text-sm">
-                  Streaming is free
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                  Dashboard access, OBS URL generation, real-time score sync,
-                  and the live score overlay are available on every match at no
-                  cost.
-                </p>
-              </div>
-            </div>
-
-            {subscription && subscription.status === "active" ? (
-              <>
-                <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="px-5 sm:px-7 pt-6 sm:pt-7 pb-5 sm:pb-6 relative overflow-hidden bg-gradient-to-br from-[#0f2744] to-[#1a3a6e]">
-                    <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/5" />
-                    <div className="absolute -bottom-4 -left-4 w-24 h-24 rounded-full bg-white/5" />
-                    <div className="relative z-10">
-                      <div className="flex items-start justify-between gap-3 flex-wrap">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <SubBadge status={subscription.status} />
-                          </div>
-                          <h3 className="text-white font-black text-xl sm:text-2xl">
-                            {subscription.planName}
-                          </h3>
-                        </div>
-                        <div className="text-left sm:text-right">
-                          <p className="text-white/50 text-xs uppercase tracking-wider mb-1">
-                            Expires
-                          </p>
-                          <p className="text-white font-black text-base sm:text-lg">
-                            {fmtDate(subscription.expiryDate)}
-                          </p>
-                          <p className="text-white/60 text-xs mt-0.5">
-                            {subscription.daysRemaining} days remaining
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Progress bar */}
-                      <div className="mt-4 sm:mt-5">
-                        <div className="flex justify-between text-white/50 text-[10px] font-semibold mb-1.5">
-                          <span>{fmtDate(subscription.startDate)}</span>
-                          <span>{fmtDate(subscription.expiryDate)}</span>
-                        </div>
-                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-[#34B8FF] to-emerald-400 rounded-full transition-all duration-1000"
-                            style={{ width: `${subProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Row */}
-                  <div className="px-5 sm:px-7 py-4 sm:py-5 border-b border-gray-50">
-                    <Link
-                      href="/pricing"
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all"
-                    >
-                      <i className="ri-arrow-up-circle-line" />
-                      Extend Plan
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
-                  <SectionHeader
-                    icon="ri-gift-line"
-                    title="Subscription Benefit"
-                    sub="What your plan gives you on top of the free tier"
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    {[
-                      {
-                        icon: "ri-layout-grid-line",
-                        text: "IPL Bundle auto-unlocked for every match",
-                      },
-                      {
-                        icon: "ri-price-tag-3-line",
-                        text: "No ₹99/match fee — overlays activate instantly",
-                      },
-                      {
-                        icon: "ri-layout-top-2-line",
-                        text: "Main Match Banner & Live Score Overlay",
-                      },
-                      {
-                        icon: "ri-file-list-3-line",
-                        text: "Match Summary with top batters & bowlers",
-                      },
-                      {
-                        icon: "ri-team-line",
-                        text: "Playing XI — combined, batting & bowling (×4)",
-                      },
-                      {
-                        icon: "ri-stack-line",
-                        text: "All 8 IPL Bundle overlays per match",
-                      },
-                    ].map((f, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 sm:px-4 py-2.5"
-                      >
-                        <i
-                          className={`${f.icon} text-[#34B8FF] text-base flex-shrink-0`}
-                        />
-                        <p className="text-sm text-gray-700 font-medium">
-                          {f.text}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm p-8 sm:p-10 text-center">
-                <div className="w-16 sm:w-20 h-16 sm:h-20 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto mb-4 sm:mb-5">
-                  <i className="ri-gift-line text-[#1E88E5] text-2xl sm:text-3xl" />
-                </div>
-                <h3 className="font-black text-gray-900 text-lg sm:text-xl mb-2">
-                  No Active Subscription
-                </h3>
-                <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed mb-5 sm:mb-6">
-                  You can stream for free with the live score overlay. Subscribe
-                  to auto-unlock the IPL Bundle (8 professional overlays) for
-                  every match you run — no ₹99/match fee.
-                </p>
-                <Link
-                  href="/pricing"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white font-bold px-6 sm:px-7 py-3 rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all"
-                >
-                  <i className="ri-gift-line" />
-                  View Plans
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════ */}
-        {/* TAB: MY OVERLAYS */}
-        {/* ══════════════════════════════════════════════════ */}
-        {activeTab === "overlays" && (
-          <div className="space-y-5 sm:space-y-6">
-            {/* Free overlay */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
-              <SectionHeader
-                icon="ri-broadcast-line"
-                title="Free Overlay"
-                sub="Available on every match, no payment needed"
-              />
-              <div className="rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all max-w-xs">
-                <div
-                  className="h-14 sm:h-16"
-                  style={{
-                    background: "linear-gradient(135deg,#11998e,#38ef7d)",
-                  }}
-                />
-                <div className="p-3 flex items-start gap-3">
-                  <i className="ri-bar-chart-fill text-emerald-500 text-sm mt-0.5 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-bold text-gray-900 text-sm">
-                      Live Score Overlay
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Real-time bottom scoreboard for OBS — always on, always
-                      free
-                    </p>
-                  </div>
-                  <span className="ml-auto flex-shrink-0 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    FREE
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* IPL Bundle */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
-              <SectionHeader
-                icon="ri-layout-grid-line"
-                title="IPL Bundle"
-                sub="8 overlays per match — buy once for ₹99 or auto-unlock every match with a subscription"
-                action={
-                  subscription?.status === "active" ? (
-                    <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black px-3 py-1 rounded-full whitespace-nowrap">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                      Auto-unlocked
+                      <i className="ri-vip-crown-fill" aria-hidden />
+                      <span className="sr-only">Subscriber</span>
                     </span>
-                  ) : (
-                    <Link
-                      href="/pricing"
-                      className="text-xs font-bold text-[#1E88E5] hover:underline whitespace-nowrap"
-                    >
-                      Subscribe to auto-unlock →
-                    </Link>
-                  )
-                }
-              />
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                {[
-                  {
-                    icon: "ri-layout-top-2-line",
-                    name: "Main Match Banner",
-                    desc: "Tournament name, both teams, venue, date and toss result. Perfect opening graphic.",
-                    bg: "linear-gradient(135deg,#34B8FF,#1E88E5)",
-                  },
-                  {
-                    icon: "ri-bar-chart-line",
-                    name: "Live Score Overlay",
-                    desc: "Always-on bottom bar — live score, batters, bowler and ball-by-ball over tracker.",
-                    bg: "linear-gradient(135deg,#0a1628,#1E88E5)",
-                  },
-                  {
-                    icon: "ri-file-list-3-line",
-                    name: "Match Summary",
-                    desc: "Top batters & bowlers from both teams. Shows required rate or final result at bottom.",
-                    bg: "linear-gradient(135deg,#E2B94B,#8B6914)",
-                  },
-                  {
-                    icon: "ri-team-line",
-                    name: "Playing XI — Both Teams",
-                    desc: "Side-by-side full lineup with player roles, captain badge and live match footer.",
-                    bg: "linear-gradient(135deg,#4A9EF5,#A855F7)",
-                  },
-                  {
-                    icon: "ri-group-line",
-                    name: "Batting XI — Team 1",
-                    desc: "Full batting lineup for Team 1 — live runs, strike rate and dismissal info.",
-                    bg: "linear-gradient(135deg,#00b4d8,#0077b6)",
-                  },
-                  {
-                    icon: "ri-group-line",
-                    name: "Batting XI — Team 2",
-                    desc: "Full batting lineup for Team 2 — live runs, strike rate and dismissal info.",
-                    bg: "linear-gradient(135deg,#00b4d8,#0077b6)",
-                  },
-                  {
-                    icon: "ri-group-2-line",
-                    name: "Bowling XI — Team 1",
-                    desc: "Bowling lineup for Team 1 — overs bowled, wickets taken and economy rate.",
-                    bg: "linear-gradient(135deg,#8E54E9,#4776E6)",
-                  },
-                  {
-                    icon: "ri-group-2-line",
-                    name: "Bowling XI — Team 2",
-                    desc: "Bowling lineup for Team 2 — overs bowled, wickets taken and economy rate.",
-                    bg: "linear-gradient(135deg,#8E54E9,#4776E6)",
-                  },
-                ].map((b) => (
-                  <div
-                    key={b.name}
-                    className="rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all"
-                  >
-                    <div
-                      className="h-10 sm:h-14"
-                      style={{ background: b.bg }}
-                    />
-                    <div className="p-2.5 sm:p-3">
-                      <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                        <i
-                          className={`${b.icon} text-[#34B8FF] text-sm flex-shrink-0`}
-                        />
-                        <p className="font-bold text-gray-900 text-xs sm:text-sm leading-tight">
-                          {b.name}
-                        </p>
-                      </div>
-                      <p className="text-[11px] sm:text-xs text-gray-400 leading-snug">
-                        {b.desc}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {subscription?.status !== "active" && (
-                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-2xl p-3 sm:p-4 flex items-start gap-3">
-                  <i className="ri-information-line text-[#1E88E5] text-lg sm:text-xl flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-blue-800 leading-relaxed">
-                    Buy the IPL Bundle for ₹99/match from the stream
-                    dashboard, or{" "}
-                    <Link href="/pricing" className="font-bold underline">
-                      subscribe
-                    </Link>{" "}
-                    to auto-unlock it for every match.
-                  </p>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════ */}
-        {/* TAB: BILLING HISTORY */}
-        {/* ══════════════════════════════════════════════════ */}
-        {activeTab === "billing" && (
-          <div className="space-y-4 sm:space-y-5">
-            {/* Summary Stats — 1-col on mobile, 3-col on sm+ */}
-            {transactions.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                {[
-                  {
-                    icon: "ri-money-rupee-circle-line",
-                    label: "Total Spent",
-                    value: `₹${transactions
-                      .filter((t) => t.status === "SUCCESS")
-                      .reduce((s, t) => s + t.amount, 0)
-                      .toLocaleString("en-IN")}`,
-                    light: "bg-blue-50 text-[#1E88E5]",
-                  },
-                  {
-                    icon: "ri-checkbox-circle-line",
-                    label: "Successful",
-                    value: transactions
-                      .filter((t) => t.status === "SUCCESS")
-                      .length.toString(),
-                    light: "bg-emerald-50 text-emerald-600",
-                  },
-                  {
-                    icon: "ri-file-list-3-line",
-                    label: "Total Transactions",
-                    value: transactions.length.toString(),
-                    light: "bg-violet-50 text-violet-600",
-                  },
-                ].map((s, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4"
-                  >
-                    <div
-                      className={`w-10 sm:w-11 h-10 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${s.light}`}
-                    >
-                      <i className={`${s.icon} text-lg sm:text-xl`} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 font-semibold">
-                        {s.label}
-                      </p>
-                      <p className="text-xl font-black text-gray-900 leading-tight">
-                        {s.value}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Transactions */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-4 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#34B8FF] to-[#1E88E5] flex items-center justify-center shadow-md shadow-blue-200 flex-shrink-0">
-                    <i className="ri-receipt-line text-white text-base" />
-                  </div>
-                  <div>
-                    <h2 className="font-black text-gray-900 text-lg leading-none">
-                      Billing History
-                    </h2>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      All payments and invoices
+                <div className="min-w-0 flex-1 lg:w-full">
+                  <p className="truncate text-base font-semibold text-fg lg:text-lg">
+                    {profile.name}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-sm text-fg-muted">
+                    <i className="ri-phone-line text-fg-subtle" aria-hidden />
+                    <span className="font-mono tabular-nums">{profile.phone}</span>
+                  </p>
+                  {profile.email && (
+                    <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-sm text-fg-muted">
+                      <i className="ri-mail-line text-fg-subtle" aria-hidden />
+                      <span className="truncate">{profile.email}</span>
                     </p>
-                  </div>
-                </div>
-              </div>
-
-              {transactions.length === 0 ? (
-                <div className="text-center py-12 sm:py-16 px-6">
-                  <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
-                    <i className="ri-receipt-line text-gray-300 text-2xl" />
-                  </div>
-                  <p className="font-black text-gray-400 text-base mb-1">
-                    No transactions yet
-                  </p>
-                  <p className="text-sm text-gray-300 mb-5">
-                    Your payment history will appear here
-                  </p>
-                  <Link
-                    href="/pricing"
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all"
-                  >
-                    <i className="ri-vip-crown-line" />
-                    View Plans
-                  </Link>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {displayedTx.map((tx) => {
-                    const desc = tx.description?.toLowerCase() ?? "";
-                    const isBundle = desc.includes("bundle");
-                    const isAddon =
-                      !isBundle &&
-                      (desc.includes("overlay") || desc.includes("addon"));
-                    const isSub =
-                      !isBundle &&
-                      !isAddon &&
-                      (desc.includes("plan") || desc.includes("subscription"));
-                    const txLabel = isBundle
-                      ? "Bundle"
-                      : isAddon
-                        ? "Add-on"
-                        : isSub
-                          ? "Subscription"
-                          : "Payment";
-                    const txStyle = isBundle
-                      ? "bg-violet-50 text-violet-700 border-violet-100"
-                      : isAddon
-                        ? "bg-amber-50 text-amber-600 border-amber-100"
-                        : "bg-blue-50 text-blue-600 border-blue-100";
-                    const iconStyle = isBundle
-                      ? "bg-violet-50 ri-layout-grid-line text-violet-500"
-                      : isAddon
-                        ? "bg-amber-50 ri-vip-crown-line text-amber-500"
-                        : isSub
-                          ? "bg-blue-50 ri-broadcast-line text-[#1E88E5]"
-                          : "bg-gray-50 ri-money-rupee-circle-line text-gray-400";
-
-                    return (
-                      <div
-                        key={tx.id}
-                        className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 sm:py-4 hover:bg-gray-50/60 transition-colors"
-                      >
-                        {/* Icon */}
-                        <div
-                          className={`w-9 sm:w-10 h-9 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isBundle ? "bg-violet-50" : isAddon ? "bg-amber-50" : isSub ? "bg-blue-50" : "bg-gray-50"}`}
-                        >
-                          <i className={`text-base sm:text-lg ${iconStyle}`} />
-                        </div>
-
-                        {/* Description + date */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 text-xs sm:text-sm truncate">
-                            {tx.description}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span className="text-xs text-gray-400">
-                              {fmtDate(tx.date)}
-                            </span>
-                            <span className="text-gray-200 hidden sm:inline">
-                              ·
-                            </span>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border hidden sm:inline-flex ${txStyle}`}
-                            >
-                              {txLabel}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Ref ID — desktop only */}
-                        <div className="hidden md:block flex-shrink-0">
-                          <span className="text-[10px] font-mono text-gray-500 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg">
-                            {tx.invoiceId}
-                          </span>
-                        </div>
-
-                        {/* Amount */}
-                        <div className="flex-shrink-0 text-right">
-                          <p className="font-black text-gray-900 text-sm">
-                            ₹{tx.amount.toLocaleString("en-IN")}
-                          </p>
-                        </div>
-
-                        {/* Status pill */}
-                        <div className="flex-shrink-0">
-                          {tx.status === "SUCCESS" ? (
-                            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 sm:px-2.5 py-1 rounded-full whitespace-nowrap">
-                              <i className="ri-checkbox-circle-fill text-xs" />
-                              <span className="hidden sm:inline">Paid</span>
-                            </span>
-                          ) : tx.status === "FAILED" ? (
-                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-200 text-[10px] font-black px-2 sm:px-2.5 py-1 rounded-full whitespace-nowrap">
-                              <i className="ri-close-circle-fill text-xs" />
-                              <span className="hidden sm:inline">Failed</span>
-                            </span>
-                          ) : tx.status === "PENDING" ? (
-                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-600 border border-amber-200 text-[10px] font-black px-2 sm:px-2.5 py-1 rounded-full whitespace-nowrap">
-                              <i className="ri-time-fill text-xs" />
-                              <span className="hidden sm:inline">Pending</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-[10px] font-black px-2 sm:px-2.5 py-1 rounded-full whitespace-nowrap">
-                              <i className="ri-arrow-go-back-line text-xs" />
-                              <span className="hidden sm:inline">Reversed</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {transactions.length > 3 && (
-                    <div className="px-4 sm:px-6 py-4 text-center bg-gray-50/50">
-                      <button
-                        onClick={() => setShowAllTx((v) => !v)}
-                        className="text-sm font-bold text-[#34B8FF] hover:text-[#1E88E5] flex items-center gap-1.5 mx-auto transition-colors"
-                      >
-                        {showAllTx ? (
-                          <>
-                            <i className="ri-arrow-up-s-line" />
-                            Show less
-                          </>
-                        ) : (
-                          <>
-                            <i className="ri-arrow-down-s-line" />
-                            Show all {transactions.length} transactions
-                          </>
-                        )}
-                      </button>
+                  )}
+                  {subscription && (
+                    <div className="mt-3">
+                      <SubBadge status={subscription.status} />
                     </div>
                   )}
                 </div>
+              </div>
+
+              <nav
+                aria-label="Account sections"
+                className="mt-5 hidden border-t border-line pt-4 lg:block"
+              >
+                <ul className="space-y-0.5">
+                  {SECTIONS.map((s) => {
+                    const active = activeSection === s.id;
+                    return (
+                      <li key={s.id}>
+                        <a
+                          href={`#${s.id}`}
+                          onClick={() => setActiveSection(s.id)}
+                          aria-current={active ? "true" : undefined}
+                          className={cn(
+                            "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-surface-3",
+                            active
+                              ? "bg-primary-soft text-primary-soft-fg"
+                              : "text-fg-muted hover:bg-surface-2 hover:text-fg",
+                          )}
+                        >
+                          <i
+                            className={cn(s.icon, "text-base", active ? "text-current" : "text-fg-subtle")}
+                            aria-hidden
+                          />
+                          {s.label}
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
+            </Card>
+          </aside>
+
+          {/* ── SECTIONS ── */}
+          <div className="min-w-0 space-y-10">
+            {/* PERSONAL DETAILS */}
+            <Section
+              id="personal"
+              title="Personal details"
+              description="Your name and contact information."
+              action={
+                !editMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon="ri-edit-line"
+                    onClick={() => setEditMode(true)}
+                  >
+                    Edit
+                  </Button>
+                )
+              }
+            >
+              <Card padding="md">
+                {editMode ? (
+                  <form onSubmit={onSubmitProfile} noValidate className="space-y-5 animate-fade-in">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <Field
+                        label="Full name"
+                        required
+                        error={submitAttempted || !editName.trim() ? nameError : undefined}
+                      >
+                        {({ id, describedBy, invalid }) => (
+                          <Input
+                            id={id}
+                            aria-describedby={describedBy}
+                            invalid={invalid}
+                            icon="ri-user-line"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="Full name"
+                            autoComplete="name"
+                            autoFocus
+                          />
+                        )}
+                      </Field>
+                      <Field
+                        label="Email"
+                        optional
+                        error={emailError}
+                        hint="Used for receipts and account updates."
+                      >
+                        {({ id, describedBy, invalid }) => (
+                          <Input
+                            id={id}
+                            type="email"
+                            aria-describedby={describedBy}
+                            invalid={invalid}
+                            icon="ri-mail-line"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            placeholder="you@example.com"
+                            autoComplete="email"
+                          />
+                        )}
+                      </Field>
+                      <Field label="Phone" hint="Your phone number is your login and can't be changed.">
+                        {({ id, describedBy }) => (
+                          <Input
+                            id={id}
+                            aria-describedby={describedBy}
+                            icon="ri-phone-line"
+                            value={profile.phone ?? ""}
+                            disabled
+                            readOnly
+                            className="font-mono tabular-nums"
+                          />
+                        )}
+                      </Field>
+                    </div>
+                    <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-fg-subtle" aria-live="polite">
+                        {isDirty ? (
+                          <span className="inline-flex items-center gap-1.5 text-warning-soft-fg">
+                            <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />
+                            Unsaved changes
+                          </span>
+                        ) : (
+                          "No changes yet"
+                        )}
+                      </p>
+                      <div className="flex gap-2 sm:justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={cancelEdit}
+                          disabled={savingProfile}
+                          className="max-sm:flex-1"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          icon="ri-check-line"
+                          loading={savingProfile}
+                          disabled={savingProfile || !isDirty || !!nameError || !!emailError}
+                          className="max-sm:flex-1"
+                        >
+                          {savingProfile ? "Saving…" : "Save changes"}
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                ) : (
+                  <dl className="divide-y divide-line">
+                    <DetailRow label="Name" icon="ri-user-line" value={profile.name} />
+                    <DetailRow
+                      label="Phone"
+                      icon="ri-phone-line"
+                      value={<span className="font-mono tabular-nums">{profile.phone}</span>}
+                    />
+                    <DetailRow
+                      label="Email"
+                      icon="ri-mail-line"
+                      value={profile.email ?? "Not added"}
+                      muted={!profile.email}
+                    />
+                  </dl>
+                )}
+              </Card>
+            </Section>
+
+            {/* SUBSCRIPTION */}
+            <Section
+              id="subscription"
+              title="Subscription"
+              description="Your plan and what it unlocks."
+            >
+              <div className="space-y-4">
+                {!subscription ? (
+                  <Alert
+                    tone="danger"
+                    title="Couldn't load your subscription"
+                    action={
+                      <Button size="sm" variant="outline" icon="ri-refresh-line" onClick={() => window.location.reload()}>
+                        Retry
+                      </Button>
+                    }
+                  >
+                    Your plan details are temporarily unavailable.
+                  </Alert>
+                ) : isActive ? (
+                  <Card padding="none" className="overflow-hidden">
+                    <div className="p-5 sm:p-6">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <IconTile icon="ri-vip-crown-line" tone="warning" />
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-semibold text-fg sm:text-lg">
+                                {subscription.planName}
+                              </h3>
+                              <SubBadge status={subscription.status} />
+                            </div>
+                            <p className="mt-0.5 text-sm text-fg-muted">
+                              {subscription.cycle === "monthly" ? "Billed monthly" : "6-month term"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="sm:text-right">
+                          <p className="text-xs text-fg-subtle">Expires</p>
+                          <p className="text-sm font-semibold text-fg">
+                            {fmtDate(subscription.expiryDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6">
+                        <div className="mb-2 flex items-baseline justify-between gap-3">
+                          <p className="text-sm text-fg-muted">
+                            <span
+                              className={cn(
+                                "font-display text-3xl font-bold leading-none tabular-nums",
+                                expiringSoon ? "text-warning-soft-fg" : "text-fg",
+                              )}
+                            >
+                              {subscription.daysRemaining}
+                            </span>{" "}
+                            days remaining
+                          </p>
+                          <p className="font-mono text-xs tabular-nums text-fg-subtle">
+                            {Math.round(subProgress)}% used
+                          </p>
+                        </div>
+                        <div
+                          className="h-2 overflow-hidden rounded-full bg-surface-3"
+                          role="progressbar"
+                          aria-label="Subscription period used"
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={Math.round(subProgress)}
+                        >
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-[width] duration-700 ease-out",
+                              expiringSoon ? "bg-warning" : "bg-primary",
+                            )}
+                            style={{ width: `${subProgress}%` }}
+                          />
+                        </div>
+                        <div className="mt-1.5 flex justify-between text-xs text-fg-subtle">
+                          <span>Started {fmtDate(subscription.startDate)}</span>
+                          <span>Ends {fmtDate(subscription.expiryDate)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-3 border-t border-line bg-surface-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                      <p className="text-sm text-fg-muted">
+                        {expiringSoon
+                          ? "Your plan ends soon — extend to keep overlays unlocked."
+                          : "Extend anytime to add more days to your plan."}
+                      </p>
+                      <ButtonLink href="/pricing" icon="ri-arrow-up-circle-line" size="sm">
+                        Extend plan
+                      </ButtonLink>
+                    </div>
+                  </Card>
+                ) : (
+                  <Card padding="md">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <IconTile icon="ri-gift-line" />
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold text-fg">
+                              No active subscription
+                            </h3>
+                            <SubBadge status={subscription.status} />
+                          </div>
+                          <p className="mt-1 max-w-md text-sm text-fg-muted">
+                            You can stream for free with the live score overlay. Subscribe
+                            to auto-unlock the IPL Bundle (8 professional overlays) for
+                            every match you run — no ₹99/match fee.
+                          </p>
+                        </div>
+                      </div>
+                      <ButtonLink href="/pricing" icon="ri-vip-crown-line" className="flex-shrink-0">
+                        View plans
+                      </ButtonLink>
+                    </div>
+                  </Card>
+                )}
+
+                {isActive && (
+                  <Card padding="md">
+                    <CardHeader
+                      title="Subscription benefits"
+                      description="What your plan gives you on top of the free tier"
+                    />
+                    <ul className="mt-4 grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+                      {BENEFITS.map((f) => (
+                        <li key={f.text} className="flex items-start gap-2.5 text-sm text-fg">
+                          <i className="ri-check-line mt-px text-base text-success" aria-hidden />
+                          {f.text}
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                )}
+
+                <div className="flex items-start gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3">
+                  <i className="ri-broadcast-line mt-0.5 text-lg text-success" aria-hidden />
+                  <p className="text-sm text-fg-muted">
+                    <span className="font-medium text-fg">Streaming is free.</span>{" "}
+                    Dashboard access, OBS URL generation, real-time score sync, and the
+                    live score overlay are available on every match at no cost.
+                  </p>
+                </div>
+              </div>
+            </Section>
+
+            {/* OVERLAYS */}
+            <Section
+              id="overlays"
+              title="Overlays"
+              description="8 IPL Bundle overlays per match — buy once for ₹99 or auto-unlock every match with a subscription."
+              action={
+                isActive ? (
+                  <Badge tone="success" icon="ri-lock-unlock-line">
+                    Auto-unlocked
+                  </Badge>
+                ) : (
+                  <Link
+                    href="/pricing"
+                    className="inline-flex items-center gap-1 rounded text-sm font-medium text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Subscribe to auto-unlock
+                    <i className="ri-arrow-right-line" aria-hidden />
+                  </Link>
+                )
+              }
+            >
+              <Card padding="md">
+                <div className="flex items-center gap-3 rounded-xl border border-line p-3">
+                  <span
+                    className="h-10 w-14 flex-shrink-0 rounded-lg"
+                    style={{ background: "linear-gradient(135deg,#11998e,#38ef7d)" }}
+                    aria-hidden
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-fg">Live Score Overlay</p>
+                    <p className="text-xs text-fg-muted">
+                      Real-time bottom scoreboard for OBS — always on, always free
+                    </p>
+                  </div>
+                  <Badge tone="success" size="xs">
+                    Free
+                  </Badge>
+                </div>
+
+                <p className="eyebrow mb-3 mt-6 text-fg-subtle">IPL Bundle</p>
+                <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  {BUNDLE_OVERLAYS.map((b) => (
+                    <li
+                      key={b.name}
+                      className="overflow-hidden rounded-xl border border-line bg-surface"
+                      title={b.desc}
+                    >
+                      <div className="h-10 sm:h-12" style={{ background: b.bg }} aria-hidden />
+                      <div className="p-2.5 sm:p-3">
+                        <p className="flex items-center gap-1.5 text-xs font-medium leading-tight text-fg sm:text-sm">
+                          <i className={cn(b.icon, "flex-shrink-0 text-fg-subtle")} aria-hidden />
+                          <span className="min-w-0">{b.name}</span>
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-2xs leading-snug text-fg-muted sm:text-xs">
+                          {b.desc}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                {!isActive && (
+                  <Alert tone="info" className="mt-4">
+                    Buy the IPL Bundle for ₹99/match from the stream dashboard, or{" "}
+                    <Link href="/pricing" className="rounded-sm font-medium underline underline-offset-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      subscribe
+                    </Link>{" "}
+                    to auto-unlock it for every match.
+                  </Alert>
+                )}
+              </Card>
+            </Section>
+
+            {/* BILLING HISTORY */}
+            <Section
+              id="billing"
+              title="Billing history"
+              description="All payments and invoices."
+            >
+              {transactions.length > 0 && (
+                <dl className="mb-4 grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Total spent", value: `₹${totalSpent.toLocaleString("en-IN")}` },
+                    { label: "Successful", value: successfulTx.length.toString() },
+                    { label: "Transactions", value: transactions.length.toString() },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-card border border-line bg-surface px-3 py-3 shadow-card sm:px-5 sm:py-4">
+                      <dt className="truncate text-xs text-fg-muted sm:text-sm">{s.label}</dt>
+                      <dd className="mt-1.5 truncate font-display text-2xl font-bold leading-none tabular-nums text-fg sm:text-4xl">
+                        {s.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
               )}
-            </div>
+
+              {txLoadFailed ? (
+                <Alert
+                  tone="danger"
+                  title="Couldn't load your billing history"
+                  action={
+                    <Button size="sm" variant="outline" icon="ri-refresh-line" onClick={() => window.location.reload()}>
+                      Retry
+                    </Button>
+                  }
+                >
+                  Your payments are safe — we just couldn&apos;t fetch them right now.
+                </Alert>
+              ) : transactions.length === 0 ? (
+                <EmptyState
+                  icon="ri-receipt-line"
+                  title="No transactions yet"
+                  description="Your payment history will appear here."
+                  action={
+                    <ButtonLink href="/pricing" variant="outline" size="sm" icon="ri-vip-crown-line">
+                      View plans
+                    </ButtonLink>
+                  }
+                />
+              ) : (
+                <Card padding="none" className="overflow-hidden">
+                  {/* Desktop table */}
+                  <table className="hidden w-full table-fixed text-left text-sm md:table">
+                    <thead className="border-b border-line bg-surface-2 text-xs font-medium text-fg-muted">
+                      <tr>
+                        <th scope="col" className="px-5 py-2.5 font-medium">Description</th>
+                        <th scope="col" className="w-28 px-3 py-2.5 font-medium">Date</th>
+                        <th scope="col" className="w-40 px-3 py-2.5 font-medium">Reference</th>
+                        <th scope="col" className="w-24 px-3 py-2.5 text-right font-medium">Amount</th>
+                        <th scope="col" className="w-32 px-5 py-2.5 text-right font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {displayedTx.map((tx) => {
+                        const m = txMeta(tx.description);
+                        return (
+                          <tr key={tx.id} className="transition-colors hover:bg-surface-2">
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-3">
+                                <IconTile icon={m.icon} tone={m.tone} size="sm" />
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-fg">{tx.description}</p>
+                                  <p className="text-xs text-fg-subtle">{m.label}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-fg-muted">{fmtDate(tx.date)}</td>
+                            <td className="px-3 py-3">
+                              <span className="block truncate font-mono text-xs text-fg-muted">{tx.invoiceId}</span>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-right font-mono font-semibold tabular-nums text-fg">
+                              ₹{tx.amount.toLocaleString("en-IN")}
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <TxStatusBadge status={tx.status} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {/* Mobile cards */}
+                  <ul className="divide-y divide-line md:hidden">
+                    {displayedTx.map((tx) => {
+                      const m = txMeta(tx.description);
+                      return (
+                        <li key={tx.id} className="flex items-start gap-3 px-4 py-3.5">
+                          <IconTile icon={m.icon} tone={m.tone} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="min-w-0 truncate text-sm font-medium text-fg">
+                                {tx.description}
+                              </p>
+                              <p className="flex-shrink-0 font-mono text-sm font-semibold tabular-nums text-fg">
+                                ₹{tx.amount.toLocaleString("en-IN")}
+                              </p>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between gap-3">
+                              <p className="min-w-0 truncate text-xs text-fg-subtle">
+                                {fmtDate(tx.date)} · {m.label}
+                              </p>
+                              <TxStatusBadge status={tx.status} />
+                            </div>
+                            {tx.invoiceId && (
+                              <p className="mt-1 truncate font-mono text-2xs text-fg-subtle">
+                                {tx.invoiceId}
+                              </p>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  {transactions.length > 3 && (
+                    <div className="border-t border-line bg-surface-2 px-4 py-2.5 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={showAllTx ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"}
+                        onClick={() => setShowAllTx((v) => !v)}
+                        aria-expanded={showAllTx}
+                      >
+                        {showAllTx ? "Show less" : `Show all ${transactions.length} transactions`}
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              )}
+            </Section>
+
+            {/* SIGN OUT */}
+            <Section id="account" title="Sign out" description="End your session on this device.">
+              <Card padding="md" className="border-danger/30">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <IconTile icon="ri-logout-box-r-line" tone="danger" />
+                    <div>
+                      <p className="text-sm font-medium text-fg">Sign out of CricsHub</p>
+                      <p className="mt-0.5 text-sm text-fg-muted">
+                        You&apos;ll need your phone number and OTP to sign back in.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="danger"
+                    icon="ri-logout-box-r-line"
+                    loading={signingOut}
+                    onClick={handleLogout}
+                    className="flex-shrink-0"
+                  >
+                    Sign out
+                  </Button>
+                </div>
+              </Card>
+            </Section>
           </div>
-        )}
-      </div>
-      <link
-        href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
-        rel="stylesheet"
-      />
+        </div>
+      </main>
     </div>
   );
 }

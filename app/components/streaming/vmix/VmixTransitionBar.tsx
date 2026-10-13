@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { VmixTransitionType, VmixInput } from "@/lib/streaming/types";
+import { Button, cn } from "@/app/components/ui";
+import { RangeSlider, SubLabel, pressClasses } from "../StudioKit";
 
 const TRANSITIONS: { type: VmixTransitionType; label: string; icon: string }[] = [
   { type: "Cut", label: "Cut", icon: "ri-scissors-cut-line" },
@@ -40,72 +42,87 @@ export default function VmixTransitionBar({
     }
   };
 
-  return (
-    <div>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-        <i className="ri-swap-line mr-1" />
-        Transitions
-      </p>
+  const selectedLabel = TRANSITIONS.find((t) => t.type === selectedType)?.label ?? selectedType;
 
+  return (
+    <div className="space-y-4">
       {/* Transition type grid */}
-      <div className="grid grid-cols-5 gap-1.5 mb-3">
-        {TRANSITIONS.map((t) => (
-          <button
-            key={t.type}
-            onClick={() => setSelectedType(t.type)}
-            className={`py-2 rounded-lg text-[10px] font-bold transition-all ${
-              selectedType === t.type
-                ? "bg-[#34B8FF] text-white shadow-md"
-                : "bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100"
-            }`}
-            title={t.label}
-          >
-            <i className={`${t.icon} block text-sm mb-0.5`} />
-            {t.label}
-          </button>
-        ))}
+      <div>
+        <SubLabel icon="ri-swap-line">Transition type</SubLabel>
+        <div className="grid grid-cols-5 gap-1.5" role="group" aria-label="Transition type">
+          {TRANSITIONS.map((t) => (
+            <button
+              key={t.type}
+              type="button"
+              onClick={() => setSelectedType(t.type)}
+              aria-pressed={selectedType === t.type}
+              title={t.label}
+              className={pressClasses(
+                selectedType === t.type,
+                "primary",
+                "min-h-[48px] min-w-0 flex-col gap-0.5 px-1 py-1.5 text-2xs",
+              )}
+            >
+              <i className={cn(t.icon, "text-sm leading-none")} aria-hidden />
+              <span className="w-full text-center leading-tight">{t.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Duration */}
-      <div className="flex items-center gap-3 mb-3">
-        <label className="text-[10px] font-semibold text-gray-400 uppercase whitespace-nowrap">
+      <div className="flex items-center gap-3">
+        <span className="flex-shrink-0 text-2xs font-semibold uppercase tracking-wider text-fg-subtle">
           Duration
-        </label>
-        <input
-          type="range"
+        </span>
+        <RangeSlider
           min={0}
           max={3000}
           step={100}
           value={duration}
-          onChange={(e) => setDuration(parseInt(e.target.value))}
-          className="flex-1 h-1.5 accent-[#34B8FF] cursor-pointer"
+          onChange={(_, raw) => setDuration(parseInt(raw))}
+          ariaLabel="Transition duration"
+          ariaValueText={`${(duration / 1000).toFixed(1)} seconds`}
         />
-        <span className="text-[10px] text-gray-500 font-mono w-10 text-right">
+        <span className="w-10 flex-shrink-0 text-right font-mono text-xs tabular-nums text-fg-muted">
           {(duration / 1000).toFixed(1)}s
         </span>
       </div>
 
       {/* GO button + FTB */}
       <div className="flex gap-2">
-        <button
+        <Button
+          variant="live"
+          size="lg"
+          block
+          icon="ri-play-fill"
           onClick={handleGo}
           disabled={previewInput == null}
-          className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-black hover:bg-red-600 transition-all shadow-md shadow-red-200 disabled:opacity-40"
+          className="text-sm"
         >
-          <i className="ri-play-fill mr-1" />
-          {selectedType.toUpperCase()} → PGM
-        </button>
+          {selectedLabel} to PGM
+        </Button>
         <button
+          type="button"
           onClick={onFadeToBlack}
-          className={`px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+          aria-pressed={fadeToBlack}
+          aria-label="Fade to black"
+          title="Fade to black"
+          className={cn(
+            "inline-flex h-12 flex-shrink-0 items-center justify-center rounded-xl border px-4 text-xs font-semibold tracking-wider",
+            "transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
             fadeToBlack
-              ? "bg-black text-white"
-              : "bg-gray-900 text-gray-300 hover:bg-black hover:text-white"
-          }`}
+              ? "border-surface-inverse bg-surface-inverse text-fg-inverse"
+              : "border-line-strong bg-surface text-fg-muted hover:bg-surface-2 hover:text-fg",
+          )}
         >
           FTB
         </button>
       </div>
+      {previewInput == null && inputs.length > 0 && (
+        <p className="text-xs text-fg-subtle">Select a preview (PVW) input to enable the transition.</p>
+      )}
     </div>
   );
 }

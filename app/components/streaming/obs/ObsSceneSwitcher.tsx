@@ -1,6 +1,7 @@
 "use client";
 
 import type { ObsScene } from "@/lib/streaming/types";
+import { SubLabel, pressClasses } from "../StudioKit";
 
 interface Props {
   scenes: ObsScene[];
@@ -12,25 +13,21 @@ export default function ObsSceneSwitcher({ scenes, currentScene, onSwitch }: Pro
   if (!scenes.length) return null;
   return (
     <div>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-        <i className="ri-layout-grid-line mr-1" />
-        Scenes
-      </p>
+      <SubLabel icon="ri-layout-grid-line">Scenes</SubLabel>
       <div className="grid grid-cols-2 gap-2">
         {scenes.map((s) => {
           const active = s.sceneName === currentScene;
           return (
             <button
               key={s.sceneName}
+              type="button"
               onClick={() => onSwitch(s.sceneName)}
-              className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all truncate ${
-                active
-                  ? "bg-red-500 text-white shadow-md shadow-red-200"
-                  : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
-              }`}
+              aria-pressed={active}
+              title={s.sceneName}
+              className={pressClasses(active, "live", "min-w-0 py-2")}
             >
-              {active && <i className="ri-live-line mr-1" />}
-              {s.sceneName}
+              {active && <i className="ri-live-line flex-shrink-0" aria-hidden />}
+              <span className="truncate">{s.sceneName}</span>
             </button>
           );
         })}

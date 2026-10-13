@@ -7,8 +7,9 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { label: "Live scoring", href: "/#features" },
-      { label: "Stream Studio", href: "/#streaming" },
+      { label: "Live scoring", href: "/#scoreboard" },
+      { label: "Streaming & tournaments", href: "/#features" },
+      { label: "Android app", href: "/#app" },
       { label: "Pricing", href: "/pricing" },
       { label: "Dashboard", href: "/dashboard" },
     ],
@@ -57,7 +58,7 @@ export default function SiteFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`CricsHub on ${s.name}`}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-line text-lg text-fg-muted transition-colors hover:border-line-strong hover:text-fg"
+                  className="flex h-10 w-10 items-center justify-center rounded-control border border-line text-lg text-fg-muted transition-colors hover:border-fg-subtle hover:text-fg"
                 >
                   <i className={s.icon} aria-hidden />
                 </a>

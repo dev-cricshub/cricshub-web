@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         aria-live="polite"
         aria-atomic="false"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-[400] flex flex-col items-center gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-end sm:p-6"
+        className="pointer-events-none fixed inset-x-0 bottom-[var(--tabbar-h,0px)] z-[400] flex flex-col items-center gap-2 p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-var(--tabbar-h,0px)))] sm:items-end sm:p-6"
       >
         {toasts.map((t) => {
           const s = toneStyles[t.tone];

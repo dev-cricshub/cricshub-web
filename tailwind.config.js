@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 
-// Semantic colours resolve to CSS variables defined in app/globals.css, so
+// Semantic colours resolve to CSS variables defined in app/styles/tokens.css, so
 // light/dark themes swap without per-component `dark:` variants.
 const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 
@@ -10,20 +10,26 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Static brand scale — CricsHub blue. Prefer semantic tokens in UI.
+        // Static brand scale built around the logo blue (500 = #207BBE). Prefer semantic tokens in UI.
         brand: {
-          DEFAULT: "#1E88E5",
-          50: "#EEF6FF",
-          100: "#D9EBFE",
-          200: "#B6D8FC",
-          300: "#84BEF9",
-          400: "#4BA0F2",
-          500: "#1E88E5",
-          600: "#1570C9",
-          700: "#135AA3",
-          800: "#154C84",
-          900: "#16406C",
-          950: "#0E2847",
+          DEFAULT: token("brand"),
+          navy: token("brand-navy"),
+          sky: token("brand-sky"),
+          50: "#EEF6FC",
+          100: "#D7E9F7",
+          200: "#AFD3EF",
+          300: "#7EB8E4",
+          400: "#4C9AD4",
+          500: "#207BBE",
+          600: "#1A66A0",
+          700: "#165283",
+          800: "#134268",
+          900: "#10344F",
+          950: "#0A2136",
+        },
+        secondary: {
+          DEFAULT: token("secondary"),
+          fg: token("secondary-fg"),
         },
         canvas: token("canvas"),
         surface: {
@@ -65,17 +71,31 @@ module.exports = {
           "soft-fg": token("danger-soft-fg"),
         },
         live: token("live"),
+        accent: token("accent"),
+        gold: token("gold"),
         ring: token("ring"),
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+        display: ["var(--font-display)", "var(--font-geist-sans)", "ui-sans-serif", "sans-serif"],
       },
       fontSize: {
         "2xs": ["0.6875rem", { lineHeight: "1rem" }],
+        // Display scale (Barlow Condensed, uppercase). Fluid so headlines keep their proportions on every screen.
+        "display-xl": ["clamp(3.25rem, 1.6rem + 5.4vw, 6.25rem)", { lineHeight: "0.88", letterSpacing: "-0.012em" }],
+        "display-lg": ["clamp(2.5rem, 1.5rem + 3.4vw, 4.25rem)", { lineHeight: "0.92", letterSpacing: "-0.01em" }],
+        "display-md": ["clamp(1.75rem, 1.3rem + 1.4vw, 2.375rem)", { lineHeight: "0.95", letterSpacing: "0" }],
       },
       borderRadius: {
         "4xl": "2rem",
+        control: "var(--radius-control)",
+        card: "var(--radius-card)",
+        frame: "var(--radius-frame)",
+      },
+      spacing: {
+        section: "var(--section-y)",
+        header: "var(--header-h)",
       },
       boxShadow: {
         xs: "0 1px 2px 0 rgb(var(--shadow) / 0.06)",
@@ -84,10 +104,12 @@ module.exports = {
         pop: "0 12px 32px -8px rgb(var(--shadow) / 0.18), 0 4px 8px -4px rgb(var(--shadow) / 0.08)",
         overlay: "0 24px 64px -12px rgb(var(--shadow) / 0.35)",
         focus: "0 0 0 3px rgb(var(--ring) / 0.35)",
+        // Product frames: a hairline top highlight + deep, soft drop. No coloured glows.
+        frame: "inset 0 1px 0 rgb(255 255 255 / 0.04), 0 24px 60px -24px rgb(var(--shadow) / 0.9)",
       },
       transitionTimingFunction: {
-        out: "cubic-bezier(0.2, 0.8, 0.2, 1)",
-        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        out: "var(--ease-out)",
+        spring: "var(--ease-spring)",
       },
       keyframes: {
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },

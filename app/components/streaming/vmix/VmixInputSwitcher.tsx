@@ -1,6 +1,8 @@
 "use client";
 
 import type { VmixInput } from "@/lib/streaming/types";
+import { Badge, LiveDot, cn } from "@/app/components/ui";
+import { SubLabel } from "../StudioKit";
 
 interface Props {
   inputs: VmixInput[];
@@ -21,58 +23,64 @@ export default function VmixInputSwitcher({
 
   return (
     <div>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-        <i className="ri-vidicon-line mr-1" />
-        Inputs
-      </p>
+      <SubLabel icon="ri-vidicon-line">Inputs</SubLabel>
       <div className="grid grid-cols-2 gap-2">
         {inputs.map((inp) => {
           const isActive = inp.number === activeInput;
           const isPreview = inp.number === previewInput;
+          const name = inp.title || inp.type;
           return (
             <div
               key={inp.key}
-              className={`rounded-xl border-2 overflow-hidden transition-all ${
+              className={cn(
+                "min-w-0 overflow-hidden rounded-xl border bg-surface transition-[border-color,box-shadow] duration-150",
                 isActive
-                  ? "border-red-500 shadow-md shadow-red-100"
+                  ? "border-live shadow-[0_0_0_1px_rgb(var(--live))]"
                   : isPreview
-                    ? "border-green-400 shadow-md shadow-green-100"
-                    : "border-gray-200 hover:border-gray-300"
-              }`}
+                    ? "border-success shadow-[0_0_0_1px_rgb(var(--success))]"
+                    : "border-line-strong",
+              )}
             >
               <div
-                className={`px-3 py-2 ${
-                  isActive ? "bg-red-50" : isPreview ? "bg-green-50" : "bg-gray-50"
-                }`}
+                className={cn(
+                  "px-3 py-2",
+                  isActive ? "bg-live/10" : isPreview ? "bg-success-soft" : "bg-surface-2",
+                )}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-gray-700 truncate">
-                    {inp.number}. {inp.title || inp.type}
+                <div className="flex min-w-0 items-center justify-between gap-1.5">
+                  <span className="truncate text-xs font-semibold text-fg" title={name}>
+                    <span className="font-mono tabular-nums text-fg-subtle">{inp.number}</span> {name}
                   </span>
                   {isActive && (
-                    <span className="text-[9px] font-black text-red-500 bg-red-100 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                    <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-live px-1.5 py-px text-2xs font-semibold text-white">
+                      <LiveDot className="h-1.5 w-1.5" />
                       PGM
                     </span>
                   )}
                   {isPreview && !isActive && (
-                    <span className="text-[9px] font-black text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full">
+                    <Badge tone="success" size="xs" className="flex-shrink-0">
                       PVW
-                    </span>
+                    </Badge>
                   )}
                 </div>
-                <p className="text-[10px] text-gray-400 truncate">{inp.type}</p>
+                <p className="mt-0.5 truncate text-2xs text-fg-subtle">{inp.type}</p>
               </div>
-              <div className="flex border-t border-gray-100">
+              <div className="flex border-t border-line">
                 <button
+                  type="button"
                   onClick={() => onPreview(inp.number)}
-                  className="flex-1 py-1.5 text-[10px] font-bold text-green-600 hover:bg-green-50 transition-all border-r border-gray-100"
+                  aria-label={`Preview input ${inp.number} ${name}`}
+                  aria-pressed={isPreview}
+                  className="flex h-9 flex-1 items-center justify-center border-r border-line text-2xs font-semibold tracking-wider text-success transition-colors duration-150 hover:bg-success-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   PVW
                 </button>
                 <button
+                  type="button"
                   onClick={() => onCut(inp.number)}
-                  className="flex-1 py-1.5 text-[10px] font-bold text-red-600 hover:bg-red-50 transition-all"
+                  aria-label={`Cut input ${inp.number} ${name} to program`}
+                  aria-pressed={isActive}
+                  className="flex h-9 flex-1 items-center justify-center text-2xs font-semibold tracking-wider text-live transition-colors duration-150 hover:bg-live/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   CUT
                 </button>

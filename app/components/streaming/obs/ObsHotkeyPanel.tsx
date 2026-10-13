@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { loadObsHotkeys, saveObsHotkeys, type HotkeyMapping } from "@/lib/streaming/storage";
+import { Button, Field, Input, controlClasses } from "@/app/components/ui";
+import { Hint, selectClasses } from "../StudioKit";
 
 interface Props {
   onTrigger: (hotkeyName: string) => void;
@@ -47,99 +49,105 @@ export default function ObsHotkeyPanel({ onTrigger, onGetList, connected }: Prop
   };
 
   return (
-    <div>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-        <i className="ri-keyboard-line mr-1" />
-        Hotkeys
-      </p>
-
-      {hotkeys.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 mb-2">
+    <div className="space-y-3">
+      {hotkeys.length > 0 ? (
+        <ul className="grid grid-cols-2 gap-2">
           {hotkeys.map((hk, i) => (
-            <div key={i} className="relative group">
+            <li
+              key={i}
+              className="flex min-w-0 items-stretch overflow-hidden rounded-lg border border-line-strong bg-surface shadow-xs"
+            >
               <button
+                type="button"
                 onClick={() => onTrigger(hk.obsHotkeyName)}
                 disabled={!connected}
-                className="w-full py-2.5 rounded-xl bg-gray-50 text-gray-700 text-xs font-bold hover:bg-[#34B8FF]/10 hover:text-[#1E88E5] transition-all border border-gray-200 disabled:opacity-40"
+                title={hk.obsHotkeyName}
+                className="flex min-h-[40px] min-w-0 flex-1 items-center gap-1.5 px-3 text-xs font-medium text-fg transition-colors duration-150 hover:bg-primary-soft hover:text-primary-soft-fg active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-50"
               >
-                <i className="ri-flashlight-line mr-1" />
-                {hk.label}
+                <i className="ri-flashlight-line flex-shrink-0 text-primary" aria-hidden />
+                <span className="truncate">{hk.label}</span>
               </button>
               <button
+                type="button"
                 onClick={() => handleRemove(i)}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] hidden group-hover:flex items-center justify-center"
+                aria-label={`Remove hotkey ${hk.label}`}
+                className="flex w-8 flex-shrink-0 items-center justify-center border-l border-line text-fg-subtle transition-colors duration-150 hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
-                <i className="ri-close-line" />
+                <i className="ri-close-line" aria-hidden />
               </button>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
+      ) : (
+        !adding && <Hint>Map OBS hotkeys to one-tap buttons for replays, stingers and more.</Hint>
       )}
 
       {adding ? (
-        <div className="space-y-2 bg-gray-50 rounded-xl border border-gray-200 p-3">
-          <input
-            type="text"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            placeholder="Button label (e.g. Replay)"
-            className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-2 text-xs"
-          />
-          {availableKeys.length > 0 ? (
-            <select
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-2 text-xs"
-            >
-              <option value="">Select hotkey...</option>
-              {availableKeys.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="flex gap-2">
-              <input
+        <div className="space-y-3 rounded-xl border border-line bg-surface-2 p-3 animate-fade-in">
+          <Field label="Button label">
+            {({ id }) => (
+              <Input
+                id={id}
                 type="text"
-                value={newKey}
-                onChange={(e) => setNewKey(e.target.value)}
-                placeholder="OBS hotkey name"
-                className="flex-1 bg-white border border-gray-200 rounded-lg px-2.5 py-2 text-xs"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="e.g. Replay"
               />
-              <button
-                onClick={fetchAvailable}
-                disabled={loading || !connected}
-                className="px-2.5 py-2 rounded-lg bg-[#34B8FF]/10 text-[#1E88E5] text-xs font-bold border border-[#34B8FF]/20 disabled:opacity-40"
-              >
-                {loading ? <i className="ri-loader-4-line animate-spin" /> : "Fetch"}
-              </button>
-            </div>
-          )}
+            )}
+          </Field>
+          <Field label="OBS hotkey">
+            {({ id }) =>
+              availableKeys.length > 0 ? (
+                <select
+                  id={id}
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  className={controlClasses(false, selectClasses)}
+                >
+                  <option value="">Select hotkey…</option>
+                  {availableKeys.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    id={id}
+                    type="text"
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value)}
+                    placeholder="OBS hotkey name"
+                    className="font-mono"
+                    spellCheck={false}
+                  />
+                  <Button
+                    variant="outline"
+                    icon="ri-download-2-line"
+                    loading={loading}
+                    disabled={!connected}
+                    onClick={fetchAvailable}
+                  >
+                    Fetch
+                  </Button>
+                </div>
+              )
+            }
+          </Field>
           <div className="flex gap-2">
-            <button
-              onClick={handleAdd}
-              disabled={!newLabel || !newKey}
-              className="flex-1 py-2 rounded-lg bg-[#34B8FF] text-white text-xs font-bold disabled:opacity-40"
-            >
+            <Button block onClick={handleAdd} disabled={!newLabel || !newKey}>
               Add
-            </button>
-            <button
-              onClick={() => setAdding(false)}
-              className="px-3 py-2 rounded-lg bg-gray-200 text-gray-600 text-xs font-bold"
-            >
+            </Button>
+            <Button variant="ghost" onClick={() => setAdding(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setAdding(true)}
-          className="w-full py-2 rounded-xl bg-gray-50 text-gray-500 text-xs font-bold hover:bg-gray-100 transition-all border border-gray-200 border-dashed"
-        >
-          <i className="ri-add-line mr-1" />
-          Add Hotkey Button
-        </button>
+        <Button variant="outline" block icon="ri-add-line" onClick={() => setAdding(true)} className="border-dashed">
+          Add hotkey button
+        </Button>
       )}
     </div>
   );

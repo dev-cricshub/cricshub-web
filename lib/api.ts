@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "@/lib/site";
 
 // Central fetch wrapper — always sends cookies, redirects to login on 401, adds fallback header
 async function apiFetch(

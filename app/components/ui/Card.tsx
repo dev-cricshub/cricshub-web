@@ -26,9 +26,9 @@ export function Card({
     <Tag
       {...(rest as React.HTMLAttributes<HTMLDivElement>)}
       className={cn(
-        "rounded-2xl border border-line bg-surface shadow-card",
+        "rounded-card border border-line bg-surface shadow-card",
         interactive &&
-          "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised",
+          "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-raised",
         paddings[padding],
         className,
       )}

@@ -1,103 +1,75 @@
 @import url('https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css');
+@import './styles/tokens.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Design tokens
-   Values are RGB channels so Tailwind can apply alpha: bg-primary/10.
-   Broadcast overlays (/overlay, /obs, /preview) don't use these tokens.
-   ────────────────────────────────────────────────────────────────────────── */
 @layer base {
-  :root {
-    --canvas: 247 248 250;
-    --surface: 255 255 255;
-    --surface-2: 243 245 248;
-    --surface-3: 233 237 242;
-    --surface-inverse: 13 20 33;
-
-    --line: 228 232 238;
-    --line-strong: 205 212 222;
-
-    --fg: 13 20 33;
-    --fg-muted: 82 94 112;
-    --fg-subtle: 128 139 156;
-    --fg-inverse: 255 255 255;
-
-    --primary: 30 136 229;
-    --primary-hover: 21 112 201;
-    --primary-fg: 255 255 255;
-    --primary-soft: 238 246 255;
-    --primary-soft-fg: 19 90 163;
-
-    --success: 22 163 74;
-    --success-soft: 236 253 243;
-    --success-soft-fg: 21 112 59;
-
-    --warning: 217 119 6;
-    --warning-soft: 255 247 230;
-    --warning-soft-fg: 146 72 6;
-
-    --danger: 220 38 38;
-    --danger-soft: 254 242 242;
-    --danger-soft-fg: 165 28 28;
-
-    --live: 229 57 53;
-    --ring: 30 136 229;
-    --shadow: 15 23 42;
-
-    color-scheme: light;
-  }
-
-  :root[data-theme='dark'] {
-    --canvas: 9 12 18;
-    --surface: 17 21 29;
-    --surface-2: 24 29 39;
-    --surface-3: 33 39 51;
-    --surface-inverse: 241 244 248;
-
-    --line: 38 45 58;
-    --line-strong: 56 65 82;
-
-    --fg: 236 240 245;
-    --fg-muted: 160 170 186;
-    --fg-subtle: 112 123 141;
-    --fg-inverse: 13 20 33;
-
-    --primary: 66 160 242;
-    --primary-hover: 110 182 246;
-    --primary-fg: 6 18 34;
-    --primary-soft: 17 38 64;
-    --primary-soft-fg: 140 196 250;
-
-    --success: 52 199 112;
-    --success-soft: 14 42 28;
-    --success-soft-fg: 118 222 158;
-
-    --warning: 245 166 35;
-    --warning-soft: 48 33 10;
-    --warning-soft-fg: 250 200 110;
-
-    --danger: 248 92 92;
-    --danger-soft: 52 18 20;
-    --danger-soft-fg: 252 160 160;
-
-    --live: 248 82 76;
-    --ring: 110 182 246;
-    --shadow: 0 0 0;
-
-    color-scheme: dark;
-  }
-
   /* Only app/marketing pages paint the page background; overlay routes stay transparent. */
   html:has(.app-shell) {
     background-color: rgb(var(--canvas));
+    scroll-behavior: smooth;
   }
 
   .app-shell {
     @apply min-h-dvh bg-canvas font-sans text-fg antialiased;
     text-rendering: optimizeLegibility;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Bottom tab bar (MobileTabBar): reserve its height so content and fixed bars sit above it. */
+  .app-shell {
+    --tabbar-h: 0px;
+  }
+  @media (max-width: 767px) {
+    .app-shell:has([data-tabbar]) {
+      --tabbar-h: calc(4rem + env(safe-area-inset-bottom));
+      padding-bottom: var(--tabbar-h);
+    }
+    /* Keyboard open — get the tab bar out of the way like a native app. */
+    .app-shell:has(input:focus, textarea:focus, select:focus, [contenteditable]:focus) [data-tabbar] {
+      display: none;
+    }
+  }
+
+  /* No double-tap-zoom delay on taps */
+  .app-shell a,
+  .app-shell button,
+  .app-shell [role='button'],
+  .app-shell label {
+    touch-action: manipulation;
+  }
+
+  /* iOS zooms the page when focusing inputs under 16px — keep them at 16px on touch phones. */
+  @supports (-webkit-touch-callout: none) {
+    @media (max-width: 767px) {
+      .app-shell input,
+      .app-shell select,
+      .app-shell textarea {
+        font-size: max(16px, 1em);
+      }
+    }
+  }
+
+  /* Launched from the home screen: no rubber-band bounce revealing the page behind. */
+  @media (display-mode: standalone) {
+    html:has(.app-shell) {
+      overscroll-behavior-y: none;
+    }
+    .app-shell {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .app-shell input,
+    .app-shell textarea,
+    .app-shell [contenteditable],
+    .app-shell p,
+    .app-shell td,
+    .app-shell code,
+    .app-shell pre {
+      -webkit-user-select: text;
+      user-select: text;
+    }
   }
 
   .app-shell :focus-visible {
@@ -124,7 +96,7 @@
 
   /* Small uppercase label above section headings */
   .eyebrow {
-    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary;
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-fg-muted;
   }
 
   /* Skeleton shimmer */
@@ -145,7 +117,7 @@
     @apply text-[15px] leading-7 text-fg-muted;
   }
   .prose-legal h2 {
-    @apply mt-12 scroll-mt-24 text-xl font-semibold tracking-tight text-fg first:mt-0;
+    @apply mt-12 scroll-mt-24 font-display text-2xl font-bold uppercase tracking-wide text-fg first:mt-0 sm:text-[1.75rem];
   }
   .prose-legal h3 {
     @apply mt-6 text-base font-semibold text-fg;
@@ -192,6 +164,9 @@
 
 /* Respect reduced-motion inside app/marketing pages only — broadcast overlays keep their animation. */
 @media (prefers-reduced-motion: reduce) {
+  html:has(.app-shell) {
+    scroll-behavior: auto;
+  }
   .app-shell *,
   .app-shell *::before,
   .app-shell *::after {

@@ -7,7 +7,7 @@ type Theme = "light" | "dark";
 
 function readTheme(): Theme {
   if (typeof document === "undefined") return "light";
-  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
 }
 
 /** Light/dark switch. Persists to localStorage("ch-theme"); applied pre-paint in app/layout.tsx. */

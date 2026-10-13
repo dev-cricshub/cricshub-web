@@ -1,9 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import UpiCheckoutModal from "@/app/components/UpiCheckoutModal";
+import { AppHeader } from "@/app/components/layout/AppHeader";
+import {
+  Alert,
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  IconTile,
+  Modal,
+  SectionTitle,
+  cn,
+  useToast,
+} from "@/app/components/ui";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -333,23 +344,50 @@ function SectionLabel({
   icon,
   label,
   sub,
+  id,
 }: {
   icon: string;
   label: string;
   sub?: string;
+  id?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 mb-5 sm:mb-6">
-      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#34B8FF] to-[#1E88E5] flex items-center justify-center shadow-md shadow-blue-200 flex-shrink-0">
-        <i className={`${icon} text-white text-base`} />
-      </div>
-      <div>
-        <h2 className="font-black text-gray-900 text-lg sm:text-xl leading-none">
-          {label}
-        </h2>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-      </div>
+    <SectionTitle
+      id={id}
+      className="mb-5 sm:mb-6"
+      icon={<i className={cn(icon, "text-primary")} aria-hidden />}
+      title={label}
+      description={sub}
+    />
+  );
+}
+
+/** Strike-through original price + current price, right-aligned. */
+function PriceTag({ price, originalPrice, unit = "per match" }: { price: number; originalPrice?: number; unit?: string }) {
+  return (
+    <div className="flex-shrink-0 pl-2 text-right">
+      {originalPrice && (
+        <p className="font-mono text-xs tabular-nums text-fg-subtle line-through">
+          <span className="sr-only">Was </span>
+          {fmt(originalPrice)}
+        </p>
+      )}
+      <p className="font-display text-2xl font-bold leading-none tabular-nums text-fg">{fmt(price)}</p>
+      <p className="text-2xs text-fg-subtle">{unit}</p>
     </div>
+  );
+}
+
+function CheckList({ items, className }: { items: string[]; className?: string }) {
+  return (
+    <ul className={cn("space-y-1.5", className)}>
+      {items.map((f, i) => (
+        <li key={i} className="flex items-start gap-2 text-sm text-fg-muted">
+          <i className="ri-check-line mt-0.5 flex-shrink-0 text-primary" aria-hidden />
+          <span>{f}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -372,82 +410,66 @@ function OverlayPreviewModal({
   const previewUrl = `/preview?overlay=${bannerKey}`;
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex flex-col items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.93)", backdropFilter: "blur(8px)" }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      {/* Header */}
-      <div className="w-full max-w-5xl px-4 pb-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: previewBg }} />
-          <div>
-            <p className="text-white font-black text-sm">{bannerTitle}</p>
-            <p className="text-white/40 text-xs">Live preview · 1920×1080 · sample data</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <a
-            href={previewUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 text-xs font-bold text-white/60 hover:text-white border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-lg transition-all"
-          >
-            <i className="ri-external-link-line" />
+    <Modal
+      open
+      onClose={onClose}
+      size="full"
+      title={bannerTitle}
+      description="Live preview · 1920×1080 · sample data"
+      icon={
+        <span
+          className="h-10 w-10 flex-shrink-0 rounded-xl ring-1 ring-inset ring-line"
+          style={{ background: previewBg }}
+          aria-hidden
+        />
+      }
+      footer={
+        <>
+          <p className="mr-auto hidden text-xs text-fg-subtle sm:block">
+            Preview uses sample data — actual overlay will show live match data
+          </p>
+          <Button variant="secondary" onClick={onClose}>
+            Close preview
+          </Button>
+          <ButtonLink href={previewUrl} external variant="outline" icon="ri-external-link-line">
             Open full size
-          </a>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-          >
-            <i className="ri-close-line text-white" />
-          </button>
-        </div>
-      </div>
-
-      {/* 16:9 iframe */}
-      <div className="w-full max-w-5xl px-4 flex-shrink-0">
+          </ButtonLink>
+        </>
+      }
+    >
+      {/* 16:9 broadcast frame — media is always shown on black, like a monitor */}
+      <div
+        className="relative w-full overflow-hidden rounded-xl bg-black ring-1 ring-line"
+        style={{ aspectRatio: "16/9" }}
+      >
         <div
-          className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
-          style={{ aspectRatio: "16/9" }}
-        >
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: "url('/images/matchStalkImage.jpg')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          />
-          {!iframeLoaded && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-              <i className="ri-loader-4-line text-white/40 text-3xl animate-spin mb-3" />
-              <p className="text-white/40 text-sm font-medium">Loading overlay preview…</p>
-            </div>
-          )}
-          <iframe
-            src={previewUrl}
-            className="absolute inset-0 w-full h-full"
-            style={{ border: "none", opacity: iframeLoaded ? 1 : 0, transition: "opacity 0.3s" }}
-            onLoad={() => setIframeLoaded(true)}
-            allow="autoplay"
-          />
-        </div>
+          className="absolute inset-0"
+          style={{
+            backgroundImage: "url('/images/matchStalkImage.jpg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+          aria-hidden
+        />
+        {!iframeLoaded && (
+          <div role="status" className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/50">
+            <i className="ri-loader-4-line animate-spin text-3xl text-white/70" aria-hidden />
+            <p className="text-sm font-medium text-white/70">Loading overlay preview…</p>
+          </div>
+        )}
+        <iframe
+          src={previewUrl}
+          title={`${bannerTitle} overlay preview`}
+          className="absolute inset-0 h-full w-full"
+          style={{ border: "none", opacity: iframeLoaded ? 1 : 0, transition: "opacity 0.3s" }}
+          onLoad={() => setIframeLoaded(true)}
+          allow="autoplay"
+        />
       </div>
-
-      {/* Footer */}
-      <div className="w-full max-w-5xl px-4 pt-3 flex items-center justify-between">
-        <p className="text-white/30 text-xs">
-          Preview uses sample data — actual overlay will show live match data
-        </p>
-        <button
-          onClick={onClose}
-          className="text-xs font-bold text-white/50 hover:text-white transition-colors"
-        >
-          Close preview
-        </button>
-      </div>
-    </div>
+      <p className="mt-3 text-xs text-fg-subtle sm:hidden">
+        Preview uses sample data — actual overlay will show live match data
+      </p>
+    </Modal>
   );
 }
 
@@ -469,93 +491,60 @@ function BundleOverlayListModal({
     .filter((c) => c.icon);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
-      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl w-full sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: bundle.gradient }}
-            >
-              <i className="ri-stack-line text-white" />
-            </div>
-            <div>
-              <h2 className="font-black text-gray-900 text-base sm:text-lg leading-none">
-                {bundle.name}
-              </h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {cards.length} overlays · ₹{bundle.price}/match · click any to preview
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors flex-shrink-0"
-          >
-            <i className="ri-close-line text-gray-600 text-lg" />
-          </button>
-        </div>
-
-        {/* Desc strip */}
-        <div className="px-5 sm:px-6 py-3 bg-blue-50 border-b border-blue-100 flex-shrink-0">
-          <p className="text-sm text-blue-800">{bundle.desc}</p>
-        </div>
-
-        {/* Overlay grid */}
-        <div
-          className="overflow-y-auto overscroll-contain p-4 sm:p-6"
-          style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+    <Modal
+      open
+      onClose={onClose}
+      size="2xl"
+      title={bundle.name}
+      description={`${cards.length} overlays · ₹${bundle.price}/match · select any to preview`}
+      icon={
+        <span
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-lg text-white ring-1 ring-inset ring-black/5"
+          style={{ background: bundle.gradient }}
+          aria-hidden
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {cards.map((card) => (
-              <div
-                key={card.key}
-                className="rounded-2xl border border-gray-100 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div
-                  className="h-16 sm:h-20 w-full relative flex items-center justify-center"
-                  style={{ background: card.previewBg }}
-                >
-                  <div className="bg-black/25 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2">
-                    <i className={`${card.icon} text-white text-sm`} />
-                    <span className="text-white text-[10px] font-black tracking-widest uppercase">
-                      OBS Overlay
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => onPreview(card.key, card.title, card.previewBg)}
-                    className="absolute top-1.5 right-2 flex items-center gap-1 bg-black/40 hover:bg-black/65 text-white text-[9px] font-bold px-2 py-1 rounded-full transition-colors backdrop-blur-sm"
-                  >
-                    <i className="ri-eye-line text-xs" />
-                    Preview
-                  </button>
-                </div>
-                <div className="p-3 sm:p-4">
-                  <p className="font-black text-gray-900 text-sm leading-tight">{card.title}</p>
-                  <p className="text-xs text-gray-500 leading-relaxed mt-1">{card.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4 flex-shrink-0">
-          <p className="text-xs text-gray-400">All overlays update in real time with live match data.</p>
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-sm font-bold rounded-xl hover:shadow-md transition-all"
-          >
+          <i className="ri-stack-line drop-shadow-sm" />
+        </span>
+      }
+      footer={
+        <>
+          <p className="mr-auto hidden text-xs text-fg-subtle sm:block">
+            All overlays update in real time with live match data.
+          </p>
+          <Button variant="secondary" onClick={onClose}>
             Close
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-4 text-sm text-fg-muted">{bundle.desc}</p>
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map((card) => (
+          <li key={card.key}>
+            <button
+              type="button"
+              onClick={() => onPreview(card.key, card.title, card.previewBg)}
+              className="group flex h-full w-full flex-col overflow-hidden rounded-xl border border-line bg-surface text-left transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="relative flex h-20 w-full items-center justify-center" style={{ background: card.previewBg }}>
+                <span className="flex items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 text-2xs font-medium uppercase tracking-wider text-white backdrop-blur-sm">
+                  <i className={card.icon} aria-hidden />
+                  OBS overlay
+                </span>
+                <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/45 px-2 py-0.5 text-2xs font-medium text-white opacity-90 transition-opacity group-hover:opacity-100">
+                  <i className="ri-eye-line" aria-hidden />
+                  Preview
+                </span>
+              </span>
+              <span className="block p-3.5">
+                <span className="block text-sm font-medium leading-snug text-fg">{card.title}</span>
+                <span className="mt-1 block text-xs leading-relaxed text-fg-muted">{card.desc}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Modal>
   );
 }
 
@@ -576,211 +565,107 @@ function PlanCard({
   const savePct = plan.originalPrice
     ? Math.round((savings / plan.originalPrice) * 100)
     : 0;
+  // Highlighted (6-month) plan uses the selected/highlight treatment: primary ring + soft tint, gold badge.
+  const hl = plan.highlight;
+  const period = plan.cycle === "monthly" ? "/month" : "for 6 months";
 
-  if (plan.highlight) {
-    // ── Premium dark card (6-Month) ──────────────────────────────────────
-    return (
-      <div
-        onClick={onToggle}
-        className={`relative cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 select-none
-          ${inCart ? "ring-2 ring-[#34B8FF] shadow-2xl shadow-blue-500/25 scale-[1.02]" : "shadow-xl hover:shadow-2xl hover:shadow-blue-900/40 hover:scale-[1.01]"}`}
-        style={{ background: "linear-gradient(145deg,#0B1F40 0%,#0e2a58 60%,#1a3a6e 100%)" }}
-      >
-        {/* Subtle glow orbs */}
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-blue-400/8 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-36 h-36 rounded-full bg-indigo-500/8 blur-3xl pointer-events-none" />
-        {/* Top accent line */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#34B8FF]/60 to-transparent" />
-
-        <div className="relative z-10 p-6 sm:p-7 flex flex-col h-full">
-          {/* Badge row */}
-          <div className="flex items-center justify-between mb-5">
-            <span className="text-[10px] font-black text-blue-300 uppercase tracking-widest">
-              {plan.badge}
-            </span>
-            <span className="flex items-center gap-1 bg-amber-400 text-amber-900 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide">
-              🏷 Launch Offer
-            </span>
-          </div>
-
-          {/* Plan name */}
-          <h3 className="text-white font-black text-xl sm:text-2xl mb-4">
-            {plan.name}
-          </h3>
-
-          {/* Pricing block */}
-          <div className="mb-5">
-            <div className="flex items-center gap-2 mb-1.5">
-              {plan.originalPrice && (
-                <span className="text-white/35 text-base font-semibold line-through">
-                  {fmt(plan.originalPrice)}
-                </span>
-              )}
-              {savePct > 0 && (
-                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  {savePct}% OFF
-                </span>
-              )}
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-white font-black text-4xl sm:text-5xl tracking-tight">
-                {fmt(plan.price)}
-              </span>
-              <span className="text-white/45 text-sm">for 6 months</span>
-            </div>
-            {plan.perMonth && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-blue-300 text-xs font-bold">
-                  ≈ ₹{plan.perMonth}/month
-                </span>
-                <span className="w-1 h-1 rounded-full bg-white/20" />
-                <span className="text-white/35 text-xs">
-                  Save {fmt(savings)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="h-px bg-white/10 mb-5" />
-
-          {/* Features */}
-          <div className="space-y-4 mb-6 flex-1">
-            <div>
-              <p className="text-[9px] font-black text-blue-300/60 uppercase tracking-widest mb-2.5">
-                Streaming Dashboard
-              </p>
-              <ul className="space-y-2">
-                {plan.streamingFeatures.map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-white/65">
-                    <i className="ri-check-circle-fill text-[#34B8FF] flex-shrink-0 mt-0.5 text-[13px]" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="text-[9px] font-black text-blue-300/60 uppercase tracking-widest mb-2.5">
-                Included Overlays
-              </p>
-              <ul className="space-y-2">
-                {plan.bundleFeatures.map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-white/65">
-                    <i className="ri-check-circle-fill text-[#34B8FF] flex-shrink-0 mt-0.5 text-[13px]" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* CTA */}
-          <div
-            className={`w-full py-3.5 rounded-xl text-sm font-black text-center transition-all duration-200 ${
-              inCart
-                ? "bg-[#34B8FF]/15 text-[#34B8FF] border border-[#34B8FF]/30"
-                : "bg-white text-[#0D2654] hover:bg-blue-50"
-            }`}
-          >
-            {inCart ? "✓ Selected" : "⚡ Get Best Value"}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Clean white card (Monthly) ─────────────────────────────────────────
   return (
     <div
-      onClick={onToggle}
-      className={`relative cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 select-none bg-white
-        ${inCart ? "ring-2 ring-[#34B8FF] shadow-2xl shadow-blue-100 scale-[1.02]" : "border-2 border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-lg hover:scale-[1.01]"}`}
+      className={cn(
+        "relative flex flex-col rounded-card border p-5 text-fg transition-[box-shadow,transform,border-color,background-color] duration-200 ease-out sm:p-6",
+        hl ? "border-primary/40 bg-primary-soft/40 shadow-raised" : "border-line bg-surface shadow-card",
+        inCart
+          ? "ring-2 ring-primary ring-offset-2 ring-offset-canvas"
+          : cn("hover:-translate-y-0.5 hover:shadow-raised", hl ? "ring-2 ring-primary" : "hover:border-line-strong"),
+      )}
     >
-      {/* Subtle top gradient strip */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5]" />
-
-      <div className="p-6 sm:p-7 flex flex-col h-full pt-7">
-        {/* Badge row */}
-        <div className="flex items-center justify-between mb-5">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+      {/* Badge row */}
+      <div className="mb-4 flex items-center justify-between gap-2">
+        {hl ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold ring-1 ring-inset ring-gold/30">
+            <i className="ri-star-fill" aria-hidden />
             {plan.badge}
           </span>
-          <span className="flex items-center gap-1 bg-amber-400 text-amber-900 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide">
-            🏷 Launch Offer
-          </span>
+        ) : (
+          <span className="text-xs font-medium text-fg-muted">{plan.badge}</span>
+        )}
+        <Badge tone="warning" icon="ri-price-tag-3-line" size="xs">
+          Launch offer
+        </Badge>
+      </div>
+
+      <h3 className="text-base font-semibold">{plan.name}</h3>
+
+      {/* Pricing block */}
+      <div className="mt-2">
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-5xl font-bold leading-none tabular-nums">{fmt(plan.price)}</span>
+          <span className="text-sm text-fg-muted">{period}</span>
         </div>
-
-        {/* Plan name */}
-        <h3 className="text-gray-900 font-black text-xl sm:text-2xl mb-4">
-          {plan.name}
-        </h3>
-
-        {/* Pricing block */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1.5">
-            {plan.originalPrice && (
-              <span className="text-gray-350 text-base font-semibold line-through text-gray-400">
-                {fmt(plan.originalPrice)}
-              </span>
-            )}
-            {savePct > 0 && (
-              <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-100">
-                {savePct}% OFF
-              </span>
-            )}
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[#1E88E5] font-black text-4xl sm:text-5xl tracking-tight">
-              {fmt(plan.price)}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          {plan.originalPrice && (
+            <span className="font-mono tabular-nums text-fg-subtle line-through">
+              <span className="sr-only">Was </span>
+              {fmt(plan.originalPrice)}
             </span>
-            <span className="text-gray-400 text-sm">/month</span>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="h-px bg-gray-100 mb-5" />
-
-        {/* Features */}
-        <div className="space-y-4 mb-6 flex-1">
-          <div>
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5">
-              Streaming Dashboard
-            </p>
-            <ul className="space-y-2">
-              {plan.streamingFeatures.map((f, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                  <i className="ri-check-circle-fill text-[#34B8FF] flex-shrink-0 mt-0.5 text-[13px]" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5">
-              Included Overlays
-            </p>
-            <ul className="space-y-2">
-              {plan.bundleFeatures.map((f, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                  <i className="ri-check-circle-fill text-[#34B8FF] flex-shrink-0 mt-0.5 text-[13px]" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div
-          className={`w-full py-3.5 rounded-xl text-sm font-black text-center transition-all duration-200 ${
-            inCart
-              ? "bg-[#34B8FF]/10 text-[#1E88E5] border-2 border-[#34B8FF]/25"
-              : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-blue-50 hover:text-[#1E88E5] hover:border-blue-100"
-          }`}
-        >
-          {inCart ? "✓ Selected" : "Select Plan"}
+          )}
+          {savePct > 0 && (
+            <Badge tone="success" size="xs">
+              {savePct}% off
+            </Badge>
+          )}
+          {hl && plan.perMonth && (
+            <span className="text-fg-muted">
+              ≈ ₹{plan.perMonth}/month · Save {fmt(savings)}
+            </span>
+          )}
         </div>
       </div>
+
+      <div className="my-5 h-px bg-line" aria-hidden />
+
+      {/* Features */}
+      <div className="mb-6 flex-1 space-y-4">
+        {[
+          { label: "Streaming dashboard", items: plan.streamingFeatures },
+          { label: "Included overlays", items: plan.bundleFeatures },
+        ].map((group) => (
+          <div key={group.label}>
+            <p className="mb-2 text-2xs font-medium uppercase tracking-wider text-fg-subtle">
+              {group.label}
+            </p>
+            <ul className="space-y-2">
+              {group.items.map((f, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-fg-muted">
+                  <i className="ri-check-line mt-0.5 flex-shrink-0 text-primary" aria-hidden />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA — the whole card is clickable via the stretched ::after, but this is the single real control */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={inCart}
+        aria-label={`${plan.name} — ${fmt(plan.price)} ${period}`}
+        className={cn(
+          "inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98]",
+          "after:absolute after:inset-0 after:rounded-card after:content-['']",
+          "focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-offset-2 focus-visible:after:ring-offset-canvas",
+          inCart
+            ? "bg-primary-soft text-primary-soft-fg ring-1 ring-inset ring-primary/30 hover:bg-primary-soft/70"
+            : hl
+              ? "bg-primary text-primary-fg shadow-xs hover:bg-primary-hover"
+              : "border border-line-strong bg-surface text-fg shadow-xs hover:border-fg-subtle hover:bg-surface-2",
+        )}
+      >
+        <i className={inCart ? "ri-checkbox-circle-fill" : hl ? "ri-flashlight-line" : "ri-add-line"} aria-hidden />
+        {inCart ? "Selected" : hl ? "Get best value" : "Select plan"}
+      </button>
     </div>
   );
 }
@@ -797,86 +682,63 @@ function BundleShowcaseCard({
   onPreview: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const listId = `${bundle.id}-overlays`;
+  const visible = expanded ? bundle.overlays : bundle.overlays.slice(0, 3);
   return (
-    <div className="rounded-2xl border border-gray-100 overflow-hidden bg-white shadow-sm hover:shadow-md transition-all flex flex-col">
-      <div
-        className="h-24 sm:h-28 relative flex-shrink-0"
-        style={{ background: bundle.gradient }}
-      >
+    <Card padding="none" className="flex flex-col overflow-hidden">
+      <div className="relative h-24 flex-shrink-0 sm:h-28" style={{ background: bundle.gradient }}>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-black/25 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
-            OBS Overlays
+          <span className="rounded-full bg-black/30 px-3 py-1 text-2xs font-medium uppercase tracking-wider text-white backdrop-blur-sm">
+            OBS overlays
           </span>
         </div>
-        <div className="absolute top-2.5 left-2.5 bg-white/20 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full">
+        <span className="absolute left-2.5 top-2.5 rounded-full bg-black/30 px-2 py-0.5 text-2xs font-medium text-white backdrop-blur-sm">
           {bundle.overlayCount} overlays
-        </div>
-        <div className="absolute top-2.5 right-2.5 bg-amber-400 text-amber-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
-          🏷 Launch Offer
-        </div>
+        </span>
+        <Badge tone="warning" size="xs" className="absolute right-2.5 top-2.5">
+          Launch offer
+        </Badge>
       </div>
-      <div className="p-4 sm:p-5 flex flex-col flex-1">
-        <div className="flex items-start justify-between gap-2 mb-2">
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="font-black text-gray-900 text-base">{bundle.name}</p>
-            <p className="text-xs text-gray-500 mt-0.5 leading-snug">
-              {bundle.desc}
-            </p>
+            <h3 className="text-base font-semibold text-fg">{bundle.name}</h3>
+            <p className="mt-0.5 text-sm leading-snug text-fg-muted">{bundle.desc}</p>
           </div>
-          <div className="text-right flex-shrink-0 pl-2">
-            {bundle.originalPrice && (
-              <p className="text-xs text-gray-400 line-through leading-none mb-0.5">
-                {fmt(bundle.originalPrice)}
-              </p>
-            )}
-            <p className="font-black text-gray-900 text-lg leading-none">
-              {fmt(bundle.price)}
-            </p>
-            <p className="text-[10px] text-gray-400">per match</p>
-          </div>
+          <PriceTag price={bundle.price} originalPrice={bundle.originalPrice} />
         </div>
 
-        {/* Overlay list — collapsible */}
-        <ul
-          className={`space-y-1 mt-3 overflow-hidden transition-all duration-300 flex-1 ${expanded ? "max-h-96" : "max-h-20"}`}
-        >
-          {bundle.overlays.map((o, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-1.5 text-xs text-gray-500"
-            >
-              <i className="ri-check-line text-[#34B8FF] flex-shrink-0 mt-0.5" />
+        <ul id={listId} className="mt-4 flex-1 space-y-1.5">
+          {visible.map((o, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs text-fg-muted animate-fade-in">
+              <i className="ri-check-line mt-px flex-shrink-0 text-primary" aria-hidden />
               {o}
             </li>
           ))}
         </ul>
         {bundle.overlays.length > 3 && (
           <button
+            type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="mt-2 text-xs font-bold text-[#34B8FF] hover:text-[#1E88E5] flex items-center gap-1 transition-colors"
+            aria-expanded={expanded}
+            aria-controls={listId}
+            className="mt-2 inline-flex items-center gap-1 self-start rounded text-xs font-medium text-primary transition-colors hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <i className={`ri-arrow-${expanded ? "up" : "down"}-s-line`} />
-            {expanded
-              ? "Show less"
-              : `+${bundle.overlays.length - 3} more overlays`}
+            <i className={`ri-arrow-${expanded ? "up" : "down"}-s-line`} aria-hidden />
+            {expanded ? "Show less" : `+${bundle.overlays.length - 3} more overlays`}
           </button>
         )}
 
-        <div className="flex gap-2 mt-3">
-          <button
-            onClick={onPreview}
-            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-blue-200 transition-all"
-          >
-            <i className="ri-eye-line" />
-            Preview Overlays
-          </button>
-          <div className="flex-shrink-0 py-2.5 px-3 rounded-xl bg-gray-50 text-gray-400 text-xs font-bold text-center border border-gray-100 flex items-center justify-center gap-1.5">
-            <i className="ri-broadcast-line" />
+        <div className="mt-4 flex gap-2">
+          <Button variant="outline" size="sm" icon="ri-eye-line" className="flex-1" onClick={onPreview}>
+            Preview overlays
+          </Button>
+          <ButtonLink href="/dashboard" variant="ghost" size="sm" icon="ri-broadcast-line">
             Dashboard
-          </div>
+          </ButtonLink>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -891,79 +753,55 @@ function AddOnShowcaseCard({
   tpl: (typeof ADDON_TEMPLATES)[0];
   onPreview: () => void;
 }) {
-  const tierStyle = "bg-amber-100 text-amber-700 border-amber-200";
-
   return (
-    <div className="rounded-2xl border border-gray-100 overflow-hidden bg-white shadow-sm hover:shadow-md transition-all flex flex-col">
-      <div
-        className="h-24 sm:h-28 relative flex-shrink-0 cursor-pointer group"
-        style={{ background: tpl.previewGradient }}
+    <Card padding="none" className="flex flex-col overflow-hidden">
+      <button
+        type="button"
         onClick={onPreview}
+        aria-label={`Preview ${tpl.name}`}
+        className="group relative h-24 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:h-28"
+        style={{ background: tpl.previewGradient }}
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-black/25 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full group-hover:bg-black/40 transition-colors">
-            OBS Overlay
+        <span className="absolute inset-0 flex items-center justify-center">
+          <span className="flex items-center gap-1.5 rounded-full bg-black/30 px-3 py-1 text-2xs font-medium uppercase tracking-wider text-white backdrop-blur-sm transition-colors group-hover:bg-black/50">
+            <i className="ri-eye-line opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden />
+            OBS overlay
           </span>
-        </div>
-        {/* Preview hint on hover */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <span className="bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-            <i className="ri-eye-line" />
-            Click to preview
-          </span>
-        </div>
-        {(tpl as any).popular && (
-          <div className="absolute top-2.5 left-2.5 bg-amber-400 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
-            🔥 Popular
-          </div>
+        </span>
+        {tpl.popular && (
+          <Badge tone="warning" size="xs" icon="ri-fire-line" className="absolute left-2.5 top-2.5">
+            Popular
+          </Badge>
         )}
-      </div>
-      <div className="p-4 sm:p-5 flex flex-col flex-1">
-        <div className="flex items-start justify-between gap-2 mb-3">
+      </button>
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
+        <div className="mb-3 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="font-black text-gray-900 text-base">{tpl.name}</p>
-            <span
-              className={`text-[9px] font-black border px-2 py-0.5 rounded-full inline-block mt-1 ${tierStyle}`}
-            >
-              {tpl.tier.toUpperCase()}
-            </span>
+            <h3 className="text-base font-semibold text-fg">{tpl.name}</h3>
+            <Badge tone="outline" size="xs" className="mt-1 uppercase tracking-wider">
+              {tpl.tier}
+            </Badge>
           </div>
-          <div className="text-right flex-shrink-0 pl-2">
-            {(tpl as any).originalPrice && (
-              <p className="text-xs text-gray-400 line-through leading-none mb-0.5">
-                ₹{(tpl as any).originalPrice}
-              </p>
-            )}
-            <p className="font-black text-gray-900 text-lg leading-none">₹{tpl.price}</p>
-            <p className="text-[10px] text-gray-400">per match</p>
-          </div>
+          <PriceTag price={tpl.price} originalPrice={tpl.originalPrice} />
         </div>
-        <ul className="space-y-1 mb-4 flex-1">
+        <ul className="mb-4 flex-1 space-y-1.5">
           {tpl.features.map((f, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-1.5 text-xs text-gray-500"
-            >
-              <i className="ri-check-line text-[#34B8FF] flex-shrink-0 mt-0.5" />
+            <li key={i} className="flex items-start gap-2 text-xs text-fg-muted">
+              <i className="ri-check-line mt-px flex-shrink-0 text-primary" aria-hidden />
               {f}
             </li>
           ))}
         </ul>
-        <div className="flex gap-2 mt-auto">
-          <button
-            onClick={onPreview}
-            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-blue-200 transition-all"
-          >
-            <i className="ri-eye-line" />
+        <div className="mt-auto flex gap-2">
+          <Button variant="outline" size="sm" icon="ri-eye-line" className="flex-1" onClick={onPreview}>
             Preview
-          </button>
-          <div className="flex-shrink-0 py-2.5 px-3 rounded-xl bg-gray-50 text-gray-400 text-xs font-bold text-center border border-gray-100 flex items-center justify-center gap-1.5">
-            <i className="ri-broadcast-line" />
+          </Button>
+          <ButtonLink href="/dashboard" variant="ghost" size="sm" icon="ri-broadcast-line">
             Dashboard
-          </div>
+          </ButtonLink>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -979,39 +817,27 @@ function SuccessScreen({
   onDone: () => void;
 }) {
   return (
-    <div className="max-w-lg mx-auto text-center py-10 sm:py-12 px-4">
-      <div className="relative w-24 sm:w-28 h-24 sm:h-28 mx-auto mb-6 sm:mb-8">
-        <div
-          className="absolute inset-0 rounded-full bg-emerald-400"
-          style={{ animation: "ping .8s ease 1" }}
-        />
-        <div className="relative w-24 sm:w-28 h-24 sm:h-28 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-2xl shadow-green-200">
-          <i className="ri-check-line text-4xl sm:text-5xl text-white" />
-        </div>
+    <Card padding="lg" className="mx-auto max-w-lg text-center animate-fade-up">
+      <div className="relative mx-auto mb-6 h-16 w-16">
+        <span className="absolute inset-0 rounded-full bg-success/30 animate-live-ping [animation-iteration-count:2]" aria-hidden />
+        <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-success text-3xl text-white shadow-raised animate-pop">
+          <i className="ri-check-line" aria-hidden />
+        </span>
       </div>
-      <h2 className="text-3xl sm:text-4xl font-black text-gray-900 mb-2">
-        All set! 🎉
-      </h2>
-      <p className="text-gray-500 mb-8 sm:mb-10 text-sm sm:text-base">
-        Your <strong>{plan.name}</strong> plan is active once the owner confirms
+      <h2 className="font-display text-3xl font-bold uppercase leading-none text-fg sm:text-4xl">You&rsquo;re all set</h2>
+      <p className="mx-auto mt-2 max-w-sm text-sm text-fg-muted sm:text-base">
+        Your <strong className="font-medium text-fg">{plan.name}</strong> plan is active once the owner confirms
         your payment. Head to the streaming dashboard to get started.
       </p>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={onDone}
-          className="flex-1 h-12 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
-        >
-          Back to Plans
-        </button>
-        <Link
-          href="/dashboard"
-          className="flex-1 h-12 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all flex items-center justify-center gap-2"
-        >
-          <i className="ri-live-line" />
-          Go to Dashboard
-        </Link>
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
+        <Button variant="secondary" size="lg" className="flex-1" onClick={onDone}>
+          Back to plans
+        </Button>
+        <ButtonLink href="/dashboard" size="lg" icon="ri-live-line" className="flex-1">
+          Go to dashboard
+        </ButtonLink>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -1019,7 +845,14 @@ function SuccessScreen({
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 
+const HOW_IT_WORKS = [
+  "Open your Match Dashboard.",
+  "Pick a bundle style & pay via UPI.",
+  "Activate overlays on your stream.",
+];
+
 export default function PricingPage() {
+  const toast = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [step, setStep] = useState<PageStep>("plans");
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
@@ -1058,7 +891,11 @@ export default function PricingPage() {
   const handleCheckout = () => {
     const userId = localStorage.getItem("userUUID");
     if (!userId) {
-      alert("You must be logged in to purchase a plan.");
+      // The pricing page uses AppHeader (no login-modal listener), so point to its Log in button.
+      toast("Log in to continue", {
+        tone: "warning",
+        description: "You must be logged in to purchase a plan. Use Log in at the top of the page.",
+      });
       return;
     }
     if (!selectedPlan) return;
@@ -1076,9 +913,10 @@ export default function PricingPage() {
       ? (localStorage.getItem("userUUID") ?? "")
       : "";
   const planEnum = selectedPlan?.id === "sub-monthly" ? "MONTHLY" : "SIX_MONTH";
+  const showCheckoutBar = step === "plans" && cart.length > 0;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="min-h-screen bg-canvas">
       {/* Bundle overlay list modal */}
       {previewBundle && (
         <BundleOverlayListModal
@@ -1108,50 +946,18 @@ export default function PricingPage() {
         />
       )}
 
-      {/* Navbar */}
-      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="flex items-center gap-2 sm:gap-3 flex-shrink-0"
-          >
-            <Image
-              src="/images/iconLogo.png"
-              alt="Cricshub"
-              width={32}
-              height={32}
-              className="rounded-lg"
-            />
-            <Image
-              src="/images/textLogo.png"
-              alt="Cricshub"
-              width={88}
-              height={26}
-              className="object-contain hidden sm:block"
-            />
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              href="/dashboard"
-              className="text-sm text-gray-500 hover:text-gray-800 font-semibold transition-colors hidden sm:block"
-            >
-              Dashboard
-            </Link>
-            {cart.length > 0 && (
-              <button
-                onClick={handleCheckout}
-                className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white text-xs sm:text-sm font-bold px-3 sm:px-4 py-2 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all"
-              >
-                <i className="ri-qr-code-line" />
-                <span className="hidden min-[480px]:inline">Pay via UPI</span>
-                <span className="min-[480px]:hidden">Pay</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </nav>
+      <AppHeader
+        maxWidth="max-w-6xl"
+        trailing={
+          cart.length > 0 && (
+            <Button size="sm" icon="ri-qr-code-line" onClick={handleCheckout} className="hidden sm:inline-flex">
+              Pay via UPI
+            </Button>
+          )
+        }
+      />
 
-      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-6xl">
+      <main className="container-page max-w-6xl py-8 sm:py-12">
         {step === "success" && selectedPlan && (
           <SuccessScreen
             plan={selectedPlan}
@@ -1166,77 +972,70 @@ export default function PricingPage() {
         {step === "plans" && (
           <div className="space-y-12 sm:space-y-16">
             {/* Hero */}
-            <div className="text-center px-2">
-              <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-[#1E88E5] text-xs font-black px-4 py-2 rounded-full mb-4 sm:mb-5 uppercase tracking-widest">
-                <i className="ri-live-line text-red-500 animate-pulse" />
-                Streaming Plans
-              </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-3 sm:mb-4 leading-tight">
+            <header className="mx-auto max-w-2xl text-center animate-fade-up">
+              <p className="eyebrow mb-3">
+                <span className="h-[2px] w-5 bg-primary" aria-hidden />
+                Streaming plans
+              </p>
+              <h1 className="font-display text-[2.6rem] font-bold uppercase leading-[0.92] tracking-[-0.01em] text-fg sm:text-6xl">
                 Stream for free.
                 <br />
-                <span className="bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] bg-clip-text text-transparent">
-                  Upgrade per match.
-                </span>
+                Upgrade per match.
               </h1>
-              <p className="text-gray-500 text-base sm:text-lg max-w-2xl mx-auto">
+              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-fg-muted">
                 The streaming dashboard is free for all match admins. Buy a
                 bundle (from ₹49/match) for polished overlays, or subscribe to
                 get one free bundle credit per match you create.
               </p>
-              <div className="inline-flex items-center gap-2 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-bold px-4 py-2 rounded-full mt-4 flex-wrap justify-center">
-                <i className="ri-bank-line" />
+              <p className="mt-5 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-medium text-fg-muted shadow-xs">
+                <i className="ri-bank-line text-primary" aria-hidden />
                 Pay via UPI · PhonePe · GPay · Paytm · BHIM
-              </div>
-            </div>
+              </p>
+            </header>
 
-            {/* Free tier */}
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
-                <i className="ri-bar-chart-2-line text-gray-400 text-lg" />
-              </div>
-              <div className="flex-1">
-                <p className="font-black text-gray-900">Free — always</p>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  Every match admin gets the streaming dashboard and a plain
-                  score overlay (live score, batters, bowler) at no cost.
-                </p>
-              </div>
-              <span className="text-xs font-black text-gray-400 bg-white border border-gray-200 px-3 py-1.5 rounded-full flex-shrink-0 self-start sm:self-auto">
-                ₹0
-              </span>
-            </div>
-
-            {/* Basic Bundle callout */}
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 rounded-xl bg-white border border-blue-100 flex items-center justify-center flex-shrink-0">
-                <i className="ri-stack-line text-[#34B8FF] text-lg" />
-              </div>
-              <div className="flex-1">
-                <p className="font-black text-gray-900">
-                  Overlay Bundles{" "}
-                  <span className="text-xs font-bold text-[#1E88E5] bg-blue-100 px-2 py-0.5 rounded-full ml-1">
-                    per match
-                  </span>
-                </p>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  4 bundle styles available — IPL, WPL, Champions Trophy, and
-                  Border-Gavaskar. Each bundle unlocks 8 overlays for one match. Buy
-                  directly from your Stream Dashboard.
-                </p>
-              </div>
-              <span className="text-xs font-black text-[#1E88E5] bg-blue-100 px-3 py-1.5 rounded-full flex-shrink-0 self-start sm:self-auto whitespace-nowrap">
-                from ₹49 / match
-              </span>
+            {/* Free tier + bundle callouts */}
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+              <Card padding="none" className="flex items-start gap-4 p-4 sm:p-5">
+                <IconTile icon="ri-bar-chart-2-line" tone="neutral" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-base font-semibold text-fg">Free — always</h2>
+                    <span className="font-display text-2xl font-bold leading-none tabular-nums text-fg">₹0</span>
+                  </div>
+                  <p className="mt-1 text-sm text-fg-muted">
+                    Every match admin gets the streaming dashboard and a plain
+                    score overlay (live score, batters, bowler) at no cost.
+                  </p>
+                </div>
+              </Card>
+              <Card padding="none" className="flex items-start gap-4 p-4 sm:p-5">
+                <IconTile icon="ri-stack-line" tone="primary" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-base font-semibold text-fg">Overlay Bundles</h2>
+                    <span className="whitespace-nowrap font-display text-2xl font-bold leading-none tabular-nums text-fg">
+                      <span className="font-sans text-xs font-normal text-fg-subtle">from </span>₹49
+                      <span className="font-sans text-xs font-normal text-fg-subtle"> / match</span>
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-fg-muted">
+                    4 bundle styles available — IPL, WPL, Champions Trophy, and
+                    Border-Gavaskar. Each bundle unlocks 8 overlays for one match. Buy
+                    directly from your Stream Dashboard.
+                  </p>
+                </div>
+              </Card>
             </div>
 
             {/* Subscription Plans */}
-            <div>
+            <section aria-labelledby="plans-heading">
               <SectionLabel
+                id="plans-heading"
                 icon="ri-vip-crown-line"
                 label="Subscription Plans"
                 sub="Get 1 free bundle credit per match — choose your overlay style each time."
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl">
+              <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:max-w-4xl">
                 {SUBSCRIPTION_PLANS.map((plan) => (
                   <PlanCard
                     key={plan.id}
@@ -1246,49 +1045,37 @@ export default function PricingPage() {
                   />
                 ))}
               </div>
-            </div>
+            </section>
 
             {/* Bundle Showcase */}
-            <div>
+            <section aria-labelledby="bundles-heading">
               <SectionLabel
+                id="bundles-heading"
                 icon="ri-layout-top-2-line"
                 label="Overlay Bundles"
                 sub="4 styles, 8 overlays each — ₹49/match · Launch Offer. Buy from your Stream Dashboard."
               />
 
-              {/* How it works — responsive steps */}
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 sm:px-6 py-4 mb-5 sm:mb-6">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#1E88E5] font-black shadow-sm flex-shrink-0 text-sm">
-                      1
-                    </div>
-                    <p className="text-sm font-semibold text-blue-900">
-                      Open your Match Dashboard.
-                    </p>
-                  </div>
-                  <i className="ri-arrow-right-line text-blue-300 hidden sm:block flex-shrink-0" />
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#1E88E5] font-black shadow-sm flex-shrink-0 text-sm">
-                      2
-                    </div>
-                    <p className="text-sm font-semibold text-blue-900">
-                      Pick a bundle style & pay via UPI.
-                    </p>
-                  </div>
-                  <i className="ri-arrow-right-line text-blue-300 hidden sm:block flex-shrink-0" />
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#1E88E5] flex items-center justify-center text-white font-black shadow-sm flex-shrink-0 text-sm">
-                      3
-                    </div>
-                    <p className="text-sm font-semibold text-blue-900">
-                      Activate overlays on your stream.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              {/* How it works */}
+              <ol className="mb-5 grid gap-px overflow-hidden rounded-card border border-line bg-line sm:mb-6 sm:grid-cols-3">
+                {HOW_IT_WORKS.map((text, i) => (
+                  <li key={i} className="flex items-center gap-3 bg-surface px-4 py-3.5 sm:px-5">
+                    <span
+                      className={cn(
+                        "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                        i === HOW_IT_WORKS.length - 1
+                          ? "bg-primary text-primary-fg"
+                          : "bg-primary-soft text-primary-soft-fg",
+                      )}
+                    >
+                      {i + 1}
+                    </span>
+                    <p className="text-sm font-medium text-fg">{text}</p>
+                  </li>
+                ))}
+              </ol>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                 {BUNDLE_CATALOGUE.map((bundle) => (
                   <BundleShowcaseCard
                     key={bundle.id}
@@ -1297,39 +1084,31 @@ export default function PricingPage() {
                   />
                 ))}
               </div>
-            </div>
+            </section>
 
             {/* Premium Add-on Templates */}
-            <div>
+            <section aria-labelledby="addons-heading">
               <SectionLabel
-                icon="ri-vip-crown-line"
+                id="addons-heading"
+                icon="ri-magic-line"
                 label="Premium Add-on Templates"
                 sub="5 animated per-match templates · ₹21–₹49 · Launch Offer. Buy from your Stream Dashboard."
               />
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 sm:px-6 py-4 mb-5 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <i className="ri-information-line text-amber-600 text-xl flex-shrink-0" />
-                <p className="text-sm text-amber-800">
-                  These animated templates are purchased per match directly from
-                  your{" "}
-                  <Link href="/dashboard" className="font-bold underline">
-                    Stream Dashboard
-                  </Link>
-                  . No subscription required — each template unlocks for a
-                  single match.
-                </p>
+              <Alert tone="info" className="mb-4">
+                These animated templates are purchased per match directly from
+                your{" "}
+                <a href="/dashboard" className="rounded-sm font-medium underline underline-offset-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  Stream Dashboard
+                </a>
+                . No subscription required — each template unlocks for a
+                single match.
+              </Alert>
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                <Badge tone="warning" icon="ri-flashlight-line">Pro tier</Badge>
+                <Badge tone="primary">₹21–₹49 / match</Badge>
+                <Badge tone="neutral">5 templates</Badge>
               </div>
-              <div className="flex flex-wrap items-center gap-2 mb-5">
-                <span className="inline-flex items-center gap-1.5 text-xs font-black bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full whitespace-nowrap">
-                  ⚡ Pro tier
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-xs font-black bg-blue-50 text-[#1E88E5] border border-blue-200 px-3 py-1.5 rounded-full whitespace-nowrap">
-                  ₹21–₹49 / match
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-xs font-black bg-gray-100 text-gray-500 border border-gray-200 px-3 py-1.5 rounded-full whitespace-nowrap">
-                  5 templates
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {ADDON_TEMPLATES.map((tpl) => (
                   <AddOnShowcaseCard
                     key={tpl.id}
@@ -1338,48 +1117,35 @@ export default function PricingPage() {
                       openOverlayPreview(
                         tpl.id,
                         tpl.name,
-                        tpl.previewGradient ?? "linear-gradient(135deg,#111,#333)",
+                        tpl.previewGradient ?? "rgb(var(--surface-3))",
                       )
                     }
                   />
                 ))}
               </div>
-            </div>
+            </section>
           </div>
         )}
-      </div>
+      </main>
 
       {/* Sticky bottom checkout bar */}
-      {step === "plans" && cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-2xl">
-          <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between max-w-6xl gap-3 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl border-2 border-white flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#34B8FF] to-[#1E88E5] shadow-md">
-                <i className="ri-vip-crown-line text-white text-xs" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-gray-400 truncate max-w-[140px] sm:max-w-none">
-                  {cart[0].name}
-                </p>
-                <p className="font-black text-gray-900 text-sm">{fmt(total)}</p>
+      {showCheckoutBar && (
+        <div className="fixed inset-x-0 bottom-[var(--tabbar-h,0px)] z-30 border-t border-line bg-surface/95 shadow-pop backdrop-blur-xl animate-sheet-up supports-[backdrop-filter]:bg-surface/80">
+          <div className="container-page flex max-w-6xl items-center justify-between gap-3 py-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)-var(--tabbar-h,0px)))] sm:gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <IconTile icon="ri-vip-crown-line" size="sm" />
+              <div className="min-w-0" aria-live="polite">
+                <p className="truncate text-xs text-fg-muted">{cart[0].name}</p>
+                <p className="font-display text-2xl font-bold leading-none tabular-nums text-fg">{fmt(total)}</p>
               </div>
             </div>
-            <button
-              onClick={handleCheckout}
-              className="flex items-center gap-2 bg-gradient-to-r from-[#34B8FF] to-[#1E88E5] text-white font-black px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl hover:shadow-xl hover:shadow-blue-200 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
-            >
-              <i className="ri-qr-code-line text-lg" />
-              <span>Pay via UPI</span>
-            </button>
+            <Button size="lg" icon="ri-qr-code-line" onClick={handleCheckout} className="flex-shrink-0">
+              Pay via UPI
+            </Button>
           </div>
         </div>
       )}
-      {cart.length > 0 && step === "plans" && <div className="h-24" />}
-
-      <link
-        href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
-        rel="stylesheet"
-      />
+      {showCheckoutBar && <div className="h-24" aria-hidden />}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import type { VmixReplayState, VmixReplayEvent } from "@/lib/streaming/types";
+import { Button, LiveBadge, cn } from "@/app/components/ui";
+import { SubLabel, pressClasses } from "../StudioKit";
 
 const SPEED_OPTIONS = [
   { value: 0.1, label: "0.1x" },
@@ -11,14 +13,14 @@ const SPEED_OPTIONS = [
 ];
 
 const CRICKET_EVENTS = [
-  { label: "Boundary (4)", icon: "ri-number-4", color: "blue" },
-  { label: "Six (6)", icon: "ri-number-6", color: "purple" },
-  { label: "Wicket", icon: "ri-fire-line", color: "red" },
-  { label: "Catch", icon: "ri-hand-coin-line", color: "orange" },
-  { label: "Run Out", icon: "ri-run-line", color: "red" },
-  { label: "LBW", icon: "ri-shield-line", color: "amber" },
-  { label: "Great Shot", icon: "ri-star-line", color: "yellow" },
-  { label: "Custom", icon: "ri-bookmark-line", color: "gray" },
+  { label: "Boundary (4)", icon: "ri-number-4" },
+  { label: "Six (6)", icon: "ri-number-6" },
+  { label: "Wicket", icon: "ri-fire-line" },
+  { label: "Catch", icon: "ri-hand-coin-line" },
+  { label: "Run Out", icon: "ri-run-line" },
+  { label: "LBW", icon: "ri-shield-line" },
+  { label: "Great Shot", icon: "ri-star-line" },
+  { label: "Custom", icon: "ri-bookmark-line" },
 ];
 
 interface Props {
@@ -53,56 +55,43 @@ export default function VmixReplayPanel({
   onMarkEvent,
 }: Props) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Recording control */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-            Replay Recording
-          </p>
-          {replay.recording && (
-            <span className="text-[9px] font-black text-red-500 bg-red-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              RECORDING
-            </span>
-          )}
-        </div>
-        <button
-          onClick={replay.recording ? onStopRecording : onStartRecording}
-          className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${
-            replay.recording
-              ? "bg-red-500 text-white hover:bg-red-600"
-              : "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-          }`}
+        <SubLabel
+          icon="ri-record-circle-line"
+          action={replay.recording ? <LiveBadge label="Recording" /> : undefined}
         >
-          <i className={replay.recording ? "ri-stop-fill mr-1" : "ri-record-circle-fill mr-1"} />
-          {replay.recording ? "Stop Replay Recording" : "Start Replay Recording"}
-        </button>
+          Replay recording
+        </SubLabel>
+        <Button
+          variant={replay.recording ? "live" : "outline"}
+          block
+          icon={replay.recording ? "ri-stop-fill" : "ri-record-circle-fill"}
+          aria-pressed={replay.recording}
+          onClick={replay.recording ? onStopRecording : onStartRecording}
+        >
+          {replay.recording ? "Stop replay recording" : "Start replay recording"}
+        </Button>
       </div>
 
       {/* Channel A/B */}
       <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          Replay Channel
-        </p>
-        <div className="flex gap-2">
+        <SubLabel>Replay channel</SubLabel>
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Replay channel">
           <button
+            type="button"
             onClick={onSelectChannelA}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              replay.channelMode === "A"
-                ? "bg-[#34B8FF] text-white shadow-md"
-                : "bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100"
-            }`}
+            aria-pressed={replay.channelMode === "A"}
+            className={pressClasses(replay.channelMode === "A")}
           >
             Channel A
           </button>
           <button
+            type="button"
             onClick={onSelectChannelB}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              replay.channelMode === "B"
-                ? "bg-[#34B8FF] text-white shadow-md"
-                : "bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100"
-            }`}
+            aria-pressed={replay.channelMode === "B"}
+            className={pressClasses(replay.channelMode === "B")}
           >
             Channel B
           </button>
@@ -111,63 +100,29 @@ export default function VmixReplayPanel({
 
       {/* Playback controls */}
       <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          Playback
-        </p>
-        <div className="flex gap-2 mb-3">
-          <button
-            onClick={onMarkIn}
-            className="flex-1 py-2.5 rounded-xl bg-green-50 text-green-600 text-xs font-bold hover:bg-green-100 transition-all border border-green-200"
-          >
-            <i className="ri-skip-back-mini-line mr-1" />
-            Mark In
-          </button>
-          <button
-            onClick={onPlay}
-            className="flex-1 py-2.5 rounded-xl bg-[#34B8FF] text-white text-xs font-bold hover:bg-[#1E88E5] transition-all shadow-md"
-          >
-            <i className="ri-play-fill mr-1" />
-            Play
-          </button>
-          <button
-            onClick={onPause}
-            className="flex-1 py-2.5 rounded-xl bg-yellow-50 text-yellow-700 text-xs font-bold hover:bg-yellow-100 transition-all border border-yellow-200"
-          >
-            <i className="ri-pause-fill mr-1" />
-            Pause
-          </button>
-          <button
-            onClick={onMarkOut}
-            className="flex-1 py-2.5 rounded-xl bg-green-50 text-green-600 text-xs font-bold hover:bg-green-100 transition-all border border-green-200"
-          >
-            <i className="ri-skip-forward-mini-line mr-1" />
-            Mark Out
-          </button>
+        <SubLabel>Playback</SubLabel>
+        <div className="mb-2 grid grid-cols-4 gap-1.5">
+          <TransportButton icon="ri-skip-back-mini-line" label="Mark in" onClick={onMarkIn} />
+          <TransportButton icon="ri-play-fill" label="Play" onClick={onPlay} primary />
+          <TransportButton icon="ri-pause-fill" label="Pause" onClick={onPause} />
+          <TransportButton icon="ri-skip-forward-mini-line" label="Mark out" onClick={onMarkOut} />
         </div>
-        <button
-          onClick={onLive}
-          className="w-full py-2.5 rounded-xl bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-all"
-        >
-          <i className="ri-live-line mr-1" />
-          Back to LIVE
-        </button>
+        <Button variant="live" block icon="ri-live-line" onClick={onLive}>
+          Back to live
+        </Button>
       </div>
 
       {/* Speed control */}
       <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          Replay Speed
-        </p>
-        <div className="flex gap-1.5">
+        <SubLabel>Replay speed</SubLabel>
+        <div className="grid grid-cols-5 gap-1.5" role="group" aria-label="Replay speed">
           {SPEED_OPTIONS.map((s) => (
             <button
               key={s.value}
+              type="button"
               onClick={() => onChangeSpeed(s.value)}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                replay.speed === s.value
-                  ? "bg-[#34B8FF] text-white shadow-md"
-                  : "bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100"
-              }`}
+              aria-pressed={replay.speed === s.value}
+              className={pressClasses(replay.speed === s.value, "primary", "px-1 font-mono tabular-nums")}
             >
               {s.label}
             </button>
@@ -177,19 +132,18 @@ export default function VmixReplayPanel({
 
       {/* Cricket event markers */}
       <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          <i className="ri-bookmark-line mr-1" />
-          Mark Cricket Event (Quick Replay)
-        </p>
+        <SubLabel icon="ri-bookmark-line">Mark cricket event</SubLabel>
         <div className="grid grid-cols-4 gap-1.5">
           {CRICKET_EVENTS.map((evt) => (
             <button
               key={evt.label}
+              type="button"
               onClick={() => onMarkEvent(evt.label)}
-              className={`py-2.5 rounded-xl text-[10px] font-bold transition-all bg-${evt.color}-50 text-${evt.color}-600 border border-${evt.color}-200 hover:bg-${evt.color}-100`}
+              title={`Mark ${evt.label}`}
+              className={pressClasses(false, "primary", "min-h-[52px] min-w-0 flex-col gap-0.5 px-1 py-1.5 text-2xs")}
             >
-              <i className={`${evt.icon} block text-base mb-0.5`} />
-              {evt.label}
+              <i className={cn(evt.icon, "text-base leading-none text-primary")} aria-hidden />
+              <span className="w-full text-center leading-tight">{evt.label}</span>
             </button>
           ))}
         </div>
@@ -198,27 +152,54 @@ export default function VmixReplayPanel({
       {/* Event log */}
       {events.length > 0 && (
         <div>
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            Marked Events ({events.length})
-          </p>
-          <div className="max-h-32 overflow-y-auto space-y-1">
+          <SubLabel>
+            Marked events <span className="font-mono tabular-nums">({events.length})</span>
+          </SubLabel>
+          <ul className="max-h-36 divide-y divide-line overflow-y-auto rounded-xl border border-line bg-surface-2">
             {events
               .slice()
               .reverse()
               .map((evt) => (
-                <div
-                  key={evt.id}
-                  className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-1.5 border border-gray-100"
-                >
-                  <span className="text-xs text-gray-700 font-medium">{evt.label}</span>
-                  <span className="text-[10px] text-gray-400 font-mono">
+                <li key={evt.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span className="truncate text-xs font-medium text-fg">{evt.label}</span>
+                  <span className="flex-shrink-0 font-mono text-2xs tabular-nums text-fg-subtle">
                     {new Date(evt.timestamp).toLocaleTimeString()} @ {evt.speed}x
                   </span>
-                </div>
+                </li>
               ))}
-          </div>
+          </ul>
         </div>
       )}
     </div>
+  );
+}
+
+function TransportButton({
+  icon,
+  label,
+  onClick,
+  primary,
+}: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex min-h-[52px] min-w-0 select-none flex-col items-center justify-center gap-0.5 rounded-lg border px-1 text-2xs font-medium",
+        "transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.97]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+        primary
+          ? "border-primary bg-primary text-primary-fg shadow-xs hover:bg-primary-hover"
+          : "border-line-strong bg-surface text-fg-muted hover:bg-surface-2 hover:text-fg",
+      )}
+    >
+      <i className={cn(icon, "text-lg leading-none")} aria-hidden />
+      <span className="w-full truncate text-center">{label}</span>
+    </button>
   );
 }
