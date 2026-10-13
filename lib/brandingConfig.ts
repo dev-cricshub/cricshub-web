@@ -1,6 +1,6 @@
 import { BrandingConfig, DEFAULT_BRANDING_CONFIG } from "@/app/overlays/premium/matchAddOn/BrandingOverlay";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { API_BASE as BASE } from "@/lib/site";
 
 // ── Fetch saved config (called by both dashboard and OBS page) ───────────────
 // OBS page has no token — that's fine, endpoint is in PUBLIC_URLS

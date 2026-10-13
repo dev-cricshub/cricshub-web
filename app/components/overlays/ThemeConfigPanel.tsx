@@ -10,6 +10,7 @@ import {
   DEFAULT_BALL_COLORS,
   buildConfigFromSimplified,
 } from "@/lib/themeConfig";
+import { Badge, Button, Tabs, cn, controlClasses } from "@/app/components/ui";
 
 // ═══════════════════════════════════════════════════════════
 // THEME CONFIG PANEL — Fixed for 300-340px sidebar
@@ -115,52 +116,23 @@ const BALL_FIELDS: {
 function Tip({ text, children }: { text: string; children: React.ReactNode }) {
   const [show, setShow] = useState(false);
   return (
-    <div
-      style={{
-        position: "relative",
-        display: "inline-flex",
-        alignItems: "center",
-      }}
+    <span
+      className="relative inline-flex items-center"
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
+      onFocus={() => setShow(true)}
+      onBlur={() => setShow(false)}
     >
       {children}
       {show && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "calc(100% + 6px)",
-            left: "50%",
-            transform: "translateX(-50%)",
-            padding: "5px 9px",
-            background: "rgba(0,0,0,0.96)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 6,
-            color: "#FFF",
-            fontSize: 10,
-            lineHeight: "15px",
-            whiteSpace: "nowrap",
-            zIndex: 200,
-            pointerEvents: "none",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-          }}
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-[calc(100%+6px)] left-0 z-50 whitespace-nowrap rounded-md bg-surface-inverse px-2 py-1 text-2xs text-fg-inverse shadow-pop animate-fade-in"
         >
           {text}
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: "50%",
-              transform: "translateX(-50%)",
-              borderWidth: 4,
-              borderStyle: "solid",
-              borderColor:
-                "rgba(0,0,0,0.96) transparent transparent transparent",
-            }}
-          />
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   );
 }
 
@@ -174,36 +146,73 @@ function SectionLabel({
   badge?: React.ReactNode;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        marginBottom: 8,
-        paddingBottom: 6,
-        borderBottom: "1px solid rgba(217,119,6,0.18)",
-      }}
-    >
-      <span
-        style={{
-          color: "#D97706",
-          fontSize: 9,
-          fontWeight: 800,
-          letterSpacing: 2.2,
-          textTransform: "uppercase",
-          flex: 1,
-        }}
-      >
-        {children}
-      </span>
+    <div className="mb-2 flex items-center gap-2">
+      <h4 className="flex-1 text-2xs font-semibold uppercase tracking-wider text-fg-subtle">{children}</h4>
       {badge}
     </div>
   );
 }
 
+// ── Colour swatch (native picker behind a token-framed swatch) ──
+// The swatch fill is user data (the chosen overlay colour), so it stays inline.
+
+function Swatch({
+  value,
+  pickerValue,
+  onPick,
+  label,
+  modified,
+  size = "md",
+}: {
+  value: string;
+  pickerValue: string;
+  onPick: (v: string) => void;
+  label: string;
+  modified?: boolean;
+  size?: "sm" | "md";
+}) {
+  return (
+    <label
+      className={cn(
+        "relative flex-shrink-0 cursor-pointer rounded-md transition-shadow duration-150 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-surface",
+        size === "sm" ? "h-5 w-5" : "h-7 w-7",
+      )}
+    >
+      <span
+        className={cn(
+          "block h-full w-full rounded-md border shadow-xs",
+          modified ? "border-warning ring-1 ring-warning/40" : "border-line-strong",
+        )}
+        style={{ background: value }}
+        aria-hidden
+      />
+      <input
+        type="color"
+        value={pickerValue}
+        onChange={(e) => onPick(e.target.value)}
+        aria-label={label}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      />
+    </label>
+  );
+}
+
+function ResetIcon({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Reset to default"
+      aria-label={label}
+      className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-sm text-warning transition-colors duration-150 hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <i className="ri-arrow-go-back-line" aria-hidden />
+    </button>
+  );
+}
+
 // ── Color row — compact single-line layout ──────────────────
-// Layout: [label 90px] [swatch 22px] [hex input 76px] [reset 16px]
-// Total: ~220px — safe at 280px+ after padding
+// Layout: [label] [swatch] [hex input] [reset] — fits a 280px+ sidebar
 
 function ColorRow({
   label,
@@ -233,70 +242,31 @@ function ColorRow({
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "7px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-      }}
-    >
+    <div className="flex items-center gap-2 py-2">
       {/* Label */}
       <Tip text={desc}>
         <span
-          style={{
-            color: modified ? "#F3F4F6" : "rgba(255,255,255,0.6)",
-            fontSize: 12,
-            fontWeight: modified ? 600 : 400,
-            width: 82,
-            flexShrink: 0,
-            cursor: "help",
-            borderBottom: "1px dotted rgba(255,255,255,0.25)",
-            lineHeight: "16px",
-          }}
+          tabIndex={0}
+          className={cn(
+            "w-[84px] flex-shrink-0 cursor-help truncate text-sm underline decoration-line-strong decoration-dotted underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            modified ? "font-medium text-fg" : "text-fg-muted",
+          )}
         >
           {label}
         </span>
       </Tip>
 
       {/* Color swatch (native picker) */}
-      <label
-        style={{
-          position: "relative",
-          width: 22,
-          height: 22,
-          flexShrink: 0,
-          cursor: "pointer",
+      <Swatch
+        value={value}
+        pickerValue={hex}
+        modified={modified}
+        label={`${label} colour`}
+        onPick={(v) => {
+          setLocalHex(v);
+          onChange(v);
         }}
-      >
-        <div
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 5,
-            background: value,
-            border: `1.5px solid ${modified ? "#F59E0B" : "rgba(255,255,255,0.18)"}`,
-            boxSizing: "border-box",
-          }}
-        />
-        <input
-          type="color"
-          value={hex}
-          onChange={(e) => {
-            setLocalHex(e.target.value);
-            onChange(e.target.value);
-          }}
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0,
-            width: "100%",
-            height: "100%",
-            cursor: "pointer",
-          }}
-        />
-      </label>
+      />
 
       {/* Hex text input */}
       <input
@@ -310,49 +280,27 @@ function ColorRow({
           e.key === "Enter" && commit((e.target as HTMLInputElement).value)
         }
         placeholder="#000000"
-        style={{
-          flex: 1,
-          minWidth: 0,
-          background: "rgba(255,255,255,0.05)",
-          border: `1px solid ${modified ? "rgba(217,119,6,0.4)" : "rgba(255,255,255,0.1)"}`,
-          borderRadius: 4,
-          color: modified ? "#FCD34D" : "rgba(255,255,255,0.55)",
-          fontSize: 11,
-          fontFamily: "monospace",
-          padding: "4px 7px",
-          outline: "none",
-          boxSizing: "border-box",
-        }}
+        aria-label={`${label} hex value`}
+        spellCheck={false}
+        className={controlClasses(
+          false,
+          cn(
+            "h-8 min-w-0 flex-1 px-2 font-mono text-xs uppercase",
+            modified && "border-warning/60 text-warning-soft-fg",
+          ),
+        )}
       />
 
       {/* Reset — only takes space when modified */}
-      <div
-        style={{
-          width: 18,
-          flexShrink: 0,
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
+      <div className="flex w-7 flex-shrink-0 justify-center">
         {modified && (
-          <button
+          <ResetIcon
+            label={`Reset ${label} to default`}
             onClick={() => {
               setLocalHex(defaultValue);
               onChange(defaultValue);
             }}
-            title="Reset to default"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "#F59E0B",
-              fontSize: 14,
-              padding: 0,
-              lineHeight: 1,
-            }}
-          >
-            ↺
-          </button>
+          />
         )}
       </div>
     </div>
@@ -381,109 +329,42 @@ function BallBadge({
 
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 7,
-        padding: "7px 8px",
-        borderRadius: 7,
-        background: modified
-          ? "rgba(245,158,11,0.07)"
-          : "rgba(255,255,255,0.02)",
-        border: `1px solid ${modified ? "rgba(217,119,6,0.28)" : "rgba(255,255,255,0.06)"}`,
-      }}
+      className={cn(
+        "flex min-w-0 items-center gap-2 rounded-lg border p-2 transition-colors duration-150",
+        modified ? "border-warning/40 bg-warning-soft" : "border-line bg-surface-2",
+      )}
     >
-      {/* Badge preview */}
+      {/* Badge preview — colours are the user's overlay data */}
       <Tip text={desc}>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 7,
-            background: value,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: textColor,
-            fontSize: short.length > 1 ? 10 : 13,
-            fontWeight: 700,
-            flexShrink: 0,
-            cursor: "help",
-          }}
+        <span
+          className={cn(
+            "flex h-7 w-7 flex-shrink-0 cursor-help items-center justify-center rounded-md font-semibold",
+            short.length > 1 ? "text-2xs" : "text-sm",
+          )}
+          style={{ background: value, color: textColor }}
+          aria-hidden
         >
           {short}
-        </div>
+        </span>
       </Tip>
 
       {/* Label */}
-      <span
-        style={{
-          color: "rgba(255,255,255,0.7)",
-          fontSize: 11,
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
+      <span className="min-w-0 flex-1 truncate text-xs text-fg-muted" title={desc}>
         {label}
       </span>
 
       {/* Reset */}
-      {modified && (
-        <button
-          onClick={() => onChange(defaultValue)}
-          title="Reset"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "#F59E0B",
-            fontSize: 13,
-            padding: 0,
-            lineHeight: 1,
-            flexShrink: 0,
-          }}
-        >
-          ↺
-        </button>
-      )}
+      {modified && <ResetIcon label={`Reset ${label} to default`} onClick={() => onChange(defaultValue)} />}
 
       {/* Swatch picker */}
-      <label
-        style={{
-          position: "relative",
-          width: 22,
-          height: 22,
-          cursor: "pointer",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 4,
-            background: value,
-            border: `1.5px solid ${modified ? "#F59E0B" : "rgba(255,255,255,0.2)"}`,
-            boxSizing: "border-box",
-          }}
-        />
-        <input
-          type="color"
-          value={toHex(value)}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0,
-            width: "100%",
-            height: "100%",
-            cursor: "pointer",
-          }}
-        />
-      </label>
+      <Swatch
+        value={value}
+        pickerValue={toHex(value)}
+        modified={modified}
+        label={`${label} badge colour`}
+        size="sm"
+        onPick={onChange}
+      />
     </div>
   );
 }
@@ -499,77 +380,26 @@ function AdvRow({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const name = tokenKey.replace(/-/g, " ");
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "5px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-      }}
-    >
-      <label
-        style={{
-          position: "relative",
-          width: 18,
-          height: 18,
-          cursor: "pointer",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: 3,
-            background: toHex(value),
-            border: "1px solid rgba(255,255,255,0.15)",
-            boxSizing: "border-box",
-          }}
-        />
-        <input
-          type="color"
-          value={toHex(value)}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0,
-            cursor: "pointer",
-          }}
-        />
-      </label>
-      <span
-        style={{
-          color: "rgba(255,255,255,0.4)",
-          fontSize: 10,
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {tokenKey.replace(/-/g, " ")}
+    <div className="flex items-center gap-2 py-1.5">
+      <Swatch
+        value={toHex(value)}
+        pickerValue={toHex(value)}
+        label={`${name} colour`}
+        size="sm"
+        onPick={onChange}
+      />
+      <span className="min-w-0 flex-1 truncate text-xs text-fg-muted" title={tokenKey}>
+        {name}
       </span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{
-          width: 72,
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 4,
-          color: "rgba(255,255,255,0.55)",
-          fontSize: 10,
-          fontFamily: "monospace",
-          padding: "3px 6px",
-          outline: "none",
-          flexShrink: 0,
-          boxSizing: "border-box",
-        }}
+        aria-label={`${name} value`}
+        spellCheck={false}
+        className={controlClasses(false, "h-7 w-[84px] flex-shrink-0 px-2 font-mono text-2xs")}
       />
     </div>
   );
@@ -684,190 +514,61 @@ export default function ThemeConfigPanel({ config, onChange }: Props) {
     .filter(([k]) => !EXCLUDED_ADV_KEYS.has(k))
     .slice(0, 30);
 
-  // ── Shared style tokens ──
-  const S = {
-    scrollBody: {
-      maxHeight: 460,
-      overflowY: "auto" as const,
-      overflowX: "hidden" as const,
-    },
-    section: {
-      padding: "14px 14px 0",
-    },
-    sectionLast: {
-      padding: "14px",
-    },
-    divider: {
-      borderTop: "1px solid rgba(255,255,255,0.06)",
-    },
-  };
-
   return (
-    <div
-      style={{
-        fontFamily: "'DM Sans', sans-serif",
-        background: "rgba(8,10,24,0.98)",
-        color: "#FFFFFF",
-        overflow: "hidden",
-        // No fixed width — fills whatever container it's in
-      }}
-    >
+    <div className="bg-surface text-fg">
       {/* ── Bundle tabs ── */}
-      <div
-        style={{
-          background: "rgba(0,0,0,0.3)",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          padding: "4px 4px 4px",
-          display: "flex",
-          gap: 3,
-        }}
-      >
-        {(Object.keys(BUNDLE_LABELS) as BundleId[]).map((id) => {
-          const active = id === activeBundle;
-          return (
-            <button
-              key={id}
-              onClick={() => setActiveBundle(id)}
-              style={{
-                flex: 1,
-                padding: "8px 4px",
-                background: active ? "rgba(255,255,255,0.09)" : "transparent",
-                border: `1px solid ${active ? "rgba(255,255,255,0.12)" : "transparent"}`,
-                borderRadius: 6,
-                color: active ? "#FFFFFF" : "rgba(255,255,255,0.4)",
-                fontSize: 11,
-                fontWeight: active ? 700 : 500,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                transition: "all 0.15s",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {BUNDLE_LABELS[id]}
-            </button>
-          );
-        })}
-      </div>
+      <div className="border-b border-line px-3 pb-3 pt-3 sm:px-4">
+        <Tabs
+          items={(Object.keys(BUNDLE_LABELS) as BundleId[]).map((id) => ({
+            key: id,
+            label: BUNDLE_LABELS[id],
+          }))}
+          value={activeBundle}
+          onChange={setActiveBundle}
+          size="sm"
+          block
+          ariaLabel="Overlay bundle"
+        />
 
-      {/* ── Description + reset bar ── */}
-      <div
-        style={{
-          padding: "7px 12px",
-          background: "rgba(255,255,255,0.02)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          minHeight: 32,
-          boxSizing: "border-box",
-        }}
-      >
-        <span
-          style={{
-            color: "rgba(255,255,255,0.45)",
-            fontSize: 10,
-            flex: 1,
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {BUNDLE_DESCRIPTIONS[activeBundle]}
-        </span>
-        {bundleHasOverrides && (
-          <button
-            onClick={handleResetAll}
-            style={{
-              background: "rgba(217,119,6,0.12)",
-              border: "1px solid rgba(217,119,6,0.28)",
-              borderRadius: 4,
-              color: "#FCD34D",
-              fontSize: 10,
-              padding: "3px 9px",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              fontWeight: 600,
-              flexShrink: 0,
-              whiteSpace: "nowrap",
-            }}
-          >
-            ↺ Reset
-          </button>
-        )}
+        {/* ── Description + reset bar ── */}
+        <div className="mt-2.5 flex min-h-[28px] items-center justify-between gap-2">
+          <span className="min-w-0 flex-1 truncate text-xs text-fg-muted">
+            {BUNDLE_DESCRIPTIONS[activeBundle]}
+          </span>
+          {bundleHasOverrides && (
+            <Button size="xs" variant="ghost" icon="ri-arrow-go-back-line" onClick={handleResetAll}>
+              Reset
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Scrollable body ── */}
-      <div className="tcp-scroll" style={S.scrollBody}>
+      <div className="max-h-[460px] overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:thin]">
         {/* Essential Colors */}
-        <div style={S.section}>
-          <SectionLabel
-            badge={
-              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9 }}>
-                hover label for info
-              </span>
-            }
-          >
-            Essential Colors
+        <section className="px-3 pt-4 sm:px-4">
+          <SectionLabel badge={<span className="text-2xs text-fg-subtle">Hover a label for info</span>}>
+            Essential colours
           </SectionLabel>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.018)",
-              borderRadius: 8,
-              padding: "4px 10px",
-              border: "1px solid rgba(255,255,255,0.05)",
-              marginBottom: 14,
-            }}
-          >
-            {MASTER_FIELDS.map((f, i) => (
-              <div
+          <div className="divide-y divide-line rounded-xl border border-line px-3">
+            {MASTER_FIELDS.map((f) => (
+              <ColorRow
                 key={f.key}
-                style={{
-                  borderBottom:
-                    i < MASTER_FIELDS.length - 1 ? undefined : "none",
-                }}
-              >
-                <ColorRow
-                  label={f.label}
-                  desc={f.desc}
-                  value={currentMaster[f.key]}
-                  defaultValue={DEFAULT_MASTER_COLORS[activeBundle][f.key]}
-                  onChange={(v) => handleMasterChange(f.key, v)}
-                />
-              </div>
+                label={f.label}
+                desc={f.desc}
+                value={currentMaster[f.key]}
+                defaultValue={DEFAULT_MASTER_COLORS[activeBundle][f.key]}
+                onChange={(v) => handleMasterChange(f.key, v)}
+              />
             ))}
           </div>
-        </div>
+        </section>
 
         {/* Ball Badges */}
-        <div style={{ ...S.sectionLast, ...S.divider, paddingTop: 14 }}>
-          <SectionLabel
-            badge={
-              <span
-                style={{
-                  background: "rgba(255,255,255,0.08)",
-                  color: "rgba(255,255,255,0.45)",
-                  fontSize: 9,
-                  padding: "2px 6px",
-                  borderRadius: 3,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Auto contrast
-              </span>
-            }
-          >
-            Ball Badges
-          </SectionLabel>
+        <section className="px-3 pt-5 sm:px-4">
+          <SectionLabel badge={<Badge size="xs">Auto contrast</Badge>}>Ball badges</SectionLabel>
           {/* 2-column grid — safe at 280px+ */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
-              gap: 6,
-            }}
-          >
+          <div className="grid grid-cols-2 gap-1.5">
             {BALL_FIELDS.map((f) => (
               <BallBadge
                 key={f.key}
@@ -880,118 +581,61 @@ export default function ThemeConfigPanel({ config, onChange }: Props) {
               />
             ))}
           </div>
-        </div>
+        </section>
 
         {/* Advanced mode toggle */}
-        <div
-          style={{
-            ...S.divider,
-            padding: "10px 12px",
-            background: "rgba(0,0,0,0.15)",
-            marginTop: 14,
-          }}
-        >
+        <section className="px-3 pb-4 pt-5 sm:px-4">
           <button
+            type="button"
             onClick={() => setAdvOpen((v) => !v)}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "8px 12px",
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 6,
-              color: "rgba(255,255,255,0.5)",
-              fontSize: 11,
-              fontWeight: 500,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              transition: "all 0.15s",
-              boxSizing: "border-box",
-            }}
+            aria-expanded={advOpen}
+            aria-controls="tcp-advanced"
+            className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-line bg-surface-2 px-3 text-sm font-medium text-fg-muted transition-colors duration-150 hover:bg-surface-3 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span>Advanced mode</span>
-            <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 13 }}>
-              {advOpen ? "▴" : "▾"}
+            <span className="flex items-center gap-2">
+              <i className="ri-equalizer-line" aria-hidden />
+              Advanced mode
             </span>
+            <i
+              className={cn("ri-arrow-down-s-line text-base transition-transform duration-200", advOpen && "rotate-180")}
+              aria-hidden
+            />
           </button>
-        </div>
 
-        {/* Advanced: fine-tune tokens */}
-        {advOpen && (
-          <div
-            style={{
-              ...S.divider,
-              padding: "12px 14px",
-              background: "rgba(0,0,0,0.18)",
-            }}
-          >
-            <p
-              style={{
-                color: "rgba(255,255,255,0.4)",
-                fontSize: 10,
-                margin: "0 0 10px",
-                lineHeight: 1.5,
-              }}
-            >
-              Override individual derived tokens. These take precedence over the
-              essential colors above.
-            </p>
-            {advEntries.length === 0 ? (
-              <p
-                style={{
-                  color: "rgba(255,255,255,0.25)",
-                  fontSize: 11,
-                  textAlign: "center",
-                  padding: "10px 0",
-                  margin: 0,
-                }}
-              >
-                No derived tokens yet. Adjust essential colors first.
+          {/* Advanced: fine-tune tokens */}
+          {advOpen && (
+            <div id="tcp-advanced" className="mt-3 animate-fade-in">
+              <p className="mb-2 text-xs leading-relaxed text-fg-subtle">
+                Override individual derived tokens. These take precedence over the essential colours above.
               </p>
-            ) : (
-              advEntries.map(([key, value]) => (
-                <AdvRow
-                  key={key}
-                  tokenKey={key}
-                  value={value as string}
-                  onChange={(v) => handleAdvChange(key, v)}
-                />
-              ))
-            )}
-          </div>
-        )}
+              {advEntries.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-line-strong px-3 py-3 text-center text-xs text-fg-subtle">
+                  No derived tokens yet. Adjust essential colours first.
+                </p>
+              ) : (
+                <div className="divide-y divide-line">
+                  {advEntries.map(([key, value]) => (
+                    <AdvRow
+                      key={key}
+                      tokenKey={key}
+                      value={value as string}
+                      onChange={(v) => handleAdvChange(key, v)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* ── Footer tip ── */}
-      <div
-        style={{
-          padding: "9px 14px",
-          background: "rgba(0,0,0,0.22)",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <p
-          style={{
-            color: "rgba(255,255,255,0.35)",
-            fontSize: 10,
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
-          Tip: Set the 6 essential colors — all dim variants, glows, and shadows
-          are auto-derived.
+      <div className="flex items-start gap-2 border-t border-line bg-surface-2 px-3 py-2.5 sm:px-4">
+        <i className="ri-lightbulb-line mt-px text-sm text-fg-subtle" aria-hidden />
+        <p className="text-xs leading-relaxed text-fg-subtle">
+          Set the 6 essential colours. All dim variants, glows and shadows are auto-derived.
         </p>
       </div>
-
-      <style>{`
-        .tcp-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
-        .tcp-scroll::-webkit-scrollbar { width: 4px; }
-        .tcp-scroll::-webkit-scrollbar-track { background: transparent; }
-        .tcp-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        .tcp-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-      `}</style>
     </div>
   );
 }

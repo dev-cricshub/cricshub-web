@@ -1,6 +1,8 @@
 "use client";
 
 import type { VmixInput } from "@/lib/streaming/types";
+import { Button, EmptyState } from "@/app/components/ui";
+import { RangeSlider, rowClasses } from "../StudioKit";
 
 interface Props {
   inputs: VmixInput[];
@@ -25,28 +27,32 @@ export default function VmixAudioMixer({
   return (
     <div className="space-y-3">
       {/* Master */}
-      <div className="bg-gray-900 rounded-xl px-4 py-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-white font-bold">MASTER</span>
-          <button
+      <div className="rounded-xl border border-line-strong bg-surface px-3 py-3 shadow-xs">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-fg">
+            <i className="ri-equalizer-line text-sm text-primary" aria-hidden />
+            Master
+          </span>
+          <Button
+            size="sm"
+            iconOnly
+            variant={masterMuted ? "danger" : "ghost"}
+            icon={masterMuted ? "ri-volume-mute-line" : "ri-volume-up-line"}
+            aria-label={masterMuted ? "Unmute master" : "Mute master"}
+            aria-pressed={masterMuted}
             onClick={() => onSetMute("master", !masterMuted)}
-            className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all ${
-              masterMuted ? "bg-red-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            <i className={masterMuted ? "ri-volume-mute-line" : "ri-volume-up-line"} />
-          </button>
+          />
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="range"
+        <div className="flex items-center gap-3">
+          <RangeSlider
             min={0}
             max={100}
             value={masterMuted ? 0 : masterVolume}
-            onChange={(e) => onSetMasterVolume(parseInt(e.target.value))}
-            className="flex-1 h-1.5 accent-white cursor-pointer"
+            onChange={(_, raw) => onSetMasterVolume(parseInt(raw))}
+            ariaLabel="Master volume"
+            ariaValueText={masterMuted ? "Muted" : `${masterVolume}%`}
           />
-          <span className="text-[10px] text-gray-400 font-mono w-8 text-right">
+          <span className="w-10 flex-shrink-0 text-right font-mono text-xs tabular-nums text-fg-muted">
             {masterMuted ? "0%" : `${masterVolume}%`}
           </span>
         </div>
@@ -55,46 +61,41 @@ export default function VmixAudioMixer({
       {/* Per-input */}
       {audioInputs.length > 0 ? (
         <div className="space-y-2">
-          {audioInputs.map((inp) => (
-            <div
-              key={inp.key}
-              className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5"
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-gray-700 font-medium truncate mr-2">
-                  {inp.number}. {inp.title || inp.type}
-                </span>
-                <button
-                  onClick={() => onSetMute(inp.number, !inp.muted)}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all ${
-                    inp.muted
-                      ? "bg-red-100 text-red-500"
-                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                  }`}
-                >
-                  <i className={inp.muted ? "ri-volume-mute-line" : "ri-volume-up-line"} />
-                </button>
+          {audioInputs.map((inp) => {
+            const name = `${inp.number}. ${inp.title || inp.type}`;
+            return (
+              <div key={inp.key} className={rowClasses}>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate text-sm font-medium text-fg">{name}</span>
+                  <Button
+                    size="sm"
+                    iconOnly
+                    variant={inp.muted ? "danger" : "ghost"}
+                    icon={inp.muted ? "ri-volume-mute-line" : "ri-volume-up-line"}
+                    aria-label={inp.muted ? `Unmute ${name}` : `Mute ${name}`}
+                    aria-pressed={inp.muted}
+                    onClick={() => onSetMute(inp.number, !inp.muted)}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <RangeSlider
+                    min={0}
+                    max={100}
+                    value={inp.muted ? 0 : inp.volume}
+                    onChange={(_, raw) => onSetVolume(inp.number, parseInt(raw))}
+                    ariaLabel={`${name} volume`}
+                    ariaValueText={inp.muted ? "Muted" : `${inp.volume}%`}
+                  />
+                  <span className="w-10 flex-shrink-0 text-right font-mono text-xs tabular-nums text-fg-muted">
+                    {inp.muted ? "0%" : `${inp.volume}%`}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={inp.muted ? 0 : inp.volume}
-                  onChange={(e) => onSetVolume(inp.number, parseInt(e.target.value))}
-                  className="flex-1 h-1.5 accent-[#34B8FF] cursor-pointer"
-                />
-                <span className="text-[10px] text-gray-400 font-mono w-8 text-right">
-                  {inp.muted ? "0%" : `${inp.volume}%`}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
-        <p className="text-[10px] text-gray-400 text-center py-2">
-          No audio inputs detected
-        </p>
+        <EmptyState compact icon="ri-volume-mute-line" title="No audio inputs detected" />
       )}
     </div>
   );

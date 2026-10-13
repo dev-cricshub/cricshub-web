@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { useVmix } from "@/hooks/useVmix";
 import VmixInputSwitcher from "./VmixInputSwitcher";
 import VmixTransitionBar from "./VmixTransitionBar";
@@ -10,6 +9,7 @@ import VmixStreamRecordControls from "./VmixStreamRecordControls";
 import VmixAudioMixer from "./VmixAudioMixer";
 import VmixTitling from "./VmixTitling";
 import VmixAdvanced from "./VmixAdvanced";
+import { ControlSection } from "../StudioKit";
 
 type VmixHook = ReturnType<typeof useVmix>;
 
@@ -17,54 +17,15 @@ interface Props {
   vmix: VmixHook;
 }
 
-interface SectionProps {
-  title: string;
-  icon: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  badge?: string;
-  badgeColor?: string;
-}
-
-function CollapsibleSection({
-  title,
-  icon,
-  children,
-  defaultOpen = true,
-  badge,
-  badgeColor = "bg-gray-100 text-gray-500",
-}: SectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full px-5 py-3.5 flex items-center justify-between"
-      >
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-            <i className={`${icon} mr-1`} />
-            {title}
-          </p>
-          {badge && (
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${badgeColor}`}>
-              {badge}
-            </span>
-          )}
-        </div>
-        <i className={`ri-arrow-${open ? "up" : "down"}-s-line text-gray-400`} />
-      </button>
-      {open && <div className="px-5 pb-5 space-y-4">{children}</div>}
-    </div>
-  );
-}
-
 export default function VmixControlPanel({ vmix }: Props) {
   if (vmix.status !== "connected") return null;
 
+  const onAir = vmix.state.streaming;
+  const recording = vmix.state.recording;
+
   return (
     <div className="space-y-4">
-      <CollapsibleSection title="Input Switcher" icon="ri-vidicon-line">
+      <ControlSection title="Input switcher" icon="ri-vidicon-line">
         <VmixInputSwitcher
           inputs={vmix.state.inputs}
           activeInput={vmix.state.activeInput}
@@ -72,9 +33,9 @@ export default function VmixControlPanel({ vmix }: Props) {
           onCut={vmix.cutInput}
           onPreview={vmix.previewInput}
         />
-      </CollapsibleSection>
+      </ControlSection>
 
-      <CollapsibleSection title="Transitions" icon="ri-swap-line">
+      <ControlSection title="Transitions" icon="ri-swap-line">
         <VmixTransitionBar
           inputs={vmix.state.inputs}
           previewInput={vmix.state.previewInput}
@@ -82,14 +43,9 @@ export default function VmixControlPanel({ vmix }: Props) {
           onFadeToBlack={vmix.doFadeToBlack}
           fadeToBlack={vmix.state.fadeToBlack}
         />
-      </CollapsibleSection>
+      </ControlSection>
 
-      <CollapsibleSection
-        title="Instant Replay"
-        icon="ri-replay-line"
-        badge="CRICKET"
-        badgeColor="bg-green-100 text-green-600"
-      >
+      <ControlSection title="Instant replay" icon="ri-history-line" badge="Cricket" badgeTone="success">
         <VmixReplayPanel
           replay={vmix.state.replay}
           events={vmix.replayEvents}
@@ -105,9 +61,9 @@ export default function VmixControlPanel({ vmix }: Props) {
           onStopRecording={vmix.replayStopRecording}
           onMarkEvent={vmix.markReplayEvent}
         />
-      </CollapsibleSection>
+      </ControlSection>
 
-      <CollapsibleSection title="Overlay Channels" icon="ri-stack-line">
+      <ControlSection title="Overlay channels" icon="ri-stack-line">
         <VmixOverlayChannels
           overlays={vmix.state.overlays}
           inputs={vmix.state.inputs}
@@ -115,9 +71,14 @@ export default function VmixControlPanel({ vmix }: Props) {
           onOverlayOut={vmix.overlayOut}
           onOverlayOff={vmix.overlayOff}
         />
-      </CollapsibleSection>
+      </ControlSection>
 
-      <CollapsibleSection title="Stream & Record" icon="ri-live-line">
+      <ControlSection
+        title="Stream & record"
+        icon="ri-live-line"
+        badge={onAir ? "On air" : recording ? "Rec" : undefined}
+        badgeTone="live"
+      >
         <VmixStreamRecordControls
           streaming={vmix.state.streaming}
           recording={vmix.state.recording}
@@ -129,9 +90,9 @@ export default function VmixControlPanel({ vmix }: Props) {
           onStartExternal={vmix.startExternal}
           onStopExternal={vmix.stopExternal}
         />
-      </CollapsibleSection>
+      </ControlSection>
 
-      <CollapsibleSection title="Audio Mixer" icon="ri-volume-up-line" defaultOpen={false}>
+      <ControlSection title="Audio mixer" icon="ri-volume-up-line" defaultOpen={false}>
         <VmixAudioMixer
           inputs={vmix.state.inputs}
           masterVolume={vmix.state.audio.master.volume}
@@ -140,13 +101,13 @@ export default function VmixControlPanel({ vmix }: Props) {
           onSetMute={vmix.setMute}
           onSetMasterVolume={vmix.setMasterVolume}
         />
-      </CollapsibleSection>
+      </ControlSection>
 
-      <CollapsibleSection title="Dynamic Titling" icon="ri-text" defaultOpen={false}>
+      <ControlSection title="Dynamic titling" icon="ri-text" defaultOpen={false}>
         <VmixTitling inputs={vmix.state.inputs} onSetTitle={vmix.setTitle} />
-      </CollapsibleSection>
+      </ControlSection>
 
-      <CollapsibleSection title="Advanced (PTZ / NDI)" icon="ri-settings-4-line" defaultOpen={false}>
+      <ControlSection title="Advanced (PTZ / NDI)" icon="ri-settings-4-line" defaultOpen={false}>
         <VmixAdvanced
           inputs={vmix.state.inputs}
           onPtzMove={vmix.ptzMove}
@@ -154,7 +115,7 @@ export default function VmixControlPanel({ vmix }: Props) {
           onPtzZoomIn={vmix.ptzZoomIn}
           onPtzZoomOut={vmix.ptzZoomOut}
         />
-      </CollapsibleSection>
+      </ControlSection>
     </div>
   );
 }

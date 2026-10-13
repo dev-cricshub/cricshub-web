@@ -1,25 +1,7 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono, Pacifico } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import AOSInitializer from './components/AOSInitializer';
-import Script from 'next/script';
-
-const pacifico = Pacifico({
-  weight: '400',
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-pacifico',
-})
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import Script from "next/script";
+import { fontVariables } from "./styles/fonts";
 
 export const metadata: Metadata = {
   title: "CricsHub | The Ultimate Cricket App",
@@ -44,9 +26,32 @@ export const metadata: Metadata = {
     type: "website",
   },
   icons: {
-    icon: "images/favicon.ico",
+    icon: "/images/favicon.ico",
+    apple: "/icons/apple-touch-icon.png",
   },
+  // Installed to the home screen, iOS opens CricsHub full-screen like a native app.
+  appleWebApp: {
+    capable: true,
+    title: "CricsHub",
+    statusBarStyle: "black",
+  },
+  formatDetection: { telephone: false },
 };
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Lets content reach under the notch / home indicator; headers and bars pad with env(safe-area-inset-*).
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#060A12" },
+    { media: "(prefers-color-scheme: dark)", color: "#060A12" },
+  ],
+};
+
+// Applies the saved theme before first paint so there's no light/dark flash.
+// Stored value: "light" | "dark" | "system" (default "dark" — the signature CricsHub look).
+const themeInit = `(function(){try{var t=localStorage.getItem('ch-theme')||'dark';if(t==='system'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -56,13 +61,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${pacifico.variable} antialiased`}
+        className={`${fontVariables} antialiased`}
       >
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeInit}
+        </Script>
         <Script
           src="https://checkout.razorpay.com/v1/checkout.js"
           strategy="lazyOnload"
         />
-        <AOSInitializer />
         {children}
       </body>
     </html>

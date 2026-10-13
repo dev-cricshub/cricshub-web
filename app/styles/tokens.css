@@ -1,0 +1,160 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   CricsHub design tokens — single source of truth for colour, elevation,
+   radius and motion. Tailwind maps these in tailwind.config.js; JS mirrors
+   live in lib/design/tokens.ts.
+
+   Colour values are RGB channels so Tailwind can apply alpha (bg-primary/10).
+   Broadcast overlays (/overlay, /obs, /preview) deliberately don't use these.
+
+   Brand palette (sampled from the logo artwork in public/images)
+   ─────────────
+   brand        #207BBE  the "HUB" wordmark / swoosh blue — THE primary colour
+   brand-navy   #273687  deep navy of the logo ring — depth, gradients
+   brand-sky    #22A4DC  bright sky of the swoosh highlight — gradient tips only
+
+   Roles
+   ─────
+   canvas / surface-*      background + layered surfaces (cards, panels, inputs)
+   line / line-strong      hairlines, dividers, control borders
+   fg / fg-muted / subtle  text hierarchy
+   primary                 brand blue — CTAs, active state, progress (white text)
+   secondary               logo navy — secondary fills, gradient depth
+   accent                  light brand blue — highlight text, links, icons, data on dark
+   gold                    demo/simulated labels, awards
+   live                    on-air / live / wicket red
+   success|warning|danger  status, each with -soft surface + -soft-fg text
+
+   States: hover = primary-hover (filled) or surface-2 / primary-soft (quiet),
+   selected = primary-soft + primary-soft-fg, focus = ring, disabled = 50% opacity.
+   Blue is for actions, selection, links and data — not for decoration.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --brand-blue: 32 123 190;
+  --brand-navy: 39 54 135;
+  --brand-sky: 34 164 220;
+}
+
+/* Dark navy is the signature look and the default. */
+:root,
+[data-theme='dark'] {
+  --canvas: 6 10 18;
+  --surface: 11 17 29;
+  --surface-2: 17 25 40;
+  --surface-3: 26 36 55;
+  --surface-inverse: 234 240 247;
+
+  --line: 29 40 60;
+  --line-strong: 46 60 86;
+
+  --fg: 234 240 247;
+  --fg-muted: 156 170 190;
+  --fg-subtle: 112 127 150;
+  --fg-inverse: 6 10 18;
+
+  --primary: var(--brand-blue);
+  --primary-hover: 27 108 170;
+  --primary-fg: 255 255 255;
+  --primary-soft: 16 37 62;
+  --primary-soft-fg: 138 199 242;
+
+  --secondary: var(--brand-navy);
+  --secondary-fg: 234 240 247;
+
+  --accent: 102 182 236;
+  --brand: var(--brand-blue);
+  --gold: 226 185 75;
+
+  --success: 52 199 112;
+  --success-soft: 13 38 30;
+  --success-soft-fg: 118 222 158;
+
+  --warning: 245 166 35;
+  --warning-soft: 44 32 12;
+  --warning-soft-fg: 250 200 110;
+
+  --danger: 248 92 92;
+  --danger-soft: 48 18 24;
+  --danger-soft-fg: 252 160 160;
+
+  --live: 248 82 76;
+  --ring: 102 182 236;
+  --shadow: 1 4 12;
+}
+
+/* Daylight theme for operational screens. Same roles, tuned for contrast on white. */
+:root[data-theme='light'],
+[data-theme='light'] {
+  --canvas: 245 247 251;
+  --surface: 255 255 255;
+  --surface-2: 238 242 248;
+  --surface-3: 225 231 240;
+  --surface-inverse: 11 17 29;
+
+  --line: 221 227 236;
+  --line-strong: 194 203 217;
+
+  --fg: 11 17 29;
+  --fg-muted: 72 85 106;
+  --fg-subtle: 112 124 144;
+  --fg-inverse: 255 255 255;
+
+  --primary: var(--brand-blue);
+  --primary-hover: 24 100 158;
+  --primary-fg: 255 255 255;
+  --primary-soft: 232 242 251;
+  --primary-soft-fg: 22 88 140;
+
+  --secondary: var(--brand-navy);
+  --secondary-fg: 255 255 255;
+
+  --accent: 24 100 158;
+  --brand: var(--brand-blue);
+  --gold: 161 112 8;
+
+  --success: 22 163 74;
+  --success-soft: 236 253 243;
+  --success-soft-fg: 21 112 59;
+
+  --warning: 217 119 6;
+  --warning-soft: 255 247 230;
+  --warning-soft-fg: 146 72 6;
+
+  --danger: 220 38 38;
+  --danger-soft: 254 242 242;
+  --danger-soft-fg: 165 28 28;
+
+  --live: 220 45 41;
+  --ring: 32 123 190;
+  --shadow: 15 23 42;
+}
+
+/* color-scheme is scoped to human-facing pages so transparent broadcast overlays are untouched. */
+html:has(.app-shell),
+.app-shell [data-theme='dark'] {
+  color-scheme: dark;
+}
+html[data-theme='light']:has(.app-shell),
+.app-shell [data-theme='light'] {
+  color-scheme: light;
+}
+
+:root {
+  /* Radius — deliberately tight; scoreboards and broadcast graphics are squared-off.
+     Pills (rounded-full) are reserved for tags, avatars and status dots. */
+  --radius-control: 8px; /* buttons, inputs, segmented controls */
+  --radius-card: 12px; /* cards, panels, menus */
+  --radius-frame: 16px; /* product frames, modals */
+
+  /* Layout rhythm */
+  --section-y: clamp(5rem, 9vw, 8rem);
+  --header-h: 4rem;
+
+  /* Motion — keep in sync with lib/design/tokens.ts */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+  --dur-reveal: 700ms;
+}

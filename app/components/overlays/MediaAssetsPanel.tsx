@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   deleteMediaAsset,
   fetchMatchPlaylist,
@@ -9,6 +9,7 @@ import {
   saveMatchPlaylist,
   uploadMediaAsset,
 } from "../../../lib/api";
+import { Button, cn } from "@/app/components/ui";
 
 // ═══════════════════════════════════════════════════════════
 // MEDIA ASSETS PANEL — tpl-pro-5
@@ -24,6 +25,60 @@ interface Props {
   userId:  string;
 }
 
+function Thumb({ asset, small }: { asset: MediaAsset; small?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-surface-3 text-fg-subtle",
+        small ? "h-7 w-10" : "h-9 w-12",
+      )}
+    >
+      {asset.type === "IMAGE" ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={asset.url} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <i className="ri-play-fill text-base" aria-hidden />
+      )}
+    </div>
+  );
+}
+
+function SectionToggle({
+  title,
+  open,
+  onToggle,
+  controls,
+  meta,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  controls: string;
+  meta?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={controls}
+      className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="text-2xs font-semibold uppercase tracking-wider text-fg-subtle">{title}</span>
+      <span className="flex items-center gap-2">
+        {meta}
+        <i
+          className={cn(
+            "ri-arrow-down-s-line text-base text-fg-subtle transition-transform duration-200",
+            open && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </span>
+    </button>
+  );
+}
+
 export default function MediaAssetsPanel({ matchId, userId }: Props) {
   const [library,      setLibrary]      = useState<MediaAsset[]>([]);
   const [playlist,     setPlaylist]     = useState<MediaAsset[]>([]);
@@ -34,6 +89,8 @@ export default function MediaAssetsPanel({ matchId, userId }: Props) {
   const [libraryOpen,  setLibraryOpen]  = useState(true);
   const [sequenceOpen, setSequenceOpen] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+  const libraryId = useId();
+  const sequenceId = useId();
 
   // Load library + current playlist on mount
   useEffect(() => {
@@ -127,390 +184,173 @@ export default function MediaAssetsPanel({ matchId, userId }: Props) {
     asset.fileName ? asset.fileName.replace(/^.+\//, "").substring(0, 28) : asset.type;
 
   return (
-    <div
-      style={{
-        background: "rgba(8,10,24,0.97)",
-        fontFamily: "'DM Sans', sans-serif",
-        color: "#fff",
-      }}
-    >
+    <div className="bg-surface text-fg">
       {/* ── Scrollable body ── */}
-      <div
-        className="media-panel-scroll"
-        style={{ padding: 20, overflowY: "auto", maxHeight: 480, boxSizing: "border-box" }}
-      >
-
+      <div className="max-h-[480px] space-y-5 overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin] sm:p-5">
         {/* ── LIBRARY ─────────────────────────── */}
-        <div style={{ marginBottom: 16 }}>
-          <button
-            onClick={() => setLibraryOpen((v) => !v)}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              background: "none",
-              border: "none",
-              borderBottom: "1px solid rgba(217,119,6,0.18)",
-              padding: "0 0 6px 0",
-              marginBottom: libraryOpen ? 10 : 0,
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            <span
-              style={{
-                color: "#D97706",
-                fontSize: 9,
-                fontWeight: 800,
-                letterSpacing: 2.5,
-                textTransform: "uppercase",
-              }}
-            >
-              Your Library
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
+        <section className="space-y-2">
+          <SectionToggle
+            title="Your library"
+            open={libraryOpen}
+            onToggle={() => setLibraryOpen((v) => !v)}
+            controls={libraryId}
+            meta={
+              <span className="font-mono text-xs tabular-nums text-fg-subtle">
                 {library.length} / {MAX_ASSETS}
               </span>
-              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
-                {libraryOpen ? "▲" : "▼"}
-              </span>
-            </div>
-          </button>
+            }
+          />
 
-          {libraryOpen && library.length === 0 && !uploading && (
-            <div
-              style={{
-                color: "rgba(255,255,255,0.25)",
-                fontSize: 12,
-                textAlign: "center",
-                padding: "16px 0",
-              }}
-            >
-              No assets yet. Upload images or videos below.
-            </div>
-          )}
+          {libraryOpen && (
+            <div id={libraryId} className="space-y-2 animate-fade-in">
+              {library.length === 0 && !uploading && (
+                <p className="rounded-xl border border-dashed border-line-strong px-3 py-4 text-center text-xs text-fg-subtle">
+                  No assets yet. Upload images or videos below.
+                </p>
+              )}
 
-          {libraryOpen && <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {library.map((asset) => {
-              const inPlaylist = !!playlist.find((a) => a.id === asset.id);
-              return (
-                <div
-                  key={asset.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 7,
-                    padding: "8px 10px",
-                  }}
+              {library.length > 0 && (
+                <ul className="space-y-1.5">
+                  {library.map((asset) => {
+                    const inPlaylist = !!playlist.find((a) => a.id === asset.id);
+                    const name = fmt(asset);
+                    return (
+                      <li
+                        key={asset.id}
+                        className="flex items-center gap-2.5 rounded-xl border border-line bg-surface-2 p-2"
+                      >
+                        <Thumb asset={asset} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-fg">{name}</p>
+                          <p className="text-xs text-fg-subtle">
+                            {asset.type === "VIDEO" ? "Video" : "Image"}
+                          </p>
+                        </div>
+                        <Button
+                          size="xs"
+                          variant={inPlaylist ? "secondary" : "outline"}
+                          icon={inPlaylist ? "ri-check-line" : "ri-add-line"}
+                          onClick={() => addToPlaylist(asset)}
+                          disabled={inPlaylist}
+                          title={inPlaylist ? "Already in sequence" : "Add to sequence"}
+                          aria-label={inPlaylist ? `${name} is in the sequence` : `Add ${name} to sequence`}
+                        >
+                          {inPlaylist ? "Added" : "Add"}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(asset)}
+                          title="Delete from library"
+                          aria-label={`Delete ${name} from library`}
+                          className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-sm text-fg-subtle transition-colors duration-150 hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <i className="ri-delete-bin-line" aria-hidden />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {/* Upload button */}
+              {library.length < MAX_ASSETS && (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong bg-surface-2 px-3 py-3 text-sm font-medium text-fg-muted transition-colors duration-150 hover:border-primary hover:bg-primary-soft hover:text-primary-soft-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {/* Thumb */}
-                  <div
-                    style={{
-                      width: 44,
-                      height: 32,
-                      borderRadius: 4,
-                      background: "rgba(255,255,255,0.06)",
-                      flexShrink: 0,
-                      overflow: "hidden",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {asset.type === "IMAGE" ? (
-                      <img
-                        src={asset.url}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: 16 }}>▶</span>
-                    )}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        color: "#E5E7EB",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {fmt(asset)}
-                    </div>
-                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}>
-                      {asset.type === "VIDEO" ? "Video" : "Image"}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => addToPlaylist(asset)}
-                    disabled={inPlaylist}
-                    title={inPlaylist ? "Already in sequence" : "Add to sequence"}
-                    style={{
-                      background: inPlaylist ? "rgba(217,119,6,0.08)" : "rgba(217,119,6,0.15)",
-                      border: `1px solid ${inPlaylist ? "rgba(217,119,6,0.15)" : "rgba(217,119,6,0.4)"}`,
-                      borderRadius: 5,
-                      padding: "4px 8px",
-                      color: inPlaylist ? "rgba(217,119,6,0.4)" : "#D97706",
-                      fontSize: 11,
-                      cursor: inPlaylist ? "default" : "pointer",
-                      fontFamily: "inherit",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {inPlaylist ? "Added" : "+ Add"}
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(asset)}
-                    title="Delete from library"
-                    style={{
-                      background: "rgba(239,68,68,0.06)",
-                      border: "1px solid rgba(239,68,68,0.15)",
-                      borderRadius: 5,
-                      padding: "4px 8px",
-                      color: "#F87171",
-                      fontSize: 11,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      flexShrink: 0,
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              );
-            })}
-          </div>}
-
-          {/* Upload button */}
-          {libraryOpen && library.length < MAX_ASSETS && (
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              style={{
-                width: "100%",
-                marginTop: 8,
-                boxSizing: "border-box",
-                background: "rgba(255,255,255,0.03)",
-                border: "1.5px dashed rgba(255,255,255,0.1)",
-                borderRadius: 7,
-                padding: "12px",
-                color: uploading ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.35)",
-                fontSize: 12,
-                cursor: uploading ? "not-allowed" : "pointer",
-                fontFamily: "inherit",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-              }}
-            >
-              <span style={{ fontSize: 16 }}>{uploading ? "…" : "↑"}</span>
-              {uploading ? "Uploading…" : "Upload image or video"}
-            </button>
+                  <i
+                    className={uploading ? "ri-loader-4-line animate-spin" : "ri-upload-cloud-2-line"}
+                    aria-hidden
+                  />
+                  {uploading ? "Uploading…" : "Upload image or video"}
+                </button>
+              )}
+            </div>
           )}
           <input
             ref={fileRef}
             type="file"
             accept="image/*,video/*"
             onChange={handleUpload}
-            style={{ display: "none" }}
+            className="hidden"
           />
-        </div>
+        </section>
 
         {/* ── SEQUENCE ────────────────────────── */}
-        <div>
-          <button
-            onClick={() => setSequenceOpen((v) => !v)}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              background: "none",
-              border: "none",
-              borderBottom: "1px solid rgba(217,119,6,0.18)",
-              padding: "0 0 6px 0",
-              marginBottom: sequenceOpen ? 10 : 0,
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            <span
-              style={{
-                color: "#D97706",
-                fontSize: 9,
-                fontWeight: 800,
-                letterSpacing: 2.5,
-                textTransform: "uppercase",
-              }}
-            >
-              Playback Sequence
-            </span>
-            <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
-              {sequenceOpen ? "▲" : "▼"}
-            </span>
-          </button>
+        <section className="space-y-2 border-t border-line pt-4">
+          <SectionToggle
+            title="Playback sequence"
+            open={sequenceOpen}
+            onToggle={() => setSequenceOpen((v) => !v)}
+            controls={sequenceId}
+          />
 
-          {sequenceOpen && (playlist.length === 0 ? (
-            <div
-              style={{
-                color: "rgba(255,255,255,0.2)",
-                fontSize: 12,
-                textAlign: "center",
-                padding: "14px 0",
-              }}
-            >
-              No assets in sequence yet. Add from library above.
+          {sequenceOpen && (
+            <div id={sequenceId} className="animate-fade-in">
+              {playlist.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-line-strong px-3 py-4 text-center text-xs text-fg-subtle">
+                  No assets in sequence yet. Add from library above.
+                </p>
+              ) : (
+                <ol className="space-y-1.5" aria-label="Playback order (drag to reorder)">
+                  {playlist.map((asset, i) => (
+                    <li
+                      key={asset.id}
+                      draggable
+                      onDragStart={() => onDragStart(i)}
+                      onDragOver={(e) => onDragOver(e, i)}
+                      onDragEnd={onDragEnd}
+                      className={cn(
+                        "flex cursor-grab items-center gap-2 rounded-lg border px-2 py-1.5 transition-[background-color,border-color,box-shadow] duration-150 active:cursor-grabbing",
+                        dragIndex === i
+                          ? "border-primary/40 bg-primary-soft shadow-raised"
+                          : "border-line bg-surface hover:border-line-strong",
+                      )}
+                    >
+                      <i className="ri-draggable flex-shrink-0 text-base text-fg-subtle" aria-hidden />
+                      <span className="w-4 flex-shrink-0 font-mono text-xs font-medium tabular-nums text-fg-subtle">
+                        {i + 1}
+                      </span>
+                      <Thumb asset={asset} small />
+                      <span className="min-w-0 flex-1 truncate text-xs text-fg">{fmt(asset)}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFromPlaylist(asset.id)}
+                        aria-label={`Remove ${fmt(asset)} from sequence`}
+                        className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-fg-subtle transition-colors duration-150 hover:bg-surface-3 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <i className="ri-close-line" aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {playlist.map((asset, i) => (
-                <div
-                  key={asset.id}
-                  draggable
-                  onDragStart={() => onDragStart(i)}
-                  onDragOver={(e) => onDragOver(e, i)}
-                  onDragEnd={onDragEnd}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    background:
-                      dragIndex === i
-                        ? "rgba(217,119,6,0.08)"
-                        : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${dragIndex === i ? "rgba(217,119,6,0.3)" : "rgba(255,255,255,0.06)"}`,
-                    borderRadius: 6,
-                    padding: "7px 10px",
-                    cursor: "grab",
-                    transition: "background 0.15s, border-color 0.15s",
-                  }}
-                >
-                  {/* Drag handle */}
-                  <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 13, flexShrink: 0 }}>
-                    ⠿
-                  </span>
-                  {/* Order number */}
-                  <span
-                    style={{
-                      color: "rgba(255,255,255,0.3)",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      width: 14,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {i + 1}
-                  </span>
-                  {/* Thumb */}
-                  <div
-                    style={{
-                      width: 36,
-                      height: 26,
-                      borderRadius: 3,
-                      background: "rgba(255,255,255,0.06)",
-                      flexShrink: 0,
-                      overflow: "hidden",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {asset.type === "IMAGE" ? (
-                      <img
-                        src={asset.url}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: 12 }}>▶</span>
-                    )}
-                  </div>
-                  <span
-                    style={{
-                      flex: 1,
-                      color: "#D1D5DB",
-                      fontSize: 11,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {fmt(asset)}
-                  </span>
-                  <button
-                    onClick={() => removeFromPlaylist(asset.id)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "rgba(255,255,255,0.25)",
-                      fontSize: 14,
-                      cursor: "pointer",
-                      padding: "0 2px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+          )}
+        </section>
       </div>
 
-      <style>{`
-        .media-panel-scroll::-webkit-scrollbar { width: 4px; }
-        .media-panel-scroll::-webkit-scrollbar-track { background: transparent; }
-        .media-panel-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        .media-panel-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-      `}</style>
-
       {/* Footer */}
-      <div
-        style={{
-          padding: "12px 16px",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(8,10,24,0.98)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-        }}
-      >
-        <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 11 }}>
-          {playlist.length} asset{playlist.length !== 1 ? "s" : ""} in sequence
+      <div className="flex items-center justify-between gap-2 border-t border-line bg-surface-2 px-4 py-3 sm:px-5">
+        <span className="text-xs text-fg-subtle">
+          <span className="font-mono tabular-nums">{playlist.length}</span> asset
+          {playlist.length !== 1 ? "s" : ""} in sequence
         </span>
-        <button
+        <Button
+          size="sm"
+          variant={saved ? "secondary" : "primary"}
+          icon={saved ? "ri-check-line" : "ri-save-line"}
+          loading={saving}
           onClick={handleSave}
-          disabled={saving || playlist.length === 0}
-          style={{
-            background: saved ? "rgba(5,150,105,0.12)" : "transparent",
-            border: `1px solid ${saved ? "rgba(5,150,105,0.35)" : "rgba(255,255,255,0.15)"}`,
-            borderRadius: 7,
-            padding: "8px 18px",
-            color: saved ? "#34D399" : "rgba(255,255,255,0.7)",
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: saving || playlist.length === 0 ? "not-allowed" : "pointer",
-            fontFamily: "inherit",
-            opacity: playlist.length === 0 ? 0.4 : 1,
-            transition: "all 0.2s ease",
-          }}
+          disabled={playlist.length === 0}
         >
-          {saving ? "Saving…" : saved ? "✓ Saved" : "Save Sequence"}
-        </button>
+          {saving ? "Saving…" : saved ? "Saved" : "Save sequence"}
+        </Button>
+        <span aria-live="polite" className="sr-only">
+          {saved ? "Sequence saved" : ""}
+        </span>
       </div>
     </div>
   );

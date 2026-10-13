@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { fetchMatchState } from "@/lib/api";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "@/lib/site";
 
 export function useMatchWebSocket(matchId: string) {
   const [matchState, setMatchState] = useState<any>(null);

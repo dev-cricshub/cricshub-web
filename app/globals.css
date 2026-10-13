@@ -1,4 +1,182 @@
 @import url('https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css');
+@import './styles/tokens.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* Only app/marketing pages paint the page background; overlay routes stay transparent. */
+  html:has(.app-shell) {
+    background-color: rgb(var(--canvas));
+    scroll-behavior: smooth;
+  }
+
+  .app-shell {
+    @apply min-h-dvh bg-canvas font-sans text-fg antialiased;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Bottom tab bar (MobileTabBar): reserve its height so content and fixed bars sit above it. */
+  .app-shell {
+    --tabbar-h: 0px;
+  }
+  @media (max-width: 767px) {
+    .app-shell:has([data-tabbar]) {
+      --tabbar-h: calc(4rem + env(safe-area-inset-bottom));
+      padding-bottom: var(--tabbar-h);
+    }
+    /* Keyboard open — get the tab bar out of the way like a native app. */
+    .app-shell:has(input:focus, textarea:focus, select:focus, [contenteditable]:focus) [data-tabbar] {
+      display: none;
+    }
+  }
+
+  /* No double-tap-zoom delay on taps */
+  .app-shell a,
+  .app-shell button,
+  .app-shell [role='button'],
+  .app-shell label {
+    touch-action: manipulation;
+  }
+
+  /* iOS zooms the page when focusing inputs under 16px — keep them at 16px on touch phones. */
+  @supports (-webkit-touch-callout: none) {
+    @media (max-width: 767px) {
+      .app-shell input,
+      .app-shell select,
+      .app-shell textarea {
+        font-size: max(16px, 1em);
+      }
+    }
+  }
+
+  /* Launched from the home screen: no rubber-band bounce revealing the page behind. */
+  @media (display-mode: standalone) {
+    html:has(.app-shell) {
+      overscroll-behavior-y: none;
+    }
+    .app-shell {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .app-shell input,
+    .app-shell textarea,
+    .app-shell [contenteditable],
+    .app-shell p,
+    .app-shell td,
+    .app-shell code,
+    .app-shell pre {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+  }
+
+  .app-shell :focus-visible {
+    outline: 2px solid rgb(var(--ring));
+    outline-offset: 2px;
+  }
+
+  .app-shell ::selection {
+    background: rgb(var(--primary) / 0.2);
+  }
+
+  .app-shell h1,
+  .app-shell h2,
+  .app-shell h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  /* Page container — consistent gutters across every route */
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Small uppercase label above section headings */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-fg-muted;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply rounded-md bg-surface-3;
+    background-image: linear-gradient(
+      90deg,
+      rgb(var(--surface-3)) 0%,
+      rgb(var(--surface-2)) 50%,
+      rgb(var(--surface-3)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* Long-form legal / prose content */
+  .prose-legal {
+    @apply text-[15px] leading-7 text-fg-muted;
+  }
+  .prose-legal h2 {
+    @apply mt-12 scroll-mt-24 font-display text-2xl font-bold uppercase tracking-wide text-fg first:mt-0 sm:text-[1.75rem];
+  }
+  .prose-legal h3 {
+    @apply mt-6 text-base font-semibold text-fg;
+  }
+  .prose-legal p {
+    @apply mt-4;
+  }
+  .prose-legal ul {
+    @apply mt-4 list-disc space-y-2 pl-5 marker:text-fg-subtle;
+  }
+  .prose-legal strong {
+    @apply font-semibold text-fg;
+  }
+  .prose-legal a {
+    @apply font-medium text-primary underline decoration-primary/30 underline-offset-2 hover:decoration-primary;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Reveal-on-scroll (see app/components/ui/Reveal.tsx) */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 600ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal[data-visible='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Respect reduced-motion inside app/marketing pages only — broadcast overlays keep their animation. */
+@media (prefers-reduced-motion: reduce) {
+  html:has(.app-shell) {
+    scroll-behavior: auto;
+  }
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
