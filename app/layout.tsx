@@ -1,15 +1,7 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono, Pacifico } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import AOSInitializer from './components/AOSInitializer';
-import Script from 'next/script';
-
-const pacifico = Pacifico({
-  weight: '400',
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-pacifico',
-})
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +40,17 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F7F8FA" },
+    { media: "(prefers-color-scheme: dark)", color: "#090C12" },
+  ],
+};
+
+// Applies the saved theme before first paint so there's no light/dark flash.
+// Stored value: "light" | "dark" | "system" (default "light").
+const themeInit = `(function(){try{var t=localStorage.getItem('ch-theme')||'light';if(t==='system'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -56,13 +59,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${pacifico.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         <Script
           src="https://checkout.razorpay.com/v1/checkout.js"
           strategy="lazyOnload"
         />
-        <AOSInitializer />
         {children}
       </body>
     </html>

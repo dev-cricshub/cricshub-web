@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { sendOtp, verifyOtp } from "@/lib/api";
+import { safeRedirect } from "@/lib/session";
+import { Button, Checkbox, Logo, Modal, cn } from "@/app/components/ui";
 
 type Step = "phone" | "otp" | "success";
 
@@ -27,6 +29,7 @@ export default function LoginModal({
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState(0);
   const [resendTimer, setResendTimer] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -57,9 +60,14 @@ export default function LoginModal({
 
   const startResendTimer = () => setResendTimer(RESEND_SECONDS);
 
+  const fail = (msg: string) => {
+    setError(msg);
+    setErrorKey((k) => k + 1); // re-trigger shake animation
+  };
+
   const handleSendOtp = async () => {
     if (phone.length < 10) {
-      setError("Please enter a valid 10-digit phone number");
+      fail("Please enter a valid 10-digit phone number");
       return;
     }
     setError("");
@@ -71,10 +79,10 @@ export default function LoginModal({
         startResendTimer();
         setTimeout(() => otpRefs.current[0]?.focus(), 100);
       } else {
-        setError(res.message || "Failed to send OTP. Try again.");
+        fail(res.message || "Failed to send OTP. Try again.");
       }
     } catch {
-      setError("Network error. Please check your connection.");
+      fail("Network error. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -109,22 +117,16 @@ export default function LoginModal({
           } else {
             onClose();
             const searchParams = new URLSearchParams(window.location.search);
-            const redirectParam = searchParams.get("redirect");
-            // Only allow relative redirects — blocks open redirect attacks
-            const safeRedirect =
-              redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
-                ? redirectParam
-                : "/dashboard";
-            window.location.href = safeRedirect;
+            window.location.href = safeRedirect(searchParams.get("redirect"));
           }
         }, 1500);
       } else {
-        setError(res.message || "Invalid OTP. Please try again.");
+        fail(res.message || "Invalid OTP. Please try again.");
         setOtp(Array(OTP_LENGTH).fill(""));
         otpRefs.current[0]?.focus();
       }
     } catch {
-      setError("Network error. Please try again.");
+      fail("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -150,6 +152,10 @@ export default function LoginModal({
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
+      otpRefs.current[index + 1]?.focus();
     }
   };
 
@@ -167,345 +173,229 @@ export default function LoginModal({
     }
   };
 
-  if (!isOpen) return null;
+  const ErrorText = ({ center }: { center?: boolean }) =>
+    error ? (
+      <p
+        key={errorKey}
+        role="alert"
+        className={cn(
+          "mt-2.5 flex items-center gap-1.5 text-sm font-medium text-danger animate-fade-in",
+          center && "justify-center",
+        )}
+      >
+        <i className="ri-error-warning-fill" aria-hidden />
+        {error}
+      </p>
+    ) : null;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      hideClose={step === "success"}
+      dismissible={step !== "success"}
+      ariaLabel="Log in to CricsHub"
+      padded={false}
+    >
+      <div className="px-6 pb-8 pt-2 sm:px-8 sm:pt-0">
+        <Logo href={null} className="mb-7" />
 
-      {/* Modal Container */}
-      <div className="fixed inset-0 z-[101] flex items-end sm:items-center justify-center pointer-events-none sm:p-4">
-        <div
-          className="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl pointer-events-auto overflow-hidden flex flex-col max-h-[90vh] pb-safe mobile-slide-up sm:desktop-zoom-in"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* FIX: Moved gradient line INSIDE the overflow-hidden container
-            and used h-1.5 with rounded-t-2xl to match container exactly.
-          */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 rounded-t-2xl" />
-
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 transition-colors z-10 p-1.5 rounded-full hover:bg-gray-100"
-            aria-label="Close modal"
+        {/* ── STEP: Phone ── */}
+        {step === "phone" && (
+          <form
+            className="animate-fade-up"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendOtp();
+            }}
           >
-            <i className="ri-close-line text-xl leading-none" />
-          </button>
+            <h2 className="text-2xl font-semibold tracking-tight text-fg">Log in or sign up</h2>
+            <p className="mt-1.5 text-sm text-fg-muted">
+              We&apos;ll text a 6-digit code to your phone. No password needed.
+            </p>
 
-          <div className="px-6 sm:px-8 pt-10 pb-8 overflow-y-auto">
-            {/* Logo */}
-            <div className="flex items-center gap-3 mb-8">
-              <Image
-                src="/images/iconLogo.png"
-                alt="Cricshub"
-                width={40}
-                height={40}
-                className="rounded-lg"
-              />
-              <Image
-                src="/images/textLogo.png"
-                alt="Cricshub"
-                width={100}
-                height={30}
-                className="object-contain"
-              />
+            <div className="mt-7">
+              <label htmlFor="login-phone" className="mb-1.5 block text-sm font-medium text-fg">
+                Phone number
+              </label>
+              <div
+                key={errorKey}
+                className={cn(
+                  "flex h-12 items-center overflow-hidden rounded-xl border bg-surface shadow-xs transition-[border-color,box-shadow] duration-150 focus-within:border-primary focus-within:shadow-focus",
+                  error ? "border-danger animate-shake" : "border-line-strong",
+                )}
+              >
+                <span className="flex h-full items-center gap-1.5 border-r border-line bg-surface-2 px-3.5 text-sm font-medium text-fg-muted">
+                  <span aria-hidden>{COUNTRY_DATA.flag}</span>
+                  {COUNTRY_DATA.code}
+                </span>
+                <input
+                  id="login-phone"
+                  data-autofocus
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  placeholder="98765 43210"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                    setError("");
+                  }}
+                  aria-invalid={!!error || undefined}
+                  aria-describedby={error ? "login-error" : undefined}
+                  className="h-full min-w-0 flex-1 bg-transparent px-3.5 text-base font-medium tracking-wide text-fg placeholder:font-normal placeholder:text-fg-subtle focus:outline-none"
+                  disabled={loading}
+                />
+                {phone.length === 10 && (
+                  <i className="ri-checkbox-circle-fill mr-3.5 text-lg text-success animate-pop" aria-hidden />
+                )}
+              </div>
+              <div id="login-error">
+                <ErrorText />
+              </div>
             </div>
 
-            {/* ── STEP: Phone ── */}
-            {step === "phone" && (
-              <div className="animate-fade-in">
-                <h2 className="text-2xl font-bold text-gray-900 mb-1.5">
-                  Welcome back 👋
-                </h2>
-                <p className="text-gray-600 text-sm mb-8">
-                  Enter your phone number to continue
-                </p>
+            <Checkbox
+              className="mt-5"
+              checked={rememberMe}
+              onChange={setRememberMe}
+              label="Keep me signed in for 30 days"
+            />
 
-                <div className="mb-6">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    Phone Number
-                  </label>
+            <Button
+              type="submit"
+              size="lg"
+              block
+              className="mt-6"
+              loading={loading}
+              disabled={phone.length < 10}
+              trailingIcon="ri-arrow-right-line"
+            >
+              {loading ? "Sending code…" : "Continue"}
+            </Button>
 
-                  {/* FIX: Simplified Input Group (Removed Dropdown) */}
-                  <div className="relative flex items-center border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-brand-200 focus-within:border-brand-400 transition-all bg-white h-14">
-                    {/* Fixed Country Code Display */}
-                    <div className="flex items-center gap-2 h-full px-4 text-base font-medium text-gray-700 border-r border-gray-200 bg-gray-50 rounded-l-xl">
-                      <span className="text-lg">{COUNTRY_DATA.flag}</span>
-                      <span>{COUNTRY_DATA.code}</span>
-                    </div>
+            <p className="mt-6 text-center text-xs leading-relaxed text-fg-subtle">
+              By continuing, you agree to CricsHub&apos;s{" "}
+              <Link href="/terms-of-service" className="font-medium text-fg-muted underline underline-offset-2 hover:text-fg">
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy-policy" className="font-medium text-fg-muted underline underline-offset-2 hover:text-fg">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          </form>
+        )}
 
-                    {/* Number input */}
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="9876543210"
-                      value={phone}
-                      onChange={(e) => {
-                        setPhone(
-                          e.target.value.replace(/\D/g, "").slice(0, 10),
-                        );
-                        setError("");
-                      }}
-                      onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
-                      className="flex-1 h-full px-4 bg-transparent text-gray-900 text-base placeholder:text-gray-300 focus:outline-none rounded-r-xl w-full font-medium tracking-wide"
-                      disabled={loading}
-                    />
-                  </div>
-                  {error && (
-                    <p className="mt-2.5 text-xs text-red-600 flex items-center gap-1.5 animate-fade-in font-medium">
-                      <i className="ri-error-warning-fill text-sm" />
-                      {error}
-                    </p>
-                  )}
-                </div>
+        {/* ── STEP: OTP ── */}
+        {step === "otp" && (
+          <div className="animate-fade-up">
+            <button
+              type="button"
+              onClick={() => {
+                setStep("phone");
+                setError("");
+                setOtp(Array(OTP_LENGTH).fill(""));
+              }}
+              className="-ml-1 mb-5 inline-flex items-center gap-1 rounded-md px-1 text-sm font-medium text-fg-muted transition-colors hover:text-fg"
+            >
+              <i className="ri-arrow-left-line" aria-hidden />
+              Change number
+            </button>
 
-                {/* Remember me */}
-                <label className="flex items-center gap-2.5 mb-6 cursor-pointer select-none group w-fit">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-5 h-5 rounded-md border-2 border-gray-300 bg-white peer-checked:bg-brand-500 peer-checked:border-brand-500 transition-all flex items-center justify-center">
-                      {rememberMe && <i className="ri-check-line text-white text-xs leading-none" />}
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors font-medium">
-                    Remember me for 30 days
-                  </span>
-                </label>
+            <h2 className="text-2xl font-semibold tracking-tight text-fg">Enter verification code</h2>
+            <p className="mt-1.5 text-sm text-fg-muted">
+              Sent to{" "}
+              <span className="font-medium tabular-nums text-fg">
+                {COUNTRY_DATA.code} {phone}
+              </span>
+            </p>
 
-                <button
-                  onClick={handleSendOtp}
-                  disabled={loading || phone.length < 10}
-                  // FIX: Changed gradient to use brand colors
-                  className="w-full h-14 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md shadow-brand-100 hover:shadow-lg hover:shadow-brand-200 flex items-center justify-center gap-2 text-lg"
-                >
-                  {loading ? (
-                    <>
-                      <i className="ri-loader-4-line animate-spin" />
-                      Sending code...
-                    </>
-                  ) : (
-                    <>
-                      Get OTP
-                      <i className="ri-arrow-right-line" />
-                    </>
-                  )}
-                </button>
-
-                <p className="text-center text-xs text-gray-500 mt-7 line-height-relaxed">
-                  By continuing, you agree to Cricshub's{" "}
-                  <a
-                    href="/terms-of-service"
-                    className="text-brand-600 hover:text-brand-700 font-medium underline decoration-brand-200 transition-colors"
-                  >
-                    Terms
-                  </a>{" "}
-                  &{" "}
-                  <a
-                    href="/privacy-policy"
-                    className="text-brand-600 hover:text-brand-700 font-medium underline decoration-brand-200 transition-colors"
-                  >
-                    Privacy Policy
-                  </a>
-                </p>
+            <fieldset className="mt-7" onPaste={handleOtpPaste}>
+              <legend className="sr-only">6-digit verification code</legend>
+              <div key={errorKey} className={cn("flex justify-between gap-2 sm:gap-2.5", error && "animate-shake")}>
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => {
+                      otpRefs.current[index] = el;
+                    }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete={index === 0 ? "one-time-code" : "off"}
+                    maxLength={1}
+                    value={digit}
+                    aria-label={`Digit ${index + 1}`}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                    onFocus={(e) => e.target.select()}
+                    disabled={loading}
+                    className={cn(
+                      "aspect-square w-full min-w-0 max-w-[3.25rem] rounded-xl border bg-surface text-center font-mono text-xl font-semibold text-fg shadow-xs",
+                      "transition-[border-color,box-shadow,background-color] duration-150 focus:border-primary focus:shadow-focus focus:outline-none disabled:opacity-50",
+                      error ? "border-danger" : digit ? "border-primary/50 bg-primary-soft/50" : "border-line-strong",
+                    )}
+                  />
+                ))}
               </div>
-            )}
+            </fieldset>
 
-            {/* ── STEP: OTP ── */}
-            {step === "otp" && (
-              <div className="animate-fade-in">
+            <ErrorText center />
+
+            <Button
+              size="lg"
+              block
+              className="mt-6"
+              onClick={handleVerifyOtp}
+              loading={loading}
+              disabled={otp.some((d) => d === "")}
+              icon={loading ? undefined : "ri-shield-check-line"}
+            >
+              {loading ? "Verifying…" : "Verify and continue"}
+            </Button>
+
+            {/* Resend */}
+            <div className="mt-6 flex h-6 items-center justify-center text-sm">
+              {resendTimer > 0 ? (
+                <p className="text-fg-subtle">
+                  Resend code in <span className="font-medium tabular-nums text-fg-muted">{resendTimer}s</span>
+                </p>
+              ) : (
                 <button
-                  onClick={() => {
-                    setStep("phone");
-                    setError("");
+                  type="button"
+                  onClick={async () => {
+                    setLoading(true);
+                    await sendOtp(phone);
+                    setLoading(false);
                     setOtp(Array(OTP_LENGTH).fill(""));
+                    startResendTimer();
+                    otpRefs.current[0]?.focus();
                   }}
-                  className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-brand-700 transition-colors mb-7 font-medium"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
                 >
-                  <i className="ri-arrow-left-line" />
-                  Change phone number
+                  Resend code
                 </button>
-
-                <h2 className="text-2xl font-bold text-gray-900 mb-1.5">
-                  Verify OTP
-                </h2>
-                <p className="text-gray-600 text-sm mb-9">
-                  Enter 6-digit code sent to{" "}
-                  <span className="font-semibold text-gray-800 tracking-wide">
-                    {COUNTRY_DATA.code} {phone}
-                  </span>
-                </p>
-
-                {/* FIX: Cleaner, less round OTP boxes */}
-                <div
-                  className="flex gap-2 sm:gap-3 justify-between mb-7"
-                  onPaste={handleOtpPaste}
-                >
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      ref={(el) => {
-                        otpRefs.current[index] = el;
-                      }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      disabled={loading}
-                      // Changed rounding to rounded-lg, focus to brand color
-                      className={`w-full max-w-[3rem] aspect-[4/5] sm:aspect-square text-center text-2xl font-bold rounded-lg border-2 transition-all duration-150 focus:outline-none
-                        ${digit ? "border-brand-300 bg-brand-50 text-brand-700" : "border-gray-200 bg-gray-50 text-gray-900"}
-                        focus:border-brand-400 focus:bg-white focus:ring-4 focus:ring-brand-100/50 disabled:opacity-50`}
-                    />
-                  ))}
-                </div>
-
-                {error && (
-                  <p className="text-center text-sm text-red-600 flex items-center justify-center gap-1.5 mb-5 animate-fade-in font-medium">
-                    <i className="ri-error-warning-fill text-base" />
-                    {error}
-                  </p>
-                )}
-
-                <button
-                  onClick={handleVerifyOtp}
-                  disabled={loading || otp.some((d) => d === "")}
-                  // FIX: Changed gradient to use brand colors
-                  className="w-full h-14 bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md shadow-brand-100 hover:shadow-lg hover:shadow-brand-200 flex items-center justify-center gap-2 text-lg"
-                >
-                  {loading ? (
-                    <>
-                      <i className="ri-loader-4-line animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    <>
-                      Verify & Continue
-                      <i className="ri-shield-check-line" />
-                    </>
-                  )}
-                </button>
-
-                {/* Resend */}
-                <div className="text-center mt-7 h-6">
-                  {resendTimer > 0 ? (
-                    <p className="text-sm text-gray-500 font-medium">
-                      Resend code in{" "}
-                      <span className="font-bold text-gray-800 tabular-nums">
-                        {resendTimer}s
-                      </span>
-                    </p>
-                  ) : (
-                    <button
-                      onClick={async () => {
-                        setLoading(true);
-                        await sendOtp(phone);
-                        setLoading(false);
-                        setOtp(Array(OTP_LENGTH).fill(""));
-                        startResendTimer();
-                        otpRefs.current[0]?.focus();
-                      }}
-                      className="text-sm text-brand-600 hover:text-brand-700 font-semibold transition-colors underline decoration-brand-200"
-                    >
-                      Resend OTP
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP: Success ── */}
-            {step === "success" && (
-              <div className="animate-fade-in text-center py-10">
-                {/* FIX: Changed success gradient to be softer green */}
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto mb-7 shadow-xl shadow-emerald-100 animate-[scaleUp_0.4s_cubic-bezier(0.34,1.56,0.64,1)]">
-                  <i className="ri-check-line text-5xl text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Login Successful! 🎉
-                </h2>
-                <p className="text-gray-600 font-medium">
-                  Redirecting you to dashboard...
-                </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* ── STEP: Success ── */}
+        {step === "success" && (
+          <div className="py-8 text-center animate-fade-in" role="status">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-success-soft text-success ring-8 ring-success-soft/40 animate-pop">
+              <i className="ri-check-line text-4xl" aria-hidden />
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight text-fg">You&apos;re signed in</h2>
+            <p className="mt-1.5 flex items-center justify-center gap-2 text-sm text-fg-muted">
+              <i className="ri-loader-4-line animate-spin" aria-hidden />
+              Taking you to your dashboard…
+            </p>
+          </div>
+        )}
       </div>
-
-      <style jsx>{`
-        /* Mobile: Slide up from bottom */
-        .mobile-slide-up {
-          animation: slideUpMobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        /* Desktop: Zoom/fade in from center */
-        @media (min-width: 640px) {
-          .sm\\:desktop-zoom-in {
-            animation: zoomInDesktop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
-        }
-
-        .animate-fade-in {
-          animation: fadeIn 0.4s ease-out forwards;
-        }
-
-        @keyframes slideUpMobile {
-          from {
-            transform: translateY(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-        @keyframes zoomInDesktop {
-          from {
-            transform: scale(0.95);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes scaleUp {
-          0% {
-            transform: scale(0.5);
-            opacity: 0;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-
-        /* Helper for iPhone notch/safe areas */
-        .pb-safe {
-          padding-bottom: env(safe-area-inset-bottom);
-        }
-      `}</style>
-    </>
+    </Modal>
   );
 }
