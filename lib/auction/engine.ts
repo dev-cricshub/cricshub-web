@@ -92,6 +92,10 @@ export function teamCanBid(auction: Auction, teamId: string, amount: number, pla
   if (teamRemaining(auction, teamId) < amount) {
     return { ok: false, reason: `${team.shortName} does not have enough purse for ${amountLabel(amount)}.` };
   }
+  // Server-computed: purse the team must keep to reach the minimum squad.
+  if (team.maxBid != null && amount > team.maxBid) {
+    return { ok: false, reason: `${team.shortName} must keep purse for its minimum squad (max bid ${amountLabel(team.maxBid)}).` };
+  }
   const squad = squadOf(auction, teamId);
   if (squad.length >= auction.rules.maxSquad) {
     return { ok: false, reason: `${team.shortName} already has ${auction.rules.maxSquad} players.` };

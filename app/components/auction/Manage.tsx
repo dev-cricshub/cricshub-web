@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { AuctionSubnav, ConfirmDialog, PlayerStateBadge, Select, downloadText } from "@/app/components/auction/chrome";
+import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
 import { Alert, Badge, Button, ButtonLink, Card, EmptyState, Input, Tabs, useToast } from "@/app/components/ui";
-import { squadsToCsv } from "@/lib/auction/csv";
+import { normalizePhone, squadsToCsv } from "@/lib/auction/csv";
 import {
   highestBid,
   queue,
@@ -18,7 +19,7 @@ import {
 } from "@/lib/auction/engine";
 import { formatWhen, inr } from "@/lib/auction/format";
 import { auctionService } from "@/lib/auction/store";
-import type { Auction, PlayerRole, PlayerState } from "@/lib/auction/types";
+import type { Auction, LinkableTournament, PlayerRole, PlayerState } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
 const SECTIONS = ["overview", "teams", "players", "rules", "results", "settings"] as const;
@@ -109,8 +110,8 @@ function Overview({ auction }: { auction: Auction }) {
       <div className="flex flex-wrap gap-2">
         {auction.status === "scheduled" && (
           <Button
-            onClick={() => {
-              const result = auctionService.start(auction.id);
+            onClick={async () => {
+              const result = await auctionService.start(auction.id);
               if (!result.ok) toast(result.error, { tone: "error" });
               else router.push(`/auctions/${auction.id}/live`);
             }}
@@ -252,10 +253,10 @@ function Players({ auction }: { auction: Auction }) {
     return list;
   }, [auction.players, q, role, state, category, sort]);
 
-  const withdrawSelected = () => {
+  const withdrawSelected = async () => {
     let failed = 0;
     for (const id of selected) {
-      const result = auctionService.withdraw(auction.id, id);
+      const result = await auctionService.withdraw(auction.id, id);
       if (!result.ok) failed += 1;
     }
     setSelected([]);
@@ -346,8 +347,8 @@ function Players({ auction }: { auction: Auction }) {
                       <Button
                         size="xs"
                         variant="ghost"
-                        onClick={() => {
-                          const result = auctionService.reopen(auction.id, p.id);
+                        onClick={async () => {
+                          const result = await auctionService.reopen(auction.id, p.id);
                           if (!result.ok) toast(result.error, { tone: "error" });
                         }}
                       >
@@ -425,6 +426,7 @@ function Results({ auction }: { auction: Auction }) {
           Export CSV
         </Button>
       </div>
+      {auction.role !== "viewer" && auction.status !== "cancelled" && <TournamentHandover auction={auction} />}
       {auction.teams.map((team) => {
         const squad = squadOf(auction, team.id);
         return (
@@ -461,14 +463,162 @@ function Results({ auction }: { auction: Auction }) {
   );
 }
 
+/**
+ * Auction + tournament mode on the Results tab: link a CricsHub tournament (also after the auction),
+ * fill phones for sold players, and push teams and squads into the tournament (or retry a failed push).
+ */
+function TournamentHandover({ auction }: { auction: Auction }) {
+  const toast = useToast();
+  const [tournaments, setTournaments] = useState<LinkableTournament[] | null>(null);
+  const [choice, setChoice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [phones, setPhones] = useState<Record<string, string>>({});
+  const [creating, setCreating] = useState(false);
+
+  const linked = !!auction.tournamentId;
+  const done = auction.handoverStatus === "done";
+  const soldNoPhone = auction.players.filter((p) => p.status === "sold" && !p.phone);
+
+  useEffect(() => {
+    if (linked) return;
+    let alive = true;
+    auctionService.linkableTournaments().then((r) => {
+      if (alive) setTournaments(r.ok ? r.value.filter((t) => !t.linkedAuctionId || t.linkedAuctionId === auction.id) : []);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [linked, auction.id]);
+
+  const act = async (fn: () => Promise<{ ok: boolean; error?: string }>, success: string) => {
+    setBusy(true);
+    const result = await fn();
+    setBusy(false);
+    if (!result.ok) toast(result.error ?? "That did not work.", { tone: "error" });
+    else toast(success, { tone: "success" });
+  };
+
+  const savePhone = async (playerId: string) => {
+    const p = auction.players.find((x) => x.id === playerId);
+    const phone = normalizePhone(phones[playerId]);
+    if (!p || !phone) {
+      toast("Enter a 10-digit mobile number.", { tone: "error" });
+      return;
+    }
+    await act(() => auctionService.updatePlayer(auction.id, p.id, { ...p, phone }), `Phone saved for ${p.name}.`);
+  };
+
+  if (done) {
+    return (
+      <Alert tone="success" title={`Squads added to ${auction.tournament}`}>
+        Teams, rosters and tournament squads were created in CricsHub
+        {auction.handedOverAt ? ` on ${formatWhen(auction.handedOverAt, auction.timezone)}` : ""}. Schedule matches from the
+        tournament in the app.
+      </Alert>
+    );
+  }
+
+  if (!linked) {
+    return (
+      <section className="space-y-2 rounded-card border border-line bg-surface p-4">
+        <h2 className="text-sm font-semibold">Play this tournament on CricsHub</h2>
+        <p className="text-sm text-fg-muted">
+          Create a CricsHub tournament, or link one you already have, to add these teams and squads to it
+          {auction.status === "completed" ? "." : " when the auction ends."}
+        </p>
+        {creating ? (
+          <CreateTournamentForm auction={auction} onCreated={() => setCreating(false)} onCancel={() => setCreating(false)} />
+        ) : (
+          <Button size="sm" variant="outline" icon="ri-add-line" onClick={() => setCreating(true)}>
+            Create a new tournament
+          </Button>
+        )}
+        {creating ? null : tournaments && tournaments.length === 0 ? (
+          <p className="text-sm text-fg-subtle">You have no open tournaments to link.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <Select aria-label="Tournament" value={choice} onChange={(e) => setChoice(e.target.value)} className="max-w-xs">
+              <option value="">{tournaments ? "Choose a tournament" : "Loading…"}</option>
+              {(tournaments ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+            <Button
+              size="sm"
+              disabled={!choice || busy}
+              onClick={() => act(() => auctionService.linkTournament(auction.id, choice), "Tournament linked.")}
+            >
+              Link tournament
+            </Button>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-3 rounded-card border border-line bg-surface p-4">
+      <h2 className="text-sm font-semibold">Linked to {auction.tournament}</h2>
+      {auction.handoverStatus === "failed" && (
+        <Alert tone="danger" title="Squads were not added to the tournament">
+          {auction.handoverError}
+        </Alert>
+      )}
+      {soldNoPhone.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm text-fg-muted">Add phone numbers for these players so they can be added to the tournament:</p>
+          <ul className="space-y-2">
+            {soldNoPhone.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="w-40 truncate">{p.name}</span>
+                <Input
+                  aria-label={`Phone for ${p.name}`}
+                  inputMode="tel"
+                  placeholder="10-digit mobile"
+                  value={phones[p.id] ?? ""}
+                  onChange={(e) => setPhones({ ...phones, [p.id]: e.target.value })}
+                  className="max-w-[12rem]"
+                />
+                <Button size="xs" variant="outline" disabled={busy} onClick={() => savePhone(p.id)}>
+                  Save
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {auction.status === "completed" ? (
+        <Button
+          size="sm"
+          disabled={busy || soldNoPhone.length > 0}
+          onClick={() => act(() => auctionService.handover(auction.id), `Squads added to ${auction.tournament}.`)}
+        >
+          {auction.handoverStatus === "failed" ? "Retry adding squads" : "Add teams and squads to tournament"}
+        </Button>
+      ) : (
+        <p className="text-sm text-fg-muted">Teams and squads are added to the tournament automatically when the auction ends.</p>
+      )}
+    </section>
+  );
+}
+
 function Settings({ auction }: { auction: Auction }) {
   const toast = useToast();
-  const [confirm, setConfirm] = useState<"cancel" | "complete" | null>(null);
-  const run = (kind: "cancel" | "complete") => {
-    const result = kind === "cancel" ? auctionService.cancel(auction.id) : auctionService.complete(auction.id);
+  const [confirm, setConfirm] = useState<"cancel" | "complete" | "force" | null>(null);
+  const [shortMessage, setShortMessage] = useState("");
+  const run = async (kind: "cancel" | "complete" | "force") => {
+    setConfirm(null);
+    const result =
+      kind === "cancel" ? await auctionService.cancel(auction.id) : await auctionService.complete(auction.id, kind === "force");
+    if (!result.ok && result.code === "SQUADS_INCOMPLETE") {
+      setShortMessage(result.error.replace(/\s*End anyway with force=true\.?/, ""));
+      setConfirm("force");
+      return;
+    }
     if (!result.ok) toast(result.error, { tone: "error" });
     else toast(kind === "cancel" ? "Auction cancelled." : "Auction completed.", { tone: "success" });
-    setConfirm(null);
   };
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -514,6 +664,15 @@ function Settings({ auction }: { auction: Auction }) {
         danger
         onClose={() => setConfirm(null)}
         onConfirm={() => run("complete")}
+      />
+      <ConfirmDialog
+        open={confirm === "force"}
+        title="Some squads are short"
+        body={shortMessage}
+        confirmLabel="End anyway"
+        danger
+        onClose={() => setConfirm(null)}
+        onConfirm={() => run("force")}
       />
     </div>
   );

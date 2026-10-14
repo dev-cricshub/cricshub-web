@@ -1,15 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { AuctionSubnav, Select } from "@/app/components/auction/chrome";
+import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
 import { Alert, Button, EmptyState, Field, Input, Switch, Textarea, useToast, cn } from "@/app/components/ui";
-import { csvTemplate } from "@/lib/auction/csv";
-import { validateConfig } from "@/lib/auction/engine";
+import { csvTemplate, normalizePhone } from "@/lib/auction/csv";
+import { validateConfig, type ConfigIssue } from "@/lib/auction/engine";
 import { fromDateTimeLocal, inr, toDateTimeLocal } from "@/lib/auction/format";
-import { auctionService } from "@/lib/auction/store";
-import type { Auction, AuctionRules, AuctionTeam, PlayerRole } from "@/lib/auction/types";
+import { auctionService, fetchMyCricshubTeams } from "@/lib/auction/store";
+import type { Auction, AuctionRules, AuctionTeam, LinkableTournament, PlayerRole } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
 const STEPS = ["Details", "Rules", "Teams", "Players", "Review"] as const;
@@ -20,7 +21,20 @@ export function Wizard({ auction }: { auction: Auction }) {
   const [step, setStep] = useState(0);
   const toast = useToast();
   const router = useRouter();
-  const issues = validateConfig(auction);
+  // Server checks include tournament rules (phones, team names); local checks show while they load.
+  const [serverIssues, setServerIssues] = useState<ConfigIssue[] | null>(null);
+  const issues = serverIssues ?? validateConfig(auction);
+
+  useEffect(() => {
+    if (step !== 4) return;
+    let alive = true;
+    auctionService.validate(auction.id).then((r) => {
+      if (alive && r.ok) setServerIssues(r.value);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [step, auction.id, auction.revision]);
 
   const saveAnd = (ok: boolean, error?: string, next?: number) => {
     if (!ok) {
@@ -62,11 +76,11 @@ export function Wizard({ auction }: { auction: Auction }) {
             issues={issues}
             onEdit={setStep}
             onDraft={() => {
-              toast("Draft saved on this device.", { tone: "success" });
+              toast("Draft saved.", { tone: "success" });
               router.push("/auctions");
             }}
-            onPublish={() => {
-              const result = auctionService.publish(auction.id);
+            onPublish={async () => {
+              const result = await auctionService.publish(auction.id);
               if (!result.ok) toast(result.error, { tone: "error" });
               else {
                 toast("Auction scheduled.", { tone: "success" });
@@ -93,25 +107,43 @@ function DetailsStep({
   const [timezone, setTimezone] = useState(auction.timezone);
   const [starts, setStarts] = useState(toDateTimeLocal(auction.startsAt, auction.timezone));
   const [visibility, setVisibility] = useState(auction.visibility);
+  // "name": the tournament is just a label (auction only). "linked": a CricsHub tournament gets the squads.
+  const [mode, setMode] = useState<"name" | "linked">(auction.tournamentId ? "linked" : "name");
+  const [tournamentId, setTournamentId] = useState(auction.tournamentId ?? "");
+  const [options, setOptions] = useState<LinkableTournament[] | null>(null);
+  const [creatingTournament, setCreatingTournament] = useState(false);
+
+  useEffect(() => {
+    if (mode !== "linked" || options) return;
+    auctionService.linkableTournaments().then((r) =>
+      setOptions(r.ok ? r.value.filter((t) => !t.linkedAuctionId || t.linkedAuctionId === auction.id) : []),
+    );
+  }, [mode, options, auction.id]);
 
   return (
     <form
       className="max-w-2xl space-y-4"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         const startsAt = fromDateTimeLocal(starts, timezone);
         if (!startsAt) {
           onSaved({ ok: false, error: "Choose an auction date and time." });
           return;
         }
+        if (mode === "linked" && !tournamentId) {
+          onSaved({ ok: false, error: "Choose the CricsHub tournament to link." });
+          return;
+        }
+        const linkedName = options?.find((t) => t.id === tournamentId)?.name;
         onSaved(
-          auctionService.saveDetails(auction.id, {
+          await auctionService.saveDetails(auction.id, {
             name,
-            tournament,
+            tournament: mode === "linked" ? linkedName ?? auction.tournament : tournament,
             description,
             startsAt,
             timezone,
             visibility,
+            tournamentId: mode === "linked" ? tournamentId : "",
           }),
         );
       }}
@@ -121,9 +153,59 @@ function DetailsStep({
           <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} value={name} onChange={(e) => setName(e.target.value)} required />
         )}
       </Field>
-      <Field label="Tournament" required>
-        {({ id }) => <Input id={id} value={tournament} onChange={(e) => setTournament(e.target.value)} required />}
+      <Field label="Where will the tournament be played?">
+        {({ id }) => (
+          <Select id={id} value={mode} onChange={(e) => setMode(e.target.value as "name" | "linked")}>
+            <option value="name">Somewhere else — just name the tournament</option>
+            <option value="linked">On CricsHub — add the squads to my tournament</option>
+          </Select>
+        )}
       </Field>
+      {mode === "name" ? (
+        <Field label="Tournament" required>
+          {({ id }) => <Input id={id} value={tournament} onChange={(e) => setTournament(e.target.value)} required />}
+        </Field>
+      ) : (
+        <Field
+          label="CricsHub tournament"
+          required
+          hint="When the auction ends, its teams and bought players are added to this tournament. Players then need phone numbers."
+        >
+          {({ id }) =>
+            options && options.length === 0 ? (
+              <p id={id} className="text-sm text-fg-subtle">
+                You have no open tournaments yet. Create one below.
+              </p>
+            ) : (
+              <Select id={id} value={tournamentId} onChange={(e) => setTournamentId(e.target.value)}>
+                <option value="">{options ? "Choose a tournament" : "Loading…"}</option>
+                {(options ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.startDate ? ` · ${t.startDate}` : ""}
+                  </option>
+                ))}
+              </Select>
+            )
+          }
+        </Field>
+      )}
+      {mode === "linked" &&
+        (creatingTournament ? (
+          <CreateTournamentForm
+            auction={auction}
+            onCreated={(updated) => {
+              setCreatingTournament(false);
+              setTournamentId(updated.tournamentId ?? "");
+              setOptions(null); // reload the picker, which now includes the new tournament
+            }}
+            onCancel={() => setCreatingTournament(false)}
+          />
+        ) : (
+          <Button type="button" size="sm" variant="outline" icon="ri-add-line" onClick={() => setCreatingTournament(true)}>
+            Create a new CricsHub tournament
+          </Button>
+        ))}
       <Field label="Description" optional>
         {({ id }) => <Textarea id={id} value={description} onChange={(e) => setDescription(e.target.value)} />}
       </Field>
@@ -162,9 +244,9 @@ function RulesStep({ auction, onSaved }: { auction: Auction; onSaved: (result: {
   return (
     <form
       className="max-w-2xl space-y-5"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        onSaved(auctionService.saveRules(auction.id, rules));
+        onSaved(await auctionService.saveRules(auction.id, rules));
       }}
     >
       <Field label="Purse per team (₹)" required hint="Used for every team unless you set an override.">
@@ -311,6 +393,7 @@ function TeamsStep({ auction, onContinue }: { auction: Auction; onContinue: () =
                 <p className="text-xs text-fg-muted">
                   {team.ownerName || "No representative"} · {inr(team.purseOverride ?? auction.rules.pursePerTeam)}
                   {team.purseOverride != null ? " override" : ""}
+                  {team.appTeamId ? " · linked CricsHub team" : ""}
                 </p>
               </div>
               <Button size="sm" variant="ghost" onClick={() => setDraft(team)}>
@@ -319,8 +402,8 @@ function TeamsStep({ auction, onContinue }: { auction: Auction; onContinue: () =
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => {
-                  const result = auctionService.removeTeam(auction.id, team.id);
+                onClick={async () => {
+                  const result = await auctionService.removeTeam(auction.id, team.id);
                   if (!result.ok) toast(result.error, { tone: "error" });
                 }}
               >
@@ -356,15 +439,27 @@ function TeamEditor({
 }) {
   const toast = useToast();
   const [form, setForm] = useState(initial);
+  const [myTeams, setMyTeams] = useState<{ id: string; name: string }[] | null>(null);
+  const linked = !!auction.tournamentId;
+
+  useEffect(() => {
+    if (linked) fetchMyCricshubTeams().then(setMyTeams);
+  }, [linked]);
+
   return (
     <form
       className="max-w-xl space-y-3 rounded-card border border-line bg-surface p-4"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        const payload = { ...form, purseOverride: form.purseOverride };
+        const ownerPhone = normalizePhone(form.ownerPhone);
+        if (ownerPhone === null) {
+          toast("Owner phone must be a 10-digit mobile number.", { tone: "error" });
+          return;
+        }
+        const payload = { ...form, ownerPhone };
         const result = teamId
-          ? auctionService.updateTeam(auction.id, teamId, payload)
-          : auctionService.addTeam(auction.id, payload);
+          ? await auctionService.updateTeam(auction.id, teamId, payload)
+          : await auctionService.addTeam(auction.id, payload);
         if (!result.ok) toast(result.error, { tone: "error" });
         else onClose();
       }}
@@ -384,6 +479,33 @@ function TeamEditor({
         <Field label="Colour">
           {({ id }) => <Input id={id} type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="h-10 px-1" />}
         </Field>
+        {linked && (
+          <Field label="Owner phone" optional hint="The owner will manage this team in the CricsHub app.">
+            {({ id }) => (
+              <Input
+                id={id}
+                inputMode="tel"
+                placeholder="10-digit mobile"
+                value={form.ownerPhone ?? ""}
+                onChange={(e) => setForm({ ...form, ownerPhone: e.target.value })}
+              />
+            )}
+          </Field>
+        )}
+        {linked && (
+          <Field label="CricsHub team" optional hint="Use one of your existing teams, or leave it to create a new one.">
+            {({ id }) => (
+              <Select id={id} value={form.appTeamId ?? ""} onChange={(e) => setForm({ ...form, appTeamId: e.target.value || null })}>
+                <option value="">Create a new team</option>
+                {(myTeams ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        )}
       </div>
       {auction.rules.allowPurseOverride && (
         <Field label="Purse override (₹)" optional hint={`Leave empty to use ${inr(auction.rules.pursePerTeam)}.`} >
@@ -417,6 +539,7 @@ const emptyPlayer = {
   matches: 0,
   battingAvg: "",
   bowlingAvg: "",
+  phone: "",
 };
 
 function PlayersStep({ auction, onContinue }: { auction: Auction; onContinue: () => void }) {
@@ -455,6 +578,11 @@ function PlayersStep({ auction, onContinue }: { auction: Auction; onContinue: ()
                   <td className="px-3 py-2">
                     <span className="font-medium">{p.name}</span>
                     <span className="ml-2 text-xs text-fg-subtle">{p.overseas ? "Overseas" : p.nationality}</span>
+                    {auction.tournamentId && (
+                      <span className={cn("ml-2 font-mono text-xs", p.phone ? "text-fg-subtle" : "text-danger")}>
+                        {p.phone ?? "no phone"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-fg-muted">{ROLE_LABEL[p.role]}</td>
                   <td className="px-3 py-2 font-mono text-xs">{p.category}</td>
@@ -466,8 +594,8 @@ function PlayersStep({ auction, onContinue }: { auction: Auction; onContinue: ()
                     <Button
                       size="xs"
                       variant="ghost"
-                      onClick={() => {
-                        const result = auctionService.removePlayer(auction.id, p.id);
+                      onClick={async () => {
+                        const result = await auctionService.removePlayer(auction.id, p.id);
                         if (!result.ok) toast(result.error, { tone: "error" });
                       }}
                     >
@@ -505,8 +633,8 @@ function PlayersStep({ auction, onContinue }: { auction: Auction; onContinue: ()
           className="mt-3"
           variant="outline"
           disabled={!csv.trim()}
-          onClick={() => {
-            const result = auctionService.importPlayers(auction.id, csv);
+          onClick={async () => {
+            const result = await auctionService.importPlayers(auction.id, csv);
             if (!result.ok) toast(result.error, { tone: "error" });
             else {
               toast(`Imported ${result.value.imported} players.`, { tone: "success" });
@@ -538,17 +666,24 @@ function PlayerEditor({ auction, playerId, onClose }: { auction: Auction; player
           matches: existing.matches,
           battingAvg: existing.battingAvg === "—" ? "" : existing.battingAvg,
           bowlingAvg: existing.bowlingAvg === "—" ? "" : existing.bowlingAvg,
+          phone: existing.phone ?? "",
         }
       : emptyPlayer,
   );
   return (
     <form
       className="max-w-xl space-y-3 rounded-card border border-line bg-surface p-4"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
+        const phone = normalizePhone(form.phone);
+        if (phone === null) {
+          toast("Phone must be a 10-digit mobile number.", { tone: "error" });
+          return;
+        }
+        const payload = { ...form, phone };
         const result = playerId
-          ? auctionService.updatePlayer(auction.id, playerId, form)
-          : auctionService.addPlayer(auction.id, form);
+          ? await auctionService.updatePlayer(auction.id, playerId, payload)
+          : await auctionService.addPlayer(auction.id, payload);
         if (!result.ok) toast(result.error, { tone: "error" });
         else onClose();
       }}
@@ -587,6 +722,16 @@ function PlayerEditor({ auction, playerId, onClose }: { auction: Auction; player
         </Field>
         <Field label="Bowling average" optional>
           {({ id }) => <Input id={id} value={form.bowlingAvg} onChange={(e) => setForm({ ...form, bowlingAvg: e.target.value })} />}
+        </Field>
+        <Field
+          label="Phone"
+          optional={!auction.tournamentId}
+          required={!!auction.tournamentId}
+          hint={auction.tournamentId ? "Needed to add the player to the CricsHub tournament." : "Optional. Needed only if you later add the squads to a CricsHub tournament."}
+        >
+          {({ id }) => (
+            <Input id={id} inputMode="tel" placeholder="10-digit mobile" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          )}
         </Field>
       </div>
       <Switch checked={form.overseas} onChange={(overseas) => setForm({ ...form, overseas })} label="Overseas player" />
@@ -640,7 +785,10 @@ function ReviewStep({
         </div>
         <div>
           <dt className="text-fg-subtle">Tournament</dt>
-          <dd className="font-medium">{auction.tournament || "—"}</dd>
+          <dd className="font-medium">
+            {auction.tournament || "—"}
+            {auction.tournamentId ? <span className="ml-1 text-xs text-fg-subtle">(on CricsHub)</span> : null}
+          </dd>
         </div>
         <div>
           <dt className="text-fg-subtle">Teams</dt>

@@ -60,6 +60,12 @@ export interface AuctionTeam {
   ownerName: string;
   /** Null uses the auction purse. */
   purseOverride: number | null;
+  /** Existing CricsHub team this team maps to (auction + tournament mode). */
+  appTeamId?: string | null;
+  /** Owner's 10-digit phone; the owner manages the CricsHub team created on handover. */
+  ownerPhone?: string | null;
+  /** Server-computed: highest bid allowed while keeping enough purse to reach the minimum squad. */
+  maxBid?: number;
 }
 
 export interface AuctionPlayer {
@@ -77,6 +83,10 @@ export interface AuctionPlayer {
   queueOrder: number;
   soldToTeamId: string | null;
   soldPrice: number | null;
+  /** 10-digit phone identifying the CricsHub user; required when a tournament is linked. */
+  phone?: string | null;
+  /** CricsHub user resolved on handover. */
+  userId?: string | null;
 }
 
 export interface Bid {
@@ -123,6 +133,42 @@ export interface Auction {
   /** Milliseconds already spent paused, so the clock can resume cleanly. */
   pausedMs: number;
   endedAt: string | null;
+  /** +1 per committed change on the server; newer socket updates replace older state. */
+  revision?: number;
+  /** Caller's role from the server. */
+  role?: "auctioneer" | "viewer" | null;
+  /** Linked CricsHub tournament (auction + tournament mode); null = auction only. */
+  tournamentId?: string | null;
+  /** Push of teams and squads into the linked tournament. */
+  handoverStatus?: "none" | "done" | "failed";
+  handedOverAt?: string | null;
+  handoverError?: string | null;
+}
+
+/** Dashboard row (GET /auctions returns summaries, not full auctions). */
+export interface AuctionListItem {
+  id: string;
+  name: string;
+  tournament: string;
+  status: AuctionStatus;
+  archived: boolean;
+  startsAt: string;
+  timezone: string;
+  teamCount: number;
+  playerCount: number;
+  updatedAt: string;
+  tournamentId: string | null;
+  handoverStatus: "none" | "done" | "failed";
+}
+
+/** A CricsHub tournament the user created and can link to an auction. */
+export interface LinkableTournament {
+  id: string;
+  name: string;
+  status: string;
+  startDate: string | null;
+  teamCount: number;
+  linkedAuctionId: string | null;
 }
 
 export interface AuctionDraftInput {
@@ -132,9 +178,12 @@ export interface AuctionDraftInput {
   startsAt: string;
   timezone: string;
   visibility: AuctionVisibility;
+  /** "" unlinks; omitted leaves the link unchanged. */
+  tournamentId?: string;
 }
 
-export type ServiceError = { ok: false; error: string };
+/** `code` is the server error code (e.g. SQUADS_INCOMPLETE) when the API rejected the action. */
+export type ServiceError = { ok: false; error: string; code?: string };
 export type ServiceOk<T> = { ok: true; value: T };
 export type ServiceResult<T> = ServiceOk<T> | ServiceError;
 
