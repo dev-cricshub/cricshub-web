@@ -179,6 +179,18 @@ async function refreshList(): Promise<void> {
   emit();
 }
 
+/** Same fields the app uses: format = league structure, type = overs per innings, ballType upper-case. */
+export interface NewTournamentInput {
+  name: string;
+  format: "SINGLE_ROUND_ROBIN" | "DOUBLE_ROUND_ROBIN" | "CUSTOM";
+  ballType: "TENNIS" | "LEATHER";
+  type: string;
+  startDate: string;
+  endDate: string;
+  matchesPerDay: number;
+  venues: string[];
+}
+
 type TeamInput = Omit<AuctionTeam, "id">;
 type PlayerInput = Omit<AuctionPlayer, "id" | "status" | "soldToTeamId" | "soldPrice" | "queueOrder">;
 
@@ -304,6 +316,8 @@ export const auctionService = {
   archive: (id: string) => mutate(id, "POST", "/archive"),
   /** Push teams and squads into the linked tournament (runs automatically on complete; this retries). */
   handover: (id: string) => mutate(id, "POST", "/handover"),
+  /** Create a CricsHub tournament from this auction and link it; if the auction has ended, squads go in right away. */
+  createTournament: (id: string, input: NewTournamentInput) => mutate(id, "POST", "/create-tournament", { body: input }),
 
   async linkableTournaments(): Promise<ServiceResult<LinkableTournament[]>> {
     return request<LinkableTournament[]>("GET", "/linkable-tournaments");

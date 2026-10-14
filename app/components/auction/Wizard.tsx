@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { AuctionSubnav, Select } from "@/app/components/auction/chrome";
+import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
 import { Alert, Button, EmptyState, Field, Input, Switch, Textarea, useToast, cn } from "@/app/components/ui";
 import { csvTemplate, normalizePhone } from "@/lib/auction/csv";
 import { validateConfig, type ConfigIssue } from "@/lib/auction/engine";
@@ -110,6 +111,7 @@ function DetailsStep({
   const [mode, setMode] = useState<"name" | "linked">(auction.tournamentId ? "linked" : "name");
   const [tournamentId, setTournamentId] = useState(auction.tournamentId ?? "");
   const [options, setOptions] = useState<LinkableTournament[] | null>(null);
+  const [creatingTournament, setCreatingTournament] = useState(false);
 
   useEffect(() => {
     if (mode !== "linked" || options) return;
@@ -172,7 +174,7 @@ function DetailsStep({
           {({ id }) =>
             options && options.length === 0 ? (
               <p id={id} className="text-sm text-fg-subtle">
-                You have no open tournaments. Create one in the CricsHub app, then come back.
+                You have no open tournaments yet. Create one below.
               </p>
             ) : (
               <Select id={id} value={tournamentId} onChange={(e) => setTournamentId(e.target.value)}>
@@ -188,6 +190,22 @@ function DetailsStep({
           }
         </Field>
       )}
+      {mode === "linked" &&
+        (creatingTournament ? (
+          <CreateTournamentForm
+            auction={auction}
+            onCreated={(updated) => {
+              setCreatingTournament(false);
+              setTournamentId(updated.tournamentId ?? "");
+              setOptions(null); // reload the picker, which now includes the new tournament
+            }}
+            onCancel={() => setCreatingTournament(false)}
+          />
+        ) : (
+          <Button type="button" size="sm" variant="outline" icon="ri-add-line" onClick={() => setCreatingTournament(true)}>
+            Create a new CricsHub tournament
+          </Button>
+        ))}
       <Field label="Description" optional>
         {({ id }) => <Textarea id={id} value={description} onChange={(e) => setDescription(e.target.value)} />}
       </Field>

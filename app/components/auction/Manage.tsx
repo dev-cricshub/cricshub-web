@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { AuctionSubnav, ConfirmDialog, PlayerStateBadge, Select, downloadText } from "@/app/components/auction/chrome";
+import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
 import { Alert, Badge, Button, ButtonLink, Card, EmptyState, Input, Tabs, useToast } from "@/app/components/ui";
 import { normalizePhone, squadsToCsv } from "@/lib/auction/csv";
 import {
@@ -472,6 +473,7 @@ function TournamentHandover({ auction }: { auction: Auction }) {
   const [choice, setChoice] = useState("");
   const [busy, setBusy] = useState(false);
   const [phones, setPhones] = useState<Record<string, string>>({});
+  const [creating, setCreating] = useState(false);
 
   const linked = !!auction.tournamentId;
   const done = auction.handoverStatus === "done";
@@ -521,11 +523,18 @@ function TournamentHandover({ auction }: { auction: Auction }) {
       <section className="space-y-2 rounded-card border border-line bg-surface p-4">
         <h2 className="text-sm font-semibold">Play this tournament on CricsHub</h2>
         <p className="text-sm text-fg-muted">
-          Link one of your CricsHub tournaments to add these teams and squads to it
+          Create a CricsHub tournament, or link one you already have, to add these teams and squads to it
           {auction.status === "completed" ? "." : " when the auction ends."}
         </p>
-        {tournaments && tournaments.length === 0 ? (
-          <p className="text-sm text-fg-subtle">You have no open tournaments. Create one in the CricsHub app first.</p>
+        {creating ? (
+          <CreateTournamentForm auction={auction} onCreated={() => setCreating(false)} onCancel={() => setCreating(false)} />
+        ) : (
+          <Button size="sm" variant="outline" icon="ri-add-line" onClick={() => setCreating(true)}>
+            Create a new tournament
+          </Button>
+        )}
+        {creating ? null : tournaments && tournaments.length === 0 ? (
+          <p className="text-sm text-fg-subtle">You have no open tournaments to link.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             <Select aria-label="Tournament" value={choice} onChange={(e) => setChoice(e.target.value)} className="max-w-xs">
