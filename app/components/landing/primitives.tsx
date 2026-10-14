@@ -1,20 +1,8 @@
 import { cn } from "@/app/components/ui";
+import { PLAY_STORE_URL } from "@/lib/site";
+import { CheckIcon, PlayStoreIcon } from "./icons";
 
-/** Marks simulated content so visitors never mistake it for live data. */
-export function DemoTag({ className, label = "Demo data" }: { className?: string; label?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2 py-0.5 text-2xs font-semibold uppercase tracking-[0.14em] text-fg-muted",
-        className,
-      )}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-gold" aria-hidden />
-      {label}
-    </span>
-  );
-}
-
+/** Small uppercase label with a rule — also used by the legal/contact pages. */
 export function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <p className={cn("flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-fg-muted", className)}>
@@ -24,97 +12,99 @@ export function Eyebrow({ children, className }: { children: React.ReactNode; cl
   );
 }
 
-/** Editorial section heading: condensed display headline + supporting copy. */
-export function LandingHeading({
-  eyebrow,
+/** Landing section eyebrow: bold, wide-tracked, light blue. */
+export function Kicker({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn("text-[13px] font-extrabold uppercase tracking-[2px] text-accent-soft", className)}>{children}</span>
+  );
+}
+
+/** Centered section heading used by most landing sections. */
+export function SectionHead({
+  kicker,
   title,
   lead,
-  align = "left",
   className,
-  id,
 }: {
-  eyebrow?: React.ReactNode;
+  kicker: React.ReactNode;
   title: React.ReactNode;
   lead?: React.ReactNode;
-  align?: "left" | "center";
   className?: string;
-  id?: string;
 }) {
   return (
-    <div className={cn(align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-2xl", className)}>
-      {eyebrow && <Eyebrow className={cn("mb-5", align === "center" && "justify-center")}>{eyebrow}</Eyebrow>}
-      <h2
-        id={id}
-        className="font-display text-display-lg font-bold uppercase text-fg"
-      >
-        {title}
-      </h2>
-      {lead && <p className="mt-5 max-w-xl text-base leading-relaxed text-fg-muted sm:text-lg">{lead}</p>}
+    <div className={cn("mb-11 flex flex-col items-center gap-3.5 text-center", className)}>
+      <Kicker>{kicker}</Kicker>
+      <h2 className="m-0 font-display text-[clamp(2.4rem,5vw,3.6rem)] font-extrabold uppercase leading-none">{title}</h2>
+      {lead && <p className="m-0 max-w-[560px] text-[17px] leading-relaxed text-fg-lead">{lead}</p>}
     </div>
   );
 }
 
-/** Solid product frame — the container for every interactive demo on the page. */
-export function Panel({
+/** Max-width wrapper with the landing gutters. */
+export function Section({
+  id,
   className,
   children,
-  as: Tag = "div",
   ...rest
-}: React.HTMLAttributes<HTMLDivElement> & { as?: "div" | "section" | "article" }) {
+}: React.HTMLAttributes<HTMLElement> & { id?: string }) {
   return (
-    <Tag
+    <section id={id} className={cn("relative mx-auto max-w-[1200px] scroll-mt-24 px-6", className)} {...rest}>
+      {children}
+    </section>
+  );
+}
+
+/** Rounded icon tile used on feature and audience cards. */
+export function IconChip({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span
       className={cn(
-        "rounded-frame border border-line bg-surface shadow-frame",
+        "flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-primary-soft text-accent-soft",
         className,
       )}
-      {...rest}
     >
       {children}
-    </Tag>
+    </span>
   );
 }
 
-/** Small realistic cricket ball (SVG). */
-export function CricketBall({ size = 64, className, style }: { size?: number; className?: string; style?: React.CSSProperties }) {
+export function CheckItem({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" className={className} style={style} aria-hidden>
-      <defs>
-        <radialGradient id="ball-body" cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stopColor="#ff6b5c" />
-          <stop offset="45%" stopColor="#c0221a" />
-          <stop offset="100%" stopColor="#4a0906" />
-        </radialGradient>
-        <radialGradient id="ball-shine" cx="32%" cy="26%" r="30%">
-          <stop offset="0%" stopColor="rgba(255,255,255,0.75)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-        </radialGradient>
-      </defs>
-      <circle cx="50" cy="50" r="46" fill="url(#ball-body)" />
-      <path d="M22 16 C 42 36, 42 64, 22 84" stroke="#f3e3c3" strokeWidth="2.2" fill="none" opacity="0.9" />
-      <path d="M28 12 C 50 34, 50 66, 28 88" stroke="#f3e3c3" strokeWidth="2.2" fill="none" opacity="0.9" />
-      {Array.from({ length: 9 }).map((_, i) => {
-        const t = 0.12 + i * 0.095;
-        const y = 14 + t * 72;
-        const x = 25 + Math.sin(t * Math.PI) * 21;
-        return <line key={i} x1={x - 4} y1={y} x2={x + 4} y2={y} stroke="#f3e3c3" strokeWidth="1.2" opacity="0.7" />;
-      })}
-      <circle cx="50" cy="50" r="46" fill="url(#ball-shine)" />
-    </svg>
+    <span className={cn("flex items-center gap-1.5", className)}>
+      <CheckIcon className="shrink-0 text-accent" />
+      {children}
+    </span>
   );
 }
 
-export const ctaPrimary =
-  "group relative inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-control bg-primary px-6 text-[15px] font-semibold text-primary-fg " +
-  "shadow-[inset_0_1px_0_rgb(255_255_255/0.14)] transition-[background-color,transform] duration-150 ease-out " +
-  "hover:bg-primary-hover active:scale-[0.98] " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+export const gradientCta =
+  "bg-[linear-gradient(115deg,#4A9EE0_0%,#3263B4_60%,#2E3A8C_100%)] text-white " +
+  "shadow-[0_14px_34px_rgba(74,158,224,0.4),inset_0_1px_0_rgba(255,255,255,0.25)] " +
+  "transition-[transform,filter] duration-200 ease-out hover:brightness-110 active:scale-[0.98]";
 
-export const ctaSecondary =
-  "group inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-control border border-line-strong px-6 text-[15px] font-medium text-fg " +
-  "transition-[background-color,border-color,transform] duration-150 ease-out hover:border-fg-subtle hover:bg-surface-2 active:scale-[0.98] " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+export const ghostCta =
+  "border border-line-accent bg-primary-soft/60 font-bold transition-colors hover:bg-primary-soft";
 
-/** Arrow that nudges right on parent hover. */
-export function CtaArrow({ icon = "ri-arrow-right-line" }: { icon?: string }) {
-  return <i className={cn(icon, "text-lg transition-transform duration-200 ease-out group-hover:translate-x-1")} aria-hidden />;
+/** "Get it free on Google Play" pill. */
+export function PlayStoreButton({ className }: { className?: string }) {
+  return (
+    <a
+      href={PLAY_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn("inline-flex h-[60px] items-center gap-3 rounded-full pl-2.5 pr-[26px]", gradientCta, className)}
+    >
+      {/* White chip so the logo's blue segment doesn't melt into the blue gradient */}
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
+        <PlayStoreIcon size={20} className="translate-x-px" />
+      </span>
+      <span className="flex flex-col items-start leading-[1.1]">
+        <span className="text-[11px] font-semibold">Get it free on</span>
+        <span className="text-[17px] font-extrabold">Google Play</span>
+      </span>
+    </a>
+  );
 }
+
+/** Dark card surface shared by most landing tiles. */
+export const card = "rounded-[28px] border border-line bg-surface";

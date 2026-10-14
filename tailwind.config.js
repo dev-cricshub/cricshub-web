@@ -70,6 +70,12 @@ module.exports = {
           soft: token("danger-soft"),
           "soft-fg": token("danger-soft-fg"),
         },
+        // Landing-only roles (see .landing in tokens.css)
+        well: token("well"),
+        raised: token("raised"),
+        "line-accent": token("line-accent"),
+        "fg-lead": token("fg-lead"),
+        "accent-soft": token("accent-soft"),
         live: token("live"),
         accent: token("accent"),
         gold: token("gold"),

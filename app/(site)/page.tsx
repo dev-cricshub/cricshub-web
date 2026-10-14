@@ -1,31 +1,43 @@
 import SiteHeader from "@/app/components/layout/SiteHeader";
 import SiteFooter from "@/app/components/layout/SiteFooter";
-import HeroSection from "@/app/components/landing/HeroSection";
-import LiveScoreboard from "@/app/components/landing/LiveScoreboard";
-import FeatureShowcase from "@/app/components/landing/FeatureShowcase";
-import ProductStory from "@/app/components/landing/ProductStory";
-import AppPreview from "@/app/components/landing/AppPreview";
+import HeroSection, { HeroBackdrop } from "@/app/components/landing/HeroSection";
+import StatsStrip from "@/app/components/landing/StatsStrip";
+import FeatureBento from "@/app/components/landing/FeatureBento";
+import StreamingShowcase from "@/app/components/landing/StreamingShowcase";
+import TournamentShowcase from "@/app/components/landing/TournamentShowcase";
+import AudienceMarquee from "@/app/components/landing/AudienceMarquee";
+import HowItWorks from "@/app/components/landing/HowItWorks";
+import Testimonials from "@/app/components/landing/Testimonials";
+import PricingSection from "@/app/components/landing/PricingSection";
 import FAQSection from "@/app/components/landing/FAQSection";
-import FinalCTA from "@/app/components/landing/FinalCTA";
+import DownloadCTA from "@/app/components/landing/DownloadCTA";
 
 // The landing page is always-dark, independent of the app theme toggle:
-// data-theme="dark" scopes the dark tokens to this subtree.
+// data-theme="dark" scopes the dark tokens to this subtree, and .landing swaps in
+// the landing palette + body font (see app/styles/tokens.css).
 //
-// Narrative: what it is (hero) → try it (scoreboard) → what else it does (streaming,
-// tournaments, fantasy) → how a match flows end to end → the app in your pocket →
-// objections (FAQ) → close.
+// Narrative: what it is (hero) → proof (numbers) → what it does (bento) → streaming
+// and tournaments up close → who it's for → how a match flows → pricing → objections (FAQ) → close.
 export default function Home() {
   return (
-    <div data-theme="dark" className="landing bg-canvas text-fg">
+    // overflow-x-clip (not hidden) so the sticky header keeps working
+    <div data-theme="dark" className="landing relative overflow-x-clip bg-canvas text-fg">
+      <HeroBackdrop />
       <SiteHeader variant="cinematic" />
       <main>
         <HeroSection />
-        <LiveScoreboard />
-        <FeatureShowcase />
-        <ProductStory />
-        <AppPreview />
+        <StatsStrip />
+        <FeatureBento />
+        <section id="showcase" className="relative mx-auto flex max-w-[1200px] flex-col gap-24 px-6 pb-10 pt-[60px]">
+          <StreamingShowcase />
+          <TournamentShowcase />
+        </section>
+        <AudienceMarquee />
+        <HowItWorks />
+        <Testimonials />
+        <PricingSection />
         <FAQSection />
-        <FinalCTA />
+        <DownloadCTA />
       </main>
       <SiteFooter />
     </div>

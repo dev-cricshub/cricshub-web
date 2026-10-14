@@ -129,6 +129,41 @@
   --shadow: 15 23 42;
 }
 
+/* Landing page palette — a cooler, softer navy than the app, with rounder
+   geometry. Overrides the standard roles inside .landing so shared components
+   (header, login modal, footer) pick it up, and adds a few landing-only roles. */
+:root {
+  --well: 13 18 32;
+  --raised: 22 39 74;
+  --line-accent: 42 74 122;
+  --fg-lead: 180 191 208;
+  --accent-soft: 127 179 232;
+}
+.landing[data-theme='dark'] {
+  --canvas: 10 14 23; /* #0A0E17 */
+  --surface: 19 26 42; /* #131A2A */
+  --surface-2: 17 24 39; /* #111827 */
+  --surface-3: 26 34 52; /* #1A2234 */
+  --line: 31 42 64; /* #1F2A40 */
+  --line-strong: 42 54 80; /* #2A3650 */
+  --fg: 238 242 247; /* #EEF2F7 */
+  --fg-muted: 163 175 194; /* #A3AFC2 */
+  --fg-subtle: 133 146 166; /* #8592A6 */
+  --primary: 47 109 184; /* #2F6DB8 */
+  --primary-hover: 58 123 200;
+  --primary-soft: 19 37 74; /* #13254A */
+  --primary-soft-fg: 168 204 242; /* #A8CCF2 */
+  --secondary: 46 58 140; /* #2E3A8C */
+  --accent: 95 168 232; /* #5FA8E8 */
+  --ring: 95 168 232;
+  --well: 13 18 32; /* #0D1220 — inset wells */
+  --raised: 22 39 74; /* #16274A — highlighted rows */
+  --line-accent: 42 74 122; /* #2A4A7A */
+  --fg-lead: 180 191 208; /* #B4BFD0 — lead paragraphs */
+  --accent-soft: 127 179 232; /* #7FB3E8 — eyebrows, icons */
+  font-family: var(--font-landing), 'Segoe UI', system-ui, sans-serif;
+}
+
 /* color-scheme is scoped to human-facing pages so transparent broadcast overlays are untouched. */
 html:has(.app-shell),
 .app-shell [data-theme='dark'] {

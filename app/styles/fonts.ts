@@ -1,4 +1,4 @@
-import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Geist, Geist_Mono, Manrope } from "next/font/google";
 
 // Type system:
 //  - Geist Sans:        UI and body copy
@@ -14,4 +14,12 @@ export const display = Barlow_Condensed({
   display: "swap",
 });
 
-export const fontVariables = `${sans.variable} ${mono.variable} ${display.variable}`;
+// Landing page body face (scoped via .landing in tokens.css).
+export const landing = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-landing",
+  display: "swap",
+});
+
+export const fontVariables = `${sans.variable} ${mono.variable} ${display.variable} ${landing.variable}`;
