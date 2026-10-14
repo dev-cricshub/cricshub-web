@@ -7,9 +7,9 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { label: "Live scoring", href: "/#scoreboard" },
-      { label: "Streaming & tournaments", href: "/#features" },
-      { label: "Android app", href: "/#app" },
+      { label: "Live scoring", href: "/#features" },
+      { label: "Streaming & tournaments", href: "/#streaming" },
+      { label: "Android app", href: "/#download" },
       { label: "Pricing", href: "/pricing" },
       { label: "Dashboard", href: "/dashboard" },
     ],

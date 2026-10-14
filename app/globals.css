@@ -162,6 +162,33 @@
   transform: none;
 }
 
+/* Landing audience marquee (see app/components/landing/AudienceMarquee.tsx).
+   The track holds the cards twice; shifting by half (+ half the gap) loops seamlessly. */
+.landing-marquee-track {
+  animation: landing-marquee 28s linear infinite;
+}
+.landing-marquee:hover .landing-marquee-track {
+  animation-play-state: paused;
+}
+@keyframes landing-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - 8px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-marquee-track {
+    animation: none !important;
+    flex-wrap: wrap;
+    width: auto;
+  }
+  .landing-marquee-track > [aria-hidden='true'] {
+    display: none;
+  }
+}
+
 /* Respect reduced-motion inside app/marketing pages only — broadcast overlays keep their animation. */
 @media (prefers-reduced-motion: reduce) {
   html:has(.app-shell) {
