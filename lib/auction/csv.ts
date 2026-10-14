@@ -11,14 +11,26 @@ export interface CsvPreview {
   errors: CsvRowError[];
 }
 
-const HEADER = ["name", "role", "nationality", "overseas", "category", "basePrice", "matches", "battingAvg", "bowlingAvg"];
+const HEADER = ["name", "role", "nationality", "overseas", "category", "basePrice", "matches", "battingAvg", "bowlingAvg", "phone"];
 
 export function csvTemplate(): string {
   return [
     HEADER.join(","),
-    "Arjun Mehta,BAT,India,no,A,100000,42,41.2,",
-    "Liam Hart,BOWL,England,yes,A,100000,48,9.2,22.4",
+    "Arjun Mehta,BAT,India,no,A,100000,42,41.2,,9876543210",
+    "Liam Hart,BOWL,England,yes,A,100000,48,9.2,22.4,",
   ].join("\n");
+}
+
+/**
+ * Same rule as the server: a 10-digit mobile number, allowing spaces, dashes and a +91 / 91 prefix.
+ * Returns "" for blank input and null when the value is not a valid number.
+ */
+export function normalizePhone(raw: string | null | undefined): string | null {
+  if (!raw || !raw.trim()) return "";
+  let digits = raw.replace(/[\s\-()]/g, "");
+  if (digits.startsWith("+")) digits = digits.slice(1);
+  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+  return /^\d{10}$/.test(digits) ? digits : null;
 }
 
 function splitCsvLine(line: string): string[] {
@@ -75,7 +87,7 @@ export function parsePlayerCsv(text: string, startOrder: number): CsvPreview {
   for (let i = start; i < lines.length; i += 1) {
     const row = i + 1;
     const cells = splitCsvLine(lines[i]);
-    const [name = "", roleRaw = "", nationality = "India", overseasRaw = "no", category = "B", baseRaw = "", matchesRaw = "0", battingAvg = "", bowlingAvg = ""] = cells;
+    const [name = "", roleRaw = "", nationality = "India", overseasRaw = "no", category = "B", baseRaw = "", matchesRaw = "0", battingAvg = "", bowlingAvg = "", phoneRaw = ""] = cells;
     if (!name) {
       errors.push({ row, message: "Name is required." });
       continue;
@@ -95,6 +107,11 @@ export function parsePlayerCsv(text: string, startOrder: number): CsvPreview {
       errors.push({ row, message: `${name} is duplicated in this file.` });
       continue;
     }
+    const phone = normalizePhone(phoneRaw);
+    if (phone === null) {
+      errors.push({ row, message: `${name}: phone must be a 10-digit mobile number.` });
+      continue;
+    }
     seen.add(key);
     const overseas = /^(y|yes|true|1|overseas)$/i.test(overseasRaw);
     const matches = Number(matchesRaw);
@@ -108,6 +125,7 @@ export function parsePlayerCsv(text: string, startOrder: number): CsvPreview {
       matches: Number.isFinite(matches) ? matches : 0,
       battingAvg: battingAvg || "—",
       bowlingAvg: bowlingAvg || "—",
+      phone: phone || null,
       queueOrder: startOrder + players.length + 1,
     });
   }

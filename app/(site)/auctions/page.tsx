@@ -17,7 +17,7 @@ import {
 } from "@/app/components/ui";
 import { formatWhen } from "@/lib/auction/format";
 import { auctionService, useAuctionList } from "@/lib/auction/store";
-import type { Auction, AuctionStatus } from "@/lib/auction/types";
+import type { AuctionListItem, AuctionStatus } from "@/lib/auction/types";
 import { STATUS_LABEL } from "@/lib/auction/types";
 
 type SortKey = "updated" | "starts" | "name";
@@ -32,8 +32,8 @@ export default function AuctionsPage() {
   const [status, setStatus] = useState<AuctionStatus | "all" | "archived">("all");
   const [sort, setSort] = useState<SortKey>("updated");
   const [page, setPage] = useState(0);
-  const [pending, setPending] = useState<Auction | null>(null);
-  const [resetOpen, setResetOpen] = useState(false);
+  const [pending, setPending] = useState<AuctionListItem | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const filtered = useMemo(() => {
     if (!list) return [];
@@ -65,9 +65,13 @@ export default function AuctionsPage() {
     done: list?.filter((a) => a.status === "completed").length ?? 0,
   };
 
-  const create = () => {
-    const auction = auctionService.createDraft();
-    router.push(`/auctions/${auction.id}/setup`);
+  const create = async () => {
+    if (creating) return;
+    setCreating(true);
+    const result = await auctionService.createDraft();
+    setCreating(false);
+    if (!result.ok) toast(result.error, { tone: "error" });
+    else router.push(`/auctions/${result.value.id}/setup`);
   };
 
   return (
@@ -79,14 +83,9 @@ export default function AuctionsPage() {
           title="Auctions"
           description="Set up a player auction, run it from the console, and keep the squads and purses in one place."
           actions={
-            <>
-              <Button variant="ghost" onClick={() => setResetOpen(true)}>
-                Reset demo
-              </Button>
-              <Button icon="ri-add-line" onClick={create}>
-                New auction
-              </Button>
-            </>
+            <Button icon="ri-add-line" onClick={create} disabled={creating}>
+              New auction
+            </Button>
           }
         />
 
@@ -174,7 +173,7 @@ export default function AuctionsPage() {
                     {auction.tournament || "No tournament"} · {formatWhen(auction.startsAt, auction.timezone)}
                   </p>
                   <p className="mt-1 font-mono text-xs text-fg-subtle">
-                    {auction.teams.length} teams · {auction.players.filter((p) => p.status !== "withdrawn").length} players
+                    {auction.teamCount} teams · {auction.playerCount} players
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -186,8 +185,8 @@ export default function AuctionsPage() {
                   {auction.status === "scheduled" && (
                     <Button
                       size="sm"
-                      onClick={() => {
-                        const result = auctionService.start(auction.id);
+                      onClick={async () => {
+                        const result = await auctionService.start(auction.id);
                         if (!result.ok) toast(result.error, { tone: "error" });
                         else router.push(`/auctions/${auction.id}/live`);
                       }}
@@ -239,25 +238,12 @@ export default function AuctionsPage() {
         body="Archived auctions leave the active list. Their results and history stay available under the Archived filter."
         confirmLabel="Archive"
         onClose={() => setPending(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pending) return;
-          const result = auctionService.archive(pending.id);
+          const result = await auctionService.archive(pending.id);
           if (!result.ok) toast(result.error, { tone: "error" });
           else toast("Auction archived.", { tone: "success" });
           setPending(null);
-        }}
-      />
-      <ConfirmDialog
-        open={resetOpen}
-        title="Reset demo auctions?"
-        body="This replaces every auction in this browser with the sample Harbour, City Premier, Sunday Smash, and Winter Cup auctions. Auctions you created here will be removed."
-        confirmLabel="Reset demo data"
-        danger
-        onClose={() => setResetOpen(false)}
-        onConfirm={() => {
-          auctionService.resetDemo();
-          setResetOpen(false);
-          toast("Demo auctions restored.", { tone: "success" });
         }}
       />
     </>

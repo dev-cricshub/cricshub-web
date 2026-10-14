@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { LiveConsole } from "@/app/components/auction/LiveConsole";
+import { Watch } from "@/app/components/auction/Watch";
 import { EmptyState, Skeleton } from "@/app/components/ui";
 import { useAuction } from "@/lib/auction/store";
 
@@ -29,5 +30,7 @@ export default function LivePage() {
       </>
     );
   }
+  // Only the auctioneer runs the console; everyone else gets the spectator view.
+  if (auction.role === "viewer") return <Watch auction={auction} />;
   return <LiveConsole auction={auction} />;
 }
