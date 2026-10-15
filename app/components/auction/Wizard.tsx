@@ -393,7 +393,7 @@ function TeamsStep({ auction, onContinue }: { auction: Auction; onContinue: () =
                 <p className="text-xs text-fg-muted">
                   {team.ownerName || "No representative"} · {inr(team.purseOverride ?? auction.rules.pursePerTeam)}
                   {team.purseOverride != null ? " override" : ""}
-                  {team.appTeamId ? " · linked CricsHub team" : ""}
+                  {team.appTeamId ? " · existing CricsHub team" : ""}
                 </p>
               </div>
               <Button size="sm" variant="ghost" onClick={() => setDraft(team)}>
@@ -465,8 +465,20 @@ function TeamEditor({
       }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Team name" required>
-          {({ id }) => <Input id={id} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />}
+        <Field
+          label="Team name"
+          required
+          hint={form.appTeamId ? "Linked teams keep their CricsHub name, so the auction and the app match." : undefined}
+        >
+          {({ id }) => (
+            <Input
+              id={id}
+              value={form.name}
+              readOnly={!!form.appTeamId}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
+          )}
         </Field>
         <Field label="Short name" required>
           {({ id }) => (
@@ -495,7 +507,15 @@ function TeamEditor({
         {linked && (
           <Field label="CricsHub team" optional hint="Use one of your existing teams, or leave it to create a new one.">
             {({ id }) => (
-              <Select id={id} value={form.appTeamId ?? ""} onChange={(e) => setForm({ ...form, appTeamId: e.target.value || null })}>
+              <Select
+                id={id}
+                value={form.appTeamId ?? ""}
+                onChange={(e) => {
+                  const picked = (myTeams ?? []).find((t) => t.id === e.target.value);
+                  // A linked team plays under its CricsHub name; use it here too.
+                  setForm({ ...form, appTeamId: picked?.id ?? null, name: picked ? picked.name : form.name });
+                }}
+              >
                 <option value="">Create a new team</option>
                 {(myTeams ?? []).map((t) => (
                   <option key={t.id} value={t.id}>
