@@ -3,14 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
-import { AuctionSubnav, ConfirmDialog, PlayerStateBadge, Select, downloadText } from "@/app/components/auction/chrome";
+import { AuctionSubnav, ConfirmDialog, PendingStartDialog, PlayerStateBadge, Select, downloadText } from "@/app/components/auction/chrome";
 import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
+import { RegistrationsPanel } from "@/app/components/auction/Registrations";
 import { Alert, Badge, Button, ButtonLink, Card, EmptyState, Input, Tabs, useToast } from "@/app/components/ui";
 import { normalizePhone, squadsToCsv } from "@/lib/auction/csv";
 import {
   highestBid,
   queue,
   roleCounts,
+  shortSquads,
   squadOf,
   teamBudget,
   teamRemaining,
@@ -22,7 +24,7 @@ import { auctionService } from "@/lib/auction/store";
 import type { Auction, LinkableTournament, PlayerRole, PlayerState } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
-const SECTIONS = ["overview", "teams", "players", "rules", "results", "settings"] as const;
+const SECTIONS = ["overview", "teams", "players", "registrations", "rules", "results", "settings"] as const;
 type Section = (typeof SECTIONS)[number];
 
 export function Manage({ auction }: { auction: Auction }) {
@@ -48,6 +50,7 @@ export function Manage({ auction }: { auction: Auction }) {
             { key: "overview", label: "Overview" },
             { key: "teams", label: "Teams", count: auction.teams.length },
             { key: "players", label: "Players", count: auction.players.length },
+            { key: "registrations", label: "Registrations", count: auction.pendingRegistrations || undefined },
             { key: "rules", label: "Rules" },
             { key: "results", label: "Results" },
             { key: "settings", label: "Settings" },
@@ -56,6 +59,7 @@ export function Manage({ auction }: { auction: Auction }) {
         {section === "overview" && <Overview auction={auction} />}
         {section === "teams" && <Teams auction={auction} />}
         {section === "players" && <Players auction={auction} />}
+        {section === "registrations" && <RegistrationsPanel auction={auction} />}
         {section === "rules" && <Rules auction={auction} />}
         {section === "results" && <Results auction={auction} />}
         {section === "settings" && <Settings auction={auction} />}
@@ -67,7 +71,14 @@ export function Manage({ auction }: { auction: Auction }) {
 function Overview({ auction }: { auction: Auction }) {
   const toast = useToast();
   const router = useRouter();
-  const issues = validateConfig(auction);
+  const issues = validateConfig(auction).filter((i) => i.severity === "error");
+  const [pendingStart, setPendingStart] = useState<string | null>(null);
+  const start = async (pending?: "reject" | "expire") => {
+    const result = await auctionService.start(auction.id, pending);
+    if (result.ok) router.push(`/auctions/${auction.id}/live`);
+    else if (result.code === "REGISTRATIONS_PENDING") setPendingStart(result.error);
+    else toast(result.error, { tone: "error" });
+  };
   const sold = auction.players.filter((p) => p.status === "sold").length;
   const unsold = auction.players.filter((p) => p.status === "unsold").length;
   const roles = roleCounts(auction.players);
@@ -100,6 +111,19 @@ function Overview({ auction }: { auction: Auction }) {
           {issues.length > 1 ? ` and ${issues.length - 1} more.` : ""}
         </Alert>
       )}
+      {(auction.pendingRegistrations ?? 0) > 0 && (auction.status === "draft" || auction.status === "scheduled") && (
+        <Alert
+          tone="info"
+          title={`${auction.pendingRegistrations} registration${auction.pendingRegistrations === 1 ? "" : "s"} waiting for you`}
+          action={
+            <ButtonLink href={`/auctions/${auction.id}?section=registrations`} size="sm">
+              Review
+            </ButtonLink>
+          }
+        >
+          Approve players into the pool before the auction starts.
+        </Alert>
+      )}
       <div className="flex flex-wrap gap-2 text-sm text-fg-muted">
         {PLAYER_ROLES.map((role) => (
           <span key={role} className="rounded-control bg-surface px-2 py-1 ring-1 ring-line">
@@ -109,15 +133,7 @@ function Overview({ auction }: { auction: Auction }) {
       </div>
       <div className="flex flex-wrap gap-2">
         {auction.status === "scheduled" && (
-          <Button
-            onClick={async () => {
-              const result = await auctionService.start(auction.id);
-              if (!result.ok) toast(result.error, { tone: "error" });
-              else router.push(`/auctions/${auction.id}/live`);
-            }}
-          >
-            Start auction
-          </Button>
+          <Button onClick={() => void start()}>Start auction</Button>
         )}
         {(auction.status === "live" || auction.status === "paused") && (
           <ButtonLink href={`/auctions/${auction.id}/live`}>Open live console</ButtonLink>
@@ -126,6 +142,14 @@ function Overview({ auction }: { auction: Auction }) {
           Spectator view
         </ButtonLink>
       </div>
+      <PendingStartDialog
+        message={pendingStart}
+        onClose={() => setPendingStart(null)}
+        onChoose={(pending) => {
+          setPendingStart(null);
+          void start(pending);
+        }}
+      />
     </div>
   );
 }
@@ -332,6 +356,11 @@ function Players({ auction }: { auction: Auction }) {
                   </td>
                   <td className="px-3 py-2">
                     <span className="font-medium">{p.name}</span>
+                    {p.source === "registration" && (
+                      <Badge tone="primary" className="ml-2">
+                        Registered
+                      </Badge>
+                    )}
                     <span className="mt-0.5 block text-xs text-fg-subtle">
                       {p.category} · {p.overseas ? "Overseas" : p.nationality} · {p.matches} matches
                     </span>
@@ -371,7 +400,8 @@ function Rules({ auction }: { auction: Auction }) {
     <div className="max-w-2xl space-y-3 text-sm">
       <p className="text-fg-muted">
         Purse {inr(auction.rules.pursePerTeam)} · squad {auction.rules.minSquad}–{auction.rules.maxSquad} · overseas{" "}
-        {auction.rules.overseasLimit ?? "no cap"} · overrides {auction.rules.allowPurseOverride ? "allowed" : "off"}
+        {auction.rules.overseasLimit ?? "no cap"} · overrides {auction.rules.allowPurseOverride ? "allowed" : "off"} · purse reserve for minimum squad{" "}
+        {auction.rules.reserveForMinSquad === false ? "off" : "on"}
       </p>
       <ul className="space-y-1">
         {auction.rules.increments.map((slab, i) => (
@@ -429,10 +459,18 @@ function Results({ auction }: { auction: Auction }) {
       {auction.role !== "viewer" && auction.status !== "cancelled" && <TournamentHandover auction={auction} />}
       {auction.teams.map((team) => {
         const squad = squadOf(auction, team.id);
+        const short = squad.length < auction.rules.minSquad;
         return (
-          <section key={team.id} className="rounded-card border border-line bg-surface">
+          <section key={team.id} className={`rounded-card border bg-surface ${short && auction.status === "completed" ? "border-danger/40" : "border-line"}`}>
             <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-              <h2 className="font-display text-lg font-bold uppercase">{team.name}</h2>
+              <h2 className="flex flex-wrap items-center gap-2 font-display text-lg font-bold uppercase">
+                {team.name}
+                {short && (
+                  <Badge tone={auction.status === "completed" ? "danger" : "warning"}>
+                    {squad.length} of {auction.rules.minSquad} minimum
+                  </Badge>
+                )}
+              </h2>
               <p className="text-sm tabular-nums text-fg-muted">
                 Spent {inr(teamSpent(auction, team.id))} · left {inr(teamRemaining(auction, team.id))}
               </p>
@@ -606,17 +644,11 @@ function TournamentHandover({ auction }: { auction: Auction }) {
 
 function Settings({ auction }: { auction: Auction }) {
   const toast = useToast();
-  const [confirm, setConfirm] = useState<"cancel" | "complete" | "force" | null>(null);
-  const [shortMessage, setShortMessage] = useState("");
-  const run = async (kind: "cancel" | "complete" | "force") => {
+  const [confirm, setConfirm] = useState<"cancel" | "complete" | null>(null);
+  const short = shortSquads(auction);
+  const run = async (kind: "cancel" | "complete") => {
     setConfirm(null);
-    const result =
-      kind === "cancel" ? await auctionService.cancel(auction.id) : await auctionService.complete(auction.id, kind === "force");
-    if (!result.ok && result.code === "SQUADS_INCOMPLETE") {
-      setShortMessage(result.error.replace(/\s*End anyway with force=true\.?/, ""));
-      setConfirm("force");
-      return;
-    }
+    const result = kind === "cancel" ? await auctionService.cancel(auction.id) : await auctionService.complete(auction.id);
     if (!result.ok) toast(result.error, { tone: "error" });
     else toast(kind === "cancel" ? "Auction cancelled." : "Auction completed.", { tone: "success" });
   };
@@ -625,7 +657,8 @@ function Settings({ auction }: { auction: Auction }) {
       <div className="space-y-3">
         <h2 className="font-display text-lg font-bold uppercase">Lifecycle</h2>
         <p className="text-sm text-fg-muted">
-          Cancelling removes a draft or a live auction that has no sales. Completing is only possible when every player is sold, unsold, or withdrawn.
+          Cancelling removes a draft or a live auction that has no sales; registered players are told. Completing is only possible when every player is
+          sold, unsold, or withdrawn.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" disabled={auction.status === "completed" || auction.status === "cancelled"} onClick={() => setConfirm("cancel")}>
@@ -658,21 +691,15 @@ function Settings({ auction }: { auction: Auction }) {
       />
       <ConfirmDialog
         open={confirm === "complete"}
-        title="End the auction?"
-        body="This locks bidding. Every waiting player must already be sold, unsold, or withdrawn."
+        title={short.length ? "End with short squads?" : "End the auction?"}
+        body={
+          (short.length ? `Below the minimum squad: ${short.join(", ")}. Results will flag them. ` : "") +
+          "This locks bidding. Every waiting player must already be sold, unsold, or withdrawn."
+        }
         confirmLabel="End auction"
         danger
         onClose={() => setConfirm(null)}
         onConfirm={() => run("complete")}
-      />
-      <ConfirmDialog
-        open={confirm === "force"}
-        title="Some squads are short"
-        body={shortMessage}
-        confirmLabel="End anyway"
-        danger
-        onClose={() => setConfirm(null)}
-        onConfirm={() => run("force")}
       />
     </div>
   );

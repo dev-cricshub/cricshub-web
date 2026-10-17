@@ -31,6 +31,6 @@ export default function LivePage() {
     );
   }
   // Only the auctioneer runs the console; everyone else gets the spectator view.
-  if (auction.role === "viewer") return <Watch auction={auction} />;
+  if (auction.role !== "auctioneer") return <Watch auction={auction} />;
   return <LiveConsole auction={auction} />;
 }

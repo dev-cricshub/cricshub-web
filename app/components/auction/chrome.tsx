@@ -61,6 +61,8 @@ export function AuctionSubnav({ auction }: { auction: Auction }) {
           const href = link.href(auction.id);
           const active = pathname === href;
           if (link.key === "setup" && auction.status !== "draft" && auction.status !== "scheduled") return null;
+          // Viewers and registered players only get the room view.
+          if (auction.role !== "auctioneer" && link.key !== "watch") return null;
           return (
             <Link
               key={link.key}
@@ -115,6 +117,48 @@ export function ConfirmDialog({
       }
     >
       <p className="text-sm leading-relaxed text-fg-muted">{body}</p>
+    </Modal>
+  );
+}
+
+/**
+ * Shown when Start answers REGISTRATIONS_PENDING: the auctioneer decides what happens to registrations
+ * nobody approved yet. "Reject" tells those players they weren't selected; "Leave out" closes them quietly.
+ */
+export function PendingStartDialog({
+  message,
+  onClose,
+  onChoose,
+}: {
+  message: string | null;
+  onClose: () => void;
+  onChoose: (pending: "reject" | "expire") => void;
+}) {
+  return (
+    <Modal
+      open={message != null}
+      onClose={onClose}
+      title="Registrations still waiting"
+      size="sm"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="outline" onClick={() => onChoose("expire")}>
+            Leave them out
+          </Button>
+          <Button variant="danger" onClick={() => onChoose("reject")}>
+            Reject remaining
+          </Button>
+        </>
+      }
+    >
+      <p className="text-sm leading-relaxed text-fg-muted">{message}</p>
+      <p className="mt-2 text-sm leading-relaxed text-fg-muted">
+        Approve anyone you want in the pool first. Rejected players are told they weren&apos;t selected; players left out
+        just see that registration closed.
+      </p>
     </Modal>
   );
 }

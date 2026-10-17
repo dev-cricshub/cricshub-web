@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { AuctionStatusBadge, ConfirmDialog, Select } from "@/app/components/auction/chrome";
 import {
+  Alert,
   Button,
   ButtonLink,
   EmptyState,
@@ -16,11 +17,15 @@ import {
   useToast,
 } from "@/app/components/ui";
 import { formatWhen } from "@/lib/auction/format";
+import { readPendingInvite, type PendingInvite } from "@/lib/auction/invite";
 import { auctionService, useAuctionList } from "@/lib/auction/store";
 import type { AuctionListItem, AuctionStatus } from "@/lib/auction/types";
 import { STATUS_LABEL } from "@/lib/auction/types";
 
 type SortKey = "updated" | "starts" | "name";
+
+/** Auctions used to be kept in this browser only; they were never sent to CricsHub. */
+const LEGACY_KEY = "cricshub.auctions.v1";
 
 const STATUSES: AuctionStatus[] = ["draft", "scheduled", "live", "paused", "completed", "cancelled"];
 
@@ -34,6 +39,17 @@ export default function AuctionsPage() {
   const [page, setPage] = useState(0);
   const [pending, setPending] = useState<AuctionListItem | null>(null);
   const [creating, setCreating] = useState(false);
+  const [invite, setInvite] = useState<PendingInvite | null>(null);
+  const [legacy, setLegacy] = useState(false);
+
+  useEffect(() => {
+    setInvite(readPendingInvite());
+    try {
+      setLegacy(localStorage.getItem(LEGACY_KEY) != null);
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     if (!list) return [];
@@ -83,11 +99,54 @@ export default function AuctionsPage() {
           title="Auctions"
           description="Set up a player auction, run it from the console, and keep the squads and purses in one place."
           actions={
-            <Button icon="ri-add-line" onClick={create} disabled={creating}>
-              New auction
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <ButtonLink href="/auctions/registrations" variant="outline" icon="ri-user-follow-line">
+                My registrations
+              </ButtonLink>
+              <Button icon="ri-add-line" onClick={create} disabled={creating}>
+                New auction
+              </Button>
+            </div>
           }
         />
+
+        {invite && (
+          <Alert
+            tone="info"
+            title={`Finish registering${invite.auctionName ? ` for ${invite.auctionName}` : ""}`}
+            action={
+              <ButtonLink href={`/join/${invite.code}`} size="sm">
+                Continue
+              </ButtonLink>
+            }
+          >
+            You opened a player invite before signing in.
+          </Alert>
+        )}
+        {legacy && (
+          <Alert
+            tone="warning"
+            title="Auctions saved in this browser aren't used any more"
+            action={
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  try {
+                    localStorage.removeItem(LEGACY_KEY);
+                  } catch {
+                    /* ignore */
+                  }
+                  setLegacy(false);
+                }}
+              >
+                Dismiss
+              </Button>
+            }
+          >
+            Auctions now live on your CricsHub account, so they work on every device. Anything you set up in this browser before needs to be created again.
+          </Alert>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile label="All auctions" value={list ? counts.total : "—"} icon="ri-auction-line" />
@@ -187,8 +246,10 @@ export default function AuctionsPage() {
                       size="sm"
                       onClick={async () => {
                         const result = await auctionService.start(auction.id);
-                        if (!result.ok) toast(result.error, { tone: "error" });
-                        else router.push(`/auctions/${auction.id}/live`);
+                        if (result.ok) router.push(`/auctions/${auction.id}/live`);
+                        // Pending registrations need a decision; the console asks what to do with them.
+                        else if (result.code === "REGISTRATIONS_PENDING") router.push(`/auctions/${auction.id}/live`);
+                        else toast(result.error, { tone: "error" });
                       }}
                     >
                       Start

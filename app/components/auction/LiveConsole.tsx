@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/app/components/layout/AppHeader";
-import { AuctionSubnav, ConfirmDialog, PlayerStateBadge } from "@/app/components/auction/chrome";
+import { AuctionSubnav, ConfirmDialog, PendingStartDialog, PlayerStateBadge } from "@/app/components/auction/chrome";
 import { Alert, Button, useToast, cn } from "@/app/components/ui";
 import {
   highestBid,
   nextBidAmount,
   queue,
+  shortSquads,
+  squadOf,
   teamCanBid,
   teamRemaining,
 } from "@/lib/auction/engine";
@@ -38,7 +40,8 @@ export function LiveConsole({ auction }: { auction: Auction }) {
   const sold = auction.players.filter((p) => p.status === "sold").length;
   const unsold = auction.players.filter((p) => p.status === "unsold").length;
 
-  const [shortSquads, setShortSquads] = useState<string | null>(null);
+  const short = shortSquads(auction);
+  const [pendingStart, setPendingStart] = useState<string | null>(null);
 
   const run = async (fn: () => Promise<{ ok: boolean; error?: string; code?: string }>) => {
     if (busy) return;
@@ -46,13 +49,13 @@ export function LiveConsole({ auction }: { auction: Auction }) {
     try {
       const result = await fn();
       if (!result.ok) {
-        if (result.code === "SQUADS_INCOMPLETE") {
-          // Let the auctioneer confirm ending with short squads.
-          setShortSquads((result.error ?? "Some teams are below the minimum squad.").replace(/\s*End anyway with force=true\.?/, ""));
+        if (result.code === "REGISTRATIONS_PENDING") {
+          // The auctioneer decides what happens to registrations nobody approved.
+          setPendingStart(result.error ?? "Some registrations still need a decision.");
           setError(null);
         } else {
           setError(result.error ?? "That action was rejected.");
-          toast(result.error ?? "Rejected", { tone: "error" });
+          toast(result.error ?? "Rejected", { tone: result.code === "STALE_STATE" ? "info" : "error" });
         }
       } else setError(null);
     } finally {
@@ -184,6 +187,7 @@ export function LiveConsole({ auction }: { auction: Auction }) {
                   {auction.teams.map((team, index) => {
                     const check = player && next != null ? teamCanBid(auction, team.id, next, player) : { ok: false, reason: "Waiting for a player." };
                     const remaining = teamRemaining(auction, team.id);
+                    const squad = squadOf(auction, team.id).length;
                     const leading = top?.teamId === team.id;
                     return (
                       <li key={team.id}>
@@ -200,7 +204,15 @@ export function LiveConsole({ auction }: { auction: Auction }) {
                             {index + 1}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium">{team.shortName}</span>
+                            <span className="flex items-baseline justify-between gap-2">
+                              <span className="truncate font-medium">{team.shortName}</span>
+                              <span
+                                className={cn("shrink-0 font-mono text-xs tabular-nums", squad < auction.rules.minSquad ? "text-fg-subtle" : "text-fg-muted")}
+                                title={`${squad} players · minimum ${auction.rules.minSquad}, maximum ${auction.rules.maxSquad}`}
+                              >
+                                {squad}/{auction.rules.maxSquad}
+                              </span>
+                            </span>
                             <span className="block text-xs text-fg-subtle">
                               {check.ok
                                 ? `${inr(remaining)} left${team.maxBid != null && team.maxBid < remaining ? ` · max bid ${inr(team.maxBid)}` : ""}`
@@ -282,8 +294,9 @@ export function LiveConsole({ auction }: { auction: Auction }) {
       />
       <ConfirmDialog
         open={confirm === "end"}
-        title="End the auction?"
+        title={short.length ? "End with short squads?" : "End the auction?"}
         body={
+          (short.length ? `Below the minimum squad: ${short.join(", ")}. Results will flag them. ` : "") +
           "Every player must already be sold, unsold, or withdrawn, and the current lot must be finished." +
           (auction.tournamentId ? " Teams and squads will then be added to the linked tournament." : "")
         }
@@ -295,16 +308,12 @@ export function LiveConsole({ auction }: { auction: Auction }) {
           run(() => auctionService.complete(auction.id));
         }}
       />
-      <ConfirmDialog
-        open={shortSquads != null}
-        title="Some squads are short"
-        body={shortSquads ?? ""}
-        confirmLabel="End anyway"
-        danger
-        onClose={() => setShortSquads(null)}
-        onConfirm={() => {
-          setShortSquads(null);
-          run(() => auctionService.complete(auction.id, true));
+      <PendingStartDialog
+        message={pendingStart}
+        onClose={() => setPendingStart(null)}
+        onChoose={(pending) => {
+          setPendingStart(null);
+          run(() => auctionService.start(auction.id, pending));
         }}
       />
     </>

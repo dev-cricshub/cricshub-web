@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { AppHeader } from "@/app/components/layout/AppHeader";
+import { Watch } from "@/app/components/auction/Watch";
 import { Wizard } from "@/app/components/auction/Wizard";
 import { ButtonLink, EmptyState, Skeleton } from "@/app/components/ui";
 import { useAuction } from "@/lib/auction/store";
@@ -30,6 +31,7 @@ export default function SetupPage() {
       </>
     );
   }
+  if (auction.role !== "auctioneer") return <Watch auction={auction} />;
   if (auction.status !== "draft" && auction.status !== "scheduled") {
     return (
       <>

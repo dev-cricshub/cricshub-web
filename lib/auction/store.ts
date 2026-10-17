@@ -14,7 +14,14 @@ import type {
   AuctionPlayer,
   AuctionRules,
   AuctionTeam,
+  InviteCard,
+  InviteLink,
+  InviteResolution,
   LinkableTournament,
+  MyRegistration,
+  RegistrationConfig,
+  RegistrationsOverview,
+  RegistrationSubmit,
   ServiceResult,
 } from "./types";
 
@@ -39,7 +46,8 @@ function emit() {
 
 // ─── HTTP ──────────────────────────────────────────────────────────────────
 
-type RequestOptions = { body?: unknown; csv?: string; idempotent?: boolean; query?: Record<string, string> };
+/** anonymous: public endpoint; a 401 is reported instead of sending the user to sign in. */
+type RequestOptions = { body?: unknown; csv?: string; idempotent?: boolean; query?: Record<string, string>; anonymous?: boolean };
 
 async function request<T>(method: string, path: string, opts: RequestOptions = {}): Promise<ServiceResult<T>> {
   const headers = new Headers();
@@ -65,7 +73,7 @@ async function request<T>(method: string, path: string, opts: RequestOptions = {
   } catch {
     return { ok: false, error: "Could not reach CricsHub. Check your connection and try again." };
   }
-  if (res.status === 401) {
+  if (res.status === 401 && !opts.anonymous) {
     requestLogin(typeof window !== "undefined" ? window.location.pathname : undefined);
     return { ok: false, error: "Sign in to use auctions.", code: "UNAUTHENTICATED" };
   }
@@ -77,8 +85,8 @@ async function request<T>(method: string, path: string, opts: RequestOptions = {
     json = text;
   }
   if (!res.ok) {
-    const err = (json as { error?: { code?: string; message?: string } } | null)?.error;
-    return { ok: false, error: err?.message ?? `Request failed (${res.status}).`, code: err?.code };
+    const err = (json as { error?: { code?: string; message?: string; fields?: { path: string; message: string }[] } } | null)?.error;
+    return { ok: false, error: err?.message ?? `Request failed (${res.status}).`, code: err?.code, fields: err?.fields };
   }
   return { ok: true, value: json as T };
 }
@@ -107,13 +115,31 @@ function fromServer(raw: ServerAuction): Auction {
   };
 }
 
+/**
+ * Socket broadcasts are the public view (role null, no phones, registration settings or the caller's own
+ * player). Keep what the last GET told us so the auctioneer's and player's screens don't lose those fields.
+ */
+function keepPrivate(next: Auction, prev: Auction): Auction {
+  const merged: Auction = { ...next, role: prev.role, myPlayerId: prev.myPlayerId, myRegistrationStatus: prev.myRegistrationStatus };
+  if (prev.role !== "auctioneer") return merged;
+  const teams = new Map(prev.teams.map((t) => [t.id, t]));
+  const players = new Map(prev.players.map((p) => [p.id, p]));
+  return {
+    ...merged,
+    registration: prev.registration,
+    pendingRegistrations: prev.pendingRegistrations,
+    handoverError: next.handoverStatus === "failed" ? prev.handoverError : null,
+    teams: next.teams.map((t) => ({ ...t, appTeamId: teams.get(t.id)?.appTeamId ?? null, ownerPhone: teams.get(t.id)?.ownerPhone ?? null })),
+    players: next.players.map((p) => ({ ...p, phone: players.get(p.id)?.phone ?? null })),
+  };
+}
+
 /** Caches a server document if it is not older than what we have, and notifies the screens. */
 function store(raw: ServerAuction): Auction {
-  const next = fromServer(raw);
+  let next = fromServer(raw);
   const prev = docs.get(next.id);
   if (prev && (prev.revision ?? 0) > (next.revision ?? 0)) return prev;
-  // Socket broadcasts carry role null; keep the role we learned from GET.
-  if (next.role == null && prev?.role) next.role = prev.role;
+  if (next.role == null && prev?.role) next = keepPrivate(next, prev);
   docs.set(next.id, next);
   missing.delete(next.id);
   if (listCache) {
@@ -129,8 +155,6 @@ function store(raw: ServerAuction): Auction {
             updatedAt: next.updatedAt,
             teamCount: next.teams.length,
             playerCount: next.players.length,
-            tournamentId: next.tournamentId ?? null,
-            handoverStatus: next.handoverStatus ?? "none",
           }
         : row,
     );
@@ -149,6 +173,7 @@ async function mutate(
   if (!result.ok) {
     // Another device may have moved the auction on; resync so the screen shows the real state.
     if (result.code === "STALE_STATE" || result.code === "LOT_OPEN" || result.code === "NO_LOT") void refresh(id);
+    if (result.code === "STALE_STATE") return { ...result, error: "Updated from another device. Showing the latest." };
     return result;
   }
   return { ok: true, value: store(result.value) };
@@ -162,6 +187,20 @@ async function refresh(id: string): Promise<void> {
     // Not found, private, signed out or unreachable: stop the loading state.
     missing.add(id);
     emit();
+  }
+}
+
+/** CSV exports straight from the server. */
+async function csv(path: string): Promise<ServiceResult<string>> {
+  const headers = new Headers();
+  const token = localStorage.getItem("jwtToken");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  try {
+    const res = await fetch(`${BASE}${path}`, { headers, credentials: "include" });
+    if (!res.ok) return { ok: false, error: `Export failed (${res.status}).` };
+    return { ok: true, value: await res.text() };
+  } catch {
+    return { ok: false, error: "Could not reach CricsHub." };
   }
 }
 
@@ -289,19 +328,17 @@ export const auctionService = {
   },
 
   publish: (id: string) => mutate(id, "POST", "/publish"),
-  start: (id: string) => mutate(id, "POST", "/start", { idempotent: true }),
+  /**
+   * Registrations still pending or waitlisted make the server answer REGISTRATIONS_PENDING; call again with
+   * "reject" (tell them they weren't selected) or "expire" (leave them out quietly).
+   */
+  start: (id: string, pending?: "reject" | "expire") =>
+    mutate(id, "POST", "/start", { idempotent: true, query: pending ? { pending } : undefined }),
   pause: (id: string) => mutate(id, "POST", "/pause"),
   resume: (id: string) => mutate(id, "POST", "/resume"),
   presentNext: (id: string) => mutate(id, "POST", "/lots/next"),
 
-  async placeBid(id: string, teamId: string): Promise<ServiceResult<Auction>> {
-    const result = await request<{ auction: ServerAuction }>("POST", `/${id}/bids`, { body: { teamId }, idempotent: true });
-    if (!result.ok) {
-      if (result.code === "STALE_STATE") void refresh(id);
-      return result;
-    }
-    return { ok: true, value: store(result.value.auction) };
-  },
+  placeBid: (id: string, teamId: string) => mutate(id, "POST", "/bids", { body: { teamId }, idempotent: true }),
 
   sell: (id: string) => mutate(id, "POST", "/lots/sell", { idempotent: true }),
   unsold: (id: string) => mutate(id, "POST", "/lots/unsold", { idempotent: true }),
@@ -309,9 +346,8 @@ export const auctionService = {
   reopen: (id: string, playerId: string) => mutate(id, "POST", `/players/${playerId}/reopen`),
   withdraw: (id: string, playerId: string) => mutate(id, "POST", `/players/${playerId}/withdraw`),
   undo: (id: string) => mutate(id, "POST", "/undo", { idempotent: true }),
-  /** force=true ends even when some teams are below the minimum squad (server answers SQUADS_INCOMPLETE otherwise). */
-  complete: (id: string, force = false) =>
-    mutate(id, "POST", "/complete", { idempotent: true, query: force ? { force: "true" } : undefined }),
+  /** Short squads don't block; results flag them (belowMinSquad). */
+  complete: (id: string) => mutate(id, "POST", "/complete", { idempotent: true }),
   cancel: (id: string) => mutate(id, "POST", "/cancel"),
   archive: (id: string) => mutate(id, "POST", "/archive"),
   /** Push teams and squads into the linked tournament (runs automatically on complete; this retries). */
@@ -324,18 +360,33 @@ export const auctionService = {
   },
 
   /** Results CSV straight from the server. */
-  async resultsCsv(id: string): Promise<ServiceResult<string>> {
-    const headers = new Headers();
-    const token = localStorage.getItem("jwtToken");
-    if (token) headers.set("Authorization", `Bearer ${token}`);
-    try {
-      const res = await fetch(`${BASE}/${id}/results.csv`, { headers, credentials: "include" });
-      if (!res.ok) return { ok: false, error: `Export failed (${res.status}).` };
-      return { ok: true, value: await res.text() };
-    } catch {
-      return { ok: false, error: "Could not reach CricsHub." };
-    }
-  },
+  resultsCsv: (id: string) => csv(`/${id}/results.csv`),
+
+  // ─── Self-registration (auctioneer) ──────────────────────────────────────
+
+  /** Turning registration on also creates the default invite link. */
+  saveRegistration: (id: string, config: RegistrationConfig) => mutate(id, "PUT", "/registration", { body: config }),
+  registrations: (id: string) => request<RegistrationsOverview>("GET", `/${id}/registrations`),
+  registrationsCsv: (id: string) => csv(`/${id}/registrations.csv`),
+  approve: (id: string, registrationId: string, input: { category?: string; basePrice?: number; overseas?: boolean } = {}) =>
+    mutate(id, "POST", `/registrations/${registrationId}/approve`, { body: input }),
+  reject: (id: string, registrationId: string, reason?: string) =>
+    mutate(id, "POST", `/registrations/${registrationId}/reject`, { body: { reason: reason?.trim() || null } }),
+  waitlist: (id: string, registrationId: string) => mutate(id, "POST", `/registrations/${registrationId}/waitlist`),
+  createInviteLink: (id: string, input: { label?: string; expiresAt?: string | null; maxUses?: number | null }) =>
+    request<InviteLink>("POST", `/${id}/invite-links`, { body: input }),
+  revokeInviteLink: (id: string, linkId: string) => request<InviteLink>("POST", `/${id}/invite-links/${linkId}/revoke`),
+
+  // ─── Self-registration (player) ──────────────────────────────────────────
+
+  /** No sign-in needed: what the invite landing page shows. */
+  inviteCard: (code: string) => request<InviteCard>("GET", `/invites/${encodeURIComponent(code)}`, { anonymous: true }),
+  /** Signed in: which screen to show, with form settings and profile pre-fill. */
+  resolveInvite: (code: string) => request<InviteResolution>("GET", `/invites/${encodeURIComponent(code)}/me`),
+  register: (code: string, input: RegistrationSubmit) =>
+    request<MyRegistration>("POST", `/invites/${encodeURIComponent(code)}/registrations`, { body: input }),
+  myRegistrations: () => request<MyRegistration[]>("GET", "/me/registrations"),
+  withdrawRegistration: (registrationId: string) => request<MyRegistration>("POST", `/me/registrations/${registrationId}/withdraw`),
 
   refresh,
 };
@@ -379,7 +430,10 @@ function subscribe(id: string): () => void {
       client.subscribe(`/topic/auction.${id}`, (msg: IMessage) => {
         try {
           const data = JSON.parse(msg.body) as { auction?: ServerAuction };
-          if (data.auction) store(data.auction);
+          if (!data.auction) return;
+          store(data.auction);
+          // Registration changes alter fields the public broadcast leaves out (pending count, own status).
+          if (data.auction.events[0]?.type.startsWith("registration")) void refresh(id);
         } catch {
           /* ignore malformed frames */
         }

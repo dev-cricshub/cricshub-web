@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useParams } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { Manage } from "@/app/components/auction/Manage";
+import { Watch } from "@/app/components/auction/Watch";
 import { EmptyState, Skeleton } from "@/app/components/ui";
 import { useAuction } from "@/lib/auction/store";
 
@@ -33,10 +34,11 @@ function AuctionPageInner() {
       <>
         <AppHeader />
         <main className="container-page py-10">
-          <EmptyState icon="ri-auction-line" title="Auction not found" description="It may have been removed when demo data was reset." />
+          <EmptyState icon="ri-auction-line" title="Auction not found" description="It may have been deleted, or it is private." />
         </main>
       </>
     );
   }
-  return <Manage auction={auction} />;
+  // Viewers and registered players see the room view; management is the auctioneer's.
+  return auction.role === "auctioneer" ? <Manage auction={auction} /> : <Watch auction={auction} />;
 }

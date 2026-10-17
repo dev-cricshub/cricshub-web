@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { AuctionSubnav, Select } from "@/app/components/auction/chrome";
 import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
-import { Alert, Button, EmptyState, Field, Input, Switch, Textarea, useToast, cn } from "@/app/components/ui";
+import { Alert, Badge, Button, EmptyState, Field, Input, Switch, Textarea, useToast, cn } from "@/app/components/ui";
 import { csvTemplate, normalizePhone } from "@/lib/auction/csv";
+import { InviteLinks, RegistrationSettings, ReviewQueue, useRegistrations } from "@/app/components/auction/Registrations";
 import { validateConfig, type ConfigIssue } from "@/lib/auction/engine";
 import { fromDateTimeLocal, inr, toDateTimeLocal } from "@/lib/auction/format";
 import { auctionService, fetchMyCricshubTeams } from "@/lib/auction/store";
 import type { Auction, AuctionRules, AuctionTeam, LinkableTournament, PlayerRole } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
-const STEPS = ["Details", "Rules", "Teams", "Players", "Review"] as const;
+const STEPS = ["Details", "Rules", "Teams", "Registration", "Players", "Review"] as const;
+const REVIEW = STEPS.length - 1;
 const COLORS = ["#1E88E5", "#E2B94B", "#C46B4E", "#8A9BA8", "#207BBE", "#273687", "#3D8F6E", "#A15C8A"];
 const ZONES = ["Asia/Kolkata", "Asia/Dubai", "Asia/Colombo", "Europe/London", "Australia/Sydney"];
 
@@ -26,7 +28,7 @@ export function Wizard({ auction }: { auction: Auction }) {
   const issues = serverIssues ?? validateConfig(auction);
 
   useEffect(() => {
-    if (step !== 4) return;
+    if (step !== REVIEW) return;
     let alive = true;
     auctionService.validate(auction.id).then((r) => {
       if (alive && r.ok) setServerIssues(r.value);
@@ -69,8 +71,9 @@ export function Wizard({ auction }: { auction: Auction }) {
         {step === 0 && <DetailsStep auction={auction} onSaved={(r) => saveAnd(r.ok, r.ok ? undefined : r.error, 1)} />}
         {step === 1 && <RulesStep auction={auction} onSaved={(r) => saveAnd(r.ok, r.ok ? undefined : r.error, 2)} />}
         {step === 2 && <TeamsStep auction={auction} onContinue={() => setStep(3)} />}
-        {step === 3 && <PlayersStep auction={auction} onContinue={() => setStep(4)} />}
-        {step === 4 && (
+        {step === 3 && <RegistrationStep auction={auction} onContinue={() => setStep(4)} />}
+        {step === 4 && <PlayersStep auction={auction} onContinue={() => setStep(REVIEW)} />}
+        {step === REVIEW && (
           <ReviewStep
             auction={auction}
             issues={issues}
@@ -107,6 +110,7 @@ function DetailsStep({
   const [timezone, setTimezone] = useState(auction.timezone);
   const [starts, setStarts] = useState(toDateTimeLocal(auction.startsAt, auction.timezone));
   const [visibility, setVisibility] = useState(auction.visibility);
+  const [homeCountry, setHomeCountry] = useState(auction.homeCountry ?? "India");
   // "name": the tournament is just a label (auction only). "linked": a CricsHub tournament gets the squads.
   const [mode, setMode] = useState<"name" | "linked">(auction.tournamentId ? "linked" : "name");
   const [tournamentId, setTournamentId] = useState(auction.tournamentId ?? "");
@@ -143,6 +147,7 @@ function DetailsStep({
             startsAt,
             timezone,
             visibility,
+            homeCountry: homeCountry.trim() || "India",
             tournamentId: mode === "linked" ? tournamentId : "",
           }),
         );
@@ -231,6 +236,9 @@ function DetailsStep({
           </Select>
         )}
       </Field>
+      <Field label="Home country" hint="Registered players from any other country count as overseas.">
+        {({ id }) => <Input id={id} maxLength={64} value={homeCountry} onChange={(e) => setHomeCountry(e.target.value)} />}
+      </Field>
       <p className="text-sm text-fg-muted">Format: player auction. Other formats are not part of this version.</p>
       <Button type="submit">Save and continue</Button>
     </form>
@@ -278,6 +286,12 @@ function RulesStep({ auction, onSaved }: { auction: Auction; onSaved: (result: {
         onChange={(allowPurseOverride) => set({ allowPurseOverride })}
         label="Allow a different purse for a team"
         description="Use this when one franchise brings a different budget."
+      />
+      <Switch
+        checked={rules.reserveForMinSquad !== false}
+        onChange={(reserveForMinSquad) => set({ reserveForMinSquad })}
+        label="Keep purse for the minimum squad"
+        description="A team can't bid so much that it can no longer afford base price for the players it still needs."
       />
       <div>
         <p className="text-sm font-medium text-fg">Bid increments</p>
@@ -572,6 +586,7 @@ function PlayersStep({ auction, onContinue }: { auction: Auction; onContinue: ()
 
   return (
     <div className="space-y-4">
+      {auction.registration?.enabled && <PendingQueue auction={auction} />}
       <div className="flex flex-wrap gap-2">
         <Input icon="ri-search-line" placeholder="Search players" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search players" className="max-w-xs" />
         <Button variant="outline" onClick={() => setEditing("new")}>
@@ -598,6 +613,11 @@ function PlayersStep({ auction, onContinue }: { auction: Auction; onContinue: ()
                   <td className="px-3 py-2">
                     <span className="font-medium">{p.name}</span>
                     <span className="ml-2 text-xs text-fg-subtle">{p.overseas ? "Overseas" : p.nationality}</span>
+                    {p.source === "registration" && (
+                      <Badge tone="primary" className="ml-2">
+                        Registered
+                      </Badge>
+                    )}
                     {auction.tournamentId && (
                       <span className={cn("ml-2 font-mono text-xs", p.phone ? "text-fg-subtle" : "text-danger")}>
                         {p.phone ?? "no phone"}
@@ -773,29 +793,40 @@ function ReviewStep({
   onPublish,
 }: {
   auction: Auction;
-  issues: { step: string; message: string }[];
+  issues: ConfigIssue[];
   onEdit: (step: number) => void;
   onDraft: () => void;
   onPublish: () => void;
 }) {
-  const stepIndex = { details: 0, rules: 1, teams: 2, players: 3 };
+  const stepIndex: Record<string, number> = { details: 0, rules: 1, teams: 2, registration: 3, players: 4 };
+  // Older servers sent no severity; treat that as blocking.
+  const errors = issues.filter((i) => i.severity !== "warning");
+  const warnings = issues.filter((i) => i.severity === "warning");
+  const list = (items: ConfigIssue[]) => (
+    <ul className="mt-1 list-disc pl-4">
+      {items.map((issue) => (
+        <li key={issue.message}>
+          <button type="button" className="text-left underline" onClick={() => onEdit(stepIndex[issue.step] ?? 0)}>
+            {issue.message}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
   return (
     <div className="max-w-2xl space-y-4">
-      {issues.length > 0 ? (
-        <Alert tone="warning" title="Not ready to publish">
-          <ul className="mt-1 list-disc pl-4">
-            {issues.map((issue) => (
-              <li key={issue.message}>
-                <button type="button" className="underline" onClick={() => onEdit(stepIndex[issue.step as keyof typeof stepIndex])}>
-                  {issue.message}
-                </button>
-              </li>
-            ))}
-          </ul>
+      {errors.length > 0 ? (
+        <Alert tone="danger" title="Fix these to publish">
+          {list(errors)}
         </Alert>
       ) : (
         <Alert tone="success" title="Ready to schedule">
           Teams, players and rules pass the checks. You can still keep it as a draft.
+        </Alert>
+      )}
+      {warnings.length > 0 && (
+        <Alert tone="warning" title="Worth a look">
+          {list(warnings)}
         </Alert>
       )}
       <dl className="grid gap-3 rounded-card border border-line bg-surface p-4 text-sm sm:grid-cols-2">
@@ -833,10 +864,44 @@ function ReviewStep({
         <Button variant="outline" onClick={onDraft}>
           Save draft
         </Button>
-        <Button disabled={issues.length > 0 || auction.status !== "draft"} onClick={onPublish}>
+        <Button disabled={errors.length > 0 || auction.status !== "draft"} onClick={onPublish}>
           {auction.status === "draft" ? "Publish" : "Already scheduled"}
         </Button>
       </div>
     </div>
+  );
+}
+
+function RegistrationStep({ auction, onContinue }: { auction: Auction; onContinue: () => void }) {
+  const { data, reload } = useRegistrations(auction);
+  return (
+    <div className="max-w-3xl space-y-6">
+      <RegistrationSettings key={auction.registration?.enabled ? "on" : "off"} auction={auction} editable />
+      {auction.registration?.enabled && (
+        <section className="space-y-2">
+          <h2 className="font-display text-lg font-bold uppercase">Invite links</h2>
+          {data ? <InviteLinks auction={auction} links={data.links} onChanged={reload} /> : <p className="text-sm text-fg-muted">Loading links…</p>}
+          {auction.status === "draft" && (
+            <p className="text-xs text-fg-muted">Players can open the link now; it works best once the auction is published.</p>
+          )}
+        </section>
+      )}
+      <Button onClick={onContinue}>Continue to players</Button>
+    </div>
+  );
+}
+
+/** Registrations waiting for a decision, above the pool on the Players step. */
+function PendingQueue({ auction }: { auction: Auction }) {
+  const { data, reload } = useRegistrations(auction);
+  const waiting = data?.items.filter((r) => r.status === "pending" || r.status === "waitlisted") ?? [];
+  if (!data || waiting.length === 0) return null;
+  return (
+    <section className="space-y-2 rounded-card border border-line bg-surface p-4">
+      <h2 className="text-sm font-semibold">
+        {waiting.length} registration{waiting.length === 1 ? "" : "s"} to review
+      </h2>
+      <ReviewQueue auction={auction} items={data.items} onChanged={reload} />
+    </section>
   );
 }
