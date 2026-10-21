@@ -42,9 +42,10 @@ export interface BidIncrement {
   step: number;
 }
 
+/** Optional per-role squad limits. Null min / max means no limit on that side. */
 export interface RoleLimit {
   role: PlayerRole;
-  min: number;
+  min: number | null;
   max: number | null;
 }
 
@@ -54,8 +55,7 @@ export interface AuctionRules {
   increments: BidIncrement[];
   minSquad: number;
   maxSquad: number;
-  /** Null means no overseas cap. */
-  overseasLimit: number | null;
+  /** Optional. Empty means no role limits. */
   roleLimits: RoleLimit[];
   /** When false, a team cannot be given a purse different from pursePerTeam. */
   allowPurseOverride: boolean;
@@ -84,7 +84,6 @@ export interface AuctionPlayer {
   name: string;
   role: PlayerRole;
   nationality: string;
-  overseas: boolean;
   category: string;
   basePrice: number;
   matches: number;
@@ -156,7 +155,7 @@ export interface Auction {
   handoverStatus?: "none" | "done" | "failed";
   handedOverAt?: string | null;
   handoverError?: string | null;
-  /** Players whose nationality differs count as overseas. */
+  /** Default nationality for self-registered players. */
   homeCountry?: string;
   /** Auctioneer only: registration settings and how many registrations wait for a decision. */
   registration?: RegistrationConfig | null;
@@ -220,7 +219,6 @@ export interface RegistrationRow {
   battingHand?: string;
   bowlingStyle?: string;
   nationality?: string;
-  overseas: boolean;
   matches?: number;
   battingAvg?: string;
   bowlingAvg?: string;

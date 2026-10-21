@@ -81,13 +81,7 @@ export function teamCanBid(auction: Auction, teamId: string, amount: number, pla
   if (squad.length >= auction.rules.maxSquad) {
     return { ok: false, reason: `${team.shortName} already has ${auction.rules.maxSquad} players.` };
   }
-  if (player.overseas && auction.rules.overseasLimit != null) {
-    const overseas = squad.filter((p) => p.overseas).length;
-    if (overseas >= auction.rules.overseasLimit) {
-      return { ok: false, reason: `${team.shortName} has reached the overseas limit of ${auction.rules.overseasLimit}.` };
-    }
-  }
-  const limit = auction.rules.roleLimits.find((r) => r.role === player.role);
+  const limit = (auction.rules.roleLimits ?? []).find((r) => r.role === player.role);
   if (limit?.max != null) {
     const count = squad.filter((p) => p.role === player.role).length;
     if (count >= limit.max) {
@@ -201,13 +195,7 @@ export function defaultRules(): AuctionRules {
     ],
     minSquad: 11,
     maxSquad: 15,
-    overseasLimit: 2,
-    roleLimits: [
-      { role: "WK", min: 1, max: 3 },
-      { role: "BAT", min: 3, max: null },
-      { role: "BOWL", min: 3, max: null },
-      { role: "AR", min: 1, max: null },
-    ],
+    roleLimits: [],
     allowPurseOverride: true,
     reserveForMinSquad: true,
   };

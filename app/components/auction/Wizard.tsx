@@ -236,7 +236,7 @@ function DetailsStep({
           </Select>
         )}
       </Field>
-      <Field label="Home country" hint="Registered players from any other country count as overseas.">
+      <Field label="Home country" hint="Default nationality for players who register themselves.">
         {({ id }) => <Input id={id} maxLength={64} value={homeCountry} onChange={(e) => setHomeCountry(e.target.value)} />}
       </Field>
       <p className="text-sm text-fg-muted">Format: player auction. Other formats are not part of this version.</p>
@@ -246,15 +246,18 @@ function DetailsStep({
 }
 
 function RulesStep({ auction, onSaved }: { auction: Auction; onSaved: (result: { ok: true } | { ok: false; error: string }) => void }) {
-  const [rules, setRules] = useState<AuctionRules>(auction.rules);
+  const [rules, setRules] = useState<AuctionRules>({ ...auction.rules, roleLimits: auction.rules.roleLimits ?? [] });
   const set = (patch: Partial<AuctionRules>) => setRules((r) => ({ ...r, ...patch }));
+  const [useRoleLimits, setUseRoleLimits] = useState(rules.roleLimits.length > 0);
 
   return (
     <form
       className="max-w-2xl space-y-5"
       onSubmit={async (e) => {
         e.preventDefault();
-        onSaved(await auctionService.saveRules(auction.id, rules));
+        // Role limits are optional: off sends none, and a role with neither min nor max is dropped.
+        const roleLimits = useRoleLimits ? rules.roleLimits.filter((l) => l.min != null || l.max != null) : [];
+        onSaved(await auctionService.saveRules(auction.id, { ...rules, roleLimits }));
       }}
     >
       <Field label="Purse per team (₹)" required hint="Used for every team unless you set an override.">
@@ -262,23 +265,12 @@ function RulesStep({ auction, onSaved }: { auction: Auction; onSaved: (result: {
           <Input id={id} type="number" min={1} value={rules.pursePerTeam} onChange={(e) => set({ pursePerTeam: Number(e.target.value) })} />
         )}
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Minimum squad">
           {({ id }) => <Input id={id} type="number" min={1} value={rules.minSquad} onChange={(e) => set({ minSquad: Number(e.target.value) })} />}
         </Field>
         <Field label="Maximum squad">
           {({ id }) => <Input id={id} type="number" min={1} value={rules.maxSquad} onChange={(e) => set({ maxSquad: Number(e.target.value) })} />}
-        </Field>
-        <Field label="Overseas limit" optional hint="Leave empty for no cap.">
-          {({ id }) => (
-            <Input
-              id={id}
-              type="number"
-              min={0}
-              value={rules.overseasLimit ?? ""}
-              onChange={(e) => set({ overseasLimit: e.target.value === "" ? null : Number(e.target.value) })}
-            />
-          )}
         </Field>
       </div>
       <Switch
@@ -337,30 +329,44 @@ function RulesStep({ auction, onSaved }: { auction: Auction; onSaved: (result: {
         </Button>
       </div>
       <div>
-        <p className="text-sm font-medium text-fg">Role limits</p>
-        <ul className="mt-3 space-y-2">
-          {PLAYER_ROLES.map((role) => {
-            const limit = rules.roleLimits.find((r) => r.role === role) ?? { role, min: 0, max: null };
-            const write = (patch: Partial<typeof limit>) => {
-              const rest = rules.roleLimits.filter((r) => r.role !== role);
-              set({ roleLimits: [...rest, { ...limit, ...patch }] });
-            };
-            return (
-              <li key={role} className="grid grid-cols-[8rem_1fr_1fr] items-center gap-2">
-                <span className="text-sm text-fg-muted">{ROLE_LABEL[role]}</span>
-                <Input aria-label={`${role} minimum`} type="number" min={0} value={limit.min} onChange={(e) => write({ min: Number(e.target.value) })} />
-                <Input
-                  aria-label={`${role} maximum`}
-                  type="number"
-                  min={0}
-                  placeholder="No max"
-                  value={limit.max ?? ""}
-                  onChange={(e) => write({ max: e.target.value === "" ? null : Number(e.target.value) })}
-                />
-              </li>
-            );
-          })}
-        </ul>
+        <Switch
+          checked={useRoleLimits}
+          onChange={setUseRoleLimits}
+          label="Role limits"
+          description="Optional. Set a minimum or maximum number of batters, bowlers, all-rounders or keepers per team."
+        />
+        {useRoleLimits && (
+          <ul className="mt-3 space-y-2">
+            {PLAYER_ROLES.map((role) => {
+              const limit = rules.roleLimits.find((r) => r.role === role) ?? { role, min: null, max: null };
+              const write = (patch: Partial<typeof limit>) => {
+                const rest = rules.roleLimits.filter((r) => r.role !== role);
+                set({ roleLimits: [...rest, { ...limit, ...patch }] });
+              };
+              return (
+                <li key={role} className="grid grid-cols-[8rem_1fr_1fr] items-center gap-2">
+                  <span className="text-sm text-fg-muted">{ROLE_LABEL[role]}</span>
+                  <Input
+                    aria-label={`${role} minimum`}
+                    type="number"
+                    min={0}
+                    placeholder="No min"
+                    value={limit.min ?? ""}
+                    onChange={(e) => write({ min: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
+                  <Input
+                    aria-label={`${role} maximum`}
+                    type="number"
+                    min={0}
+                    placeholder="No max"
+                    value={limit.max ?? ""}
+                    onChange={(e) => write({ max: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
       <Button type="submit">Save rules</Button>
     </form>
@@ -567,7 +573,6 @@ const emptyPlayer = {
   name: "",
   role: "BAT" as PlayerRole,
   nationality: "India",
-  overseas: false,
   category: "B",
   basePrice: 20000,
   matches: 0,
@@ -612,7 +617,7 @@ function PlayersStep({ auction, onContinue }: { auction: Auction; onContinue: ()
                 <tr key={p.id} className="border-t border-line">
                   <td className="px-3 py-2">
                     <span className="font-medium">{p.name}</span>
-                    <span className="ml-2 text-xs text-fg-subtle">{p.overseas ? "Overseas" : p.nationality}</span>
+                    <span className="ml-2 text-xs text-fg-subtle">{p.nationality}</span>
                     {p.source === "registration" && (
                       <Badge tone="primary" className="ml-2">
                         Registered
@@ -700,7 +705,6 @@ function PlayerEditor({ auction, playerId, onClose }: { auction: Auction; player
           name: existing.name,
           role: existing.role,
           nationality: existing.nationality,
-          overseas: existing.overseas,
           category: existing.category,
           basePrice: existing.basePrice,
           matches: existing.matches,
@@ -774,7 +778,6 @@ function PlayerEditor({ auction, playerId, onClose }: { auction: Auction; player
           )}
         </Field>
       </div>
-      <Switch checked={form.overseas} onChange={(overseas) => setForm({ ...form, overseas })} label="Overseas player" />
       <div className="flex gap-2">
         <Button type="submit">{playerId ? "Save player" : "Add player"}</Button>
         <Button type="button" variant="ghost" onClick={onClose}>

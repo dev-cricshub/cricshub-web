@@ -75,7 +75,6 @@ export function Watch({ auction }: { auction: Auction }) {
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-fg-subtle">
                   {ROLE_LABEL[player.role]}
-                  {player.overseas ? " · Overseas" : ""}
                 </p>
                 <h2 className="mt-1 font-display text-4xl font-bold uppercase">{player.name}</h2>
                 <p className="mt-4 font-display text-3xl font-bold tabular-nums">{top ? inr(top.amount) : inr(player.basePrice)}</p>

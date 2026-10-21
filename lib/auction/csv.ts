@@ -11,13 +11,13 @@ export interface CsvPreview {
   errors: CsvRowError[];
 }
 
-const HEADER = ["name", "role", "nationality", "overseas", "category", "basePrice", "matches", "battingAvg", "bowlingAvg", "phone"];
+const HEADER = ["name", "role", "nationality", "category", "basePrice", "matches", "battingAvg", "bowlingAvg", "phone"];
 
 export function csvTemplate(): string {
   return [
     HEADER.join(","),
-    "Arjun Mehta,BAT,India,no,A,100000,42,41.2,,9876543210",
-    "Liam Hart,BOWL,England,yes,A,100000,48,9.2,22.4,",
+    "Arjun Mehta,BAT,India,A,100000,42,41.2,,9876543210",
+    "Liam Hart,BOWL,England,A,100000,48,9.2,22.4,",
   ].join("\n");
 }
 
@@ -79,15 +79,22 @@ export function parsePlayerCsv(text: string, startOrder: number): CsvPreview {
   const players: CsvPreview["players"] = [];
   if (!lines.length) return { players, errors: [{ row: 1, message: "The file is empty." }] };
 
+  // With a header, columns are matched by name (any order; old files with an "overseas" column still work).
+  // Without one, cells are read in HEADER order.
   let start = 0;
-  const head = splitCsvLine(lines[0]).map((c) => c.toLowerCase());
-  if (head[0] === "name") start = 1;
+  let index = HEADER.map((_, i) => i);
+  const head = splitCsvLine(lines[0]).map((c) => c.trim().toLowerCase());
+  if (head[0] === "name") {
+    start = 1;
+    index = HEADER.map((h) => head.indexOf(h.toLowerCase()));
+  }
 
   const seen = new Set<string>();
   for (let i = start; i < lines.length; i += 1) {
     const row = i + 1;
     const cells = splitCsvLine(lines[i]);
-    const [name = "", roleRaw = "", nationality = "India", overseasRaw = "no", category = "B", baseRaw = "", matchesRaw = "0", battingAvg = "", bowlingAvg = "", phoneRaw = ""] = cells;
+    const at = (i: number) => (index[i] >= 0 ? cells[index[i]] ?? "" : "");
+    const [name, roleRaw, nationality, category, baseRaw, matchesRaw, battingAvg, bowlingAvg, phoneRaw] = HEADER.map((_, i) => at(i));
     if (!name) {
       errors.push({ row, message: "Name is required." });
       continue;
@@ -113,13 +120,11 @@ export function parsePlayerCsv(text: string, startOrder: number): CsvPreview {
       continue;
     }
     seen.add(key);
-    const overseas = /^(y|yes|true|1|overseas)$/i.test(overseasRaw);
-    const matches = Number(matchesRaw);
+    const matches = Number(matchesRaw || 0);
     players.push({
       name,
       role,
       nationality: nationality || "India",
-      overseas,
       category: (category || "B").toUpperCase(),
       basePrice,
       matches: Number.isFinite(matches) ? matches : 0,

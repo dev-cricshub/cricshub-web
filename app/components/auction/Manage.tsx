@@ -362,7 +362,7 @@ function Players({ auction }: { auction: Auction }) {
                       </Badge>
                     )}
                     <span className="mt-0.5 block text-xs text-fg-subtle">
-                      {p.category} · {p.overseas ? "Overseas" : p.nationality} · {p.matches} matches
+                      {p.category} · {p.nationality} · {p.matches} matches
                     </span>
                   </td>
                   <td className="px-3 py-2">{ROLE_LABEL[p.role]}</td>
@@ -399,8 +399,7 @@ function Rules({ auction }: { auction: Auction }) {
   return (
     <div className="max-w-2xl space-y-3 text-sm">
       <p className="text-fg-muted">
-        Purse {inr(auction.rules.pursePerTeam)} · squad {auction.rules.minSquad}–{auction.rules.maxSquad} · overseas{" "}
-        {auction.rules.overseasLimit ?? "no cap"} · overrides {auction.rules.allowPurseOverride ? "allowed" : "off"} · purse reserve for minimum squad{" "}
+        Purse {inr(auction.rules.pursePerTeam)} · squad {auction.rules.minSquad}–{auction.rules.maxSquad} · overrides {auction.rules.allowPurseOverride ? "allowed" : "off"} · purse reserve for minimum squad{" "}
         {auction.rules.reserveForMinSquad === false ? "off" : "on"}
       </p>
       <ul className="space-y-1">
@@ -410,14 +409,17 @@ function Rules({ auction }: { auction: Auction }) {
           </li>
         ))}
       </ul>
-      <ul className="space-y-1">
-        {auction.rules.roleLimits.map((limit) => (
-          <li key={limit.role} className="text-fg-muted">
-            {ROLE_LABEL[limit.role]}: min {limit.min}
-            {limit.max != null ? `, max ${limit.max}` : ""}
-          </li>
-        ))}
-      </ul>
+      {auction.rules.roleLimits?.length ? (
+        <ul className="space-y-1">
+          {auction.rules.roleLimits.map((limit) => (
+            <li key={limit.role} className="text-fg-muted">
+              {ROLE_LABEL[limit.role]}: {[limit.min != null ? `min ${limit.min}` : null, limit.max != null ? `max ${limit.max}` : null].filter(Boolean).join(", ")}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-fg-muted">No role limits</p>
+      )}
       {(auction.status === "draft" || auction.status === "scheduled") && (
         <ButtonLink href={`/auctions/${auction.id}/setup`} variant="outline" size="sm">
           Edit in setup

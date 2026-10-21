@@ -489,7 +489,7 @@ export function ReviewQueue({ auction, items, onChanged }: { auction: Auction; i
                     {ROLE_LABEL[r.role]}
                     {r.age != null ? ` · ${r.age} yrs` : ""}
                     {r.city ? ` · ${r.city}` : ""}
-                    {r.overseas ? " · Overseas" : ""}
+                    {r.nationality ? ` · ${r.nationality}` : ""}
                     {r.suggestedBasePrice ? ` · asks ${inr(r.suggestedBasePrice)}` : ""}
                   </span>
                 </span>
@@ -530,7 +530,6 @@ function ApproveSheet({ auction, row, onClose, onDone }: { auction: Auction; row
   const cfg = { ...DEFAULT_REGISTRATION, ...auction.registration };
   const [category, setCategory] = useState(cfg.defaultCategory);
   const [price, setPrice] = useState<number>(cfg.basePrices[cfg.defaultCategory] ?? 0);
-  const [overseas, setOverseas] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -538,13 +537,12 @@ function ApproveSheet({ auction, row, onClose, onDone }: { auction: Auction; row
     const c = { ...DEFAULT_REGISTRATION, ...auction.registration };
     setCategory(c.defaultCategory);
     setPrice(row.suggestedBasePrice ?? c.basePrices[c.defaultCategory] ?? 0);
-    setOverseas(row.overseas);
   }, [row, auction.registration]);
 
   const submit = async () => {
     if (!row) return;
     setBusy(true);
-    const result = await auctionService.approve(auction.id, row.id, { category, basePrice: price, overseas });
+    const result = await auctionService.approve(auction.id, row.id, { category, basePrice: price });
     setBusy(false);
     if (!result.ok) toast(result.error, { tone: "error" });
     else {
@@ -591,7 +589,6 @@ function ApproveSheet({ auction, row, onClose, onDone }: { auction: Auction; row
         <Field label="Base price (₹)" hint={row?.suggestedBasePrice ? `Player asked for ${inr(row.suggestedBasePrice)}.` : undefined}>
           {({ id }) => <Input id={id} type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />}
         </Field>
-        <Checkbox checked={overseas} onChange={setOverseas} label={`Overseas player${row?.nationality ? ` (${row.nationality})` : ""}`} />
       </div>
     </Modal>
   );

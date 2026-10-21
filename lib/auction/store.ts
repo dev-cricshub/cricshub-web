@@ -250,7 +250,6 @@ function playerBody(p: PlayerInput) {
     name: p.name,
     role: p.role,
     nationality: p.nationality,
-    overseas: p.overseas,
     category: p.category,
     basePrice: p.basePrice,
     matches: p.matches,
@@ -368,7 +367,7 @@ export const auctionService = {
   saveRegistration: (id: string, config: RegistrationConfig) => mutate(id, "PUT", "/registration", { body: config }),
   registrations: (id: string) => request<RegistrationsOverview>("GET", `/${id}/registrations`),
   registrationsCsv: (id: string) => csv(`/${id}/registrations.csv`),
-  approve: (id: string, registrationId: string, input: { category?: string; basePrice?: number; overseas?: boolean } = {}) =>
+  approve: (id: string, registrationId: string, input: { category?: string; basePrice?: number } = {}) =>
     mutate(id, "POST", `/registrations/${registrationId}/approve`, { body: input }),
   reject: (id: string, registrationId: string, reason?: string) =>
     mutate(id, "POST", `/registrations/${registrationId}/reject`, { body: { reason: reason?.trim() || null } }),
