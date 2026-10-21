@@ -37,7 +37,7 @@ export default function NotFound() {
               Back to home
             </ButtonLink>
             <ButtonLink href="/dashboard" size="lg" variant="secondary" icon="ri-dashboard-line">
-              Go to dashboard
+              Open CricsHub
             </ButtonLink>
           </div>
           <nav aria-label="Helpful links" className="mt-10 border-t border-line pt-6">

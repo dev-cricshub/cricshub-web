@@ -3,19 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ButtonLink, Logo, ThemeToggle, cn } from "@/app/components/ui";
-import { getStoredUser, type StoredUser } from "@/lib/session";
+import { Button, Logo, ThemeToggle, cn } from "@/app/components/ui";
+import { getStoredUser, requestLogin, type StoredUser } from "@/lib/session";
 import { MobileTabBar } from "./MobileTabBar";
 import { UserMenu } from "./UserMenu";
 
-const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: "ri-dashboard-line" },
+export const APP_NAV = [
+  { href: "/dashboard", label: "Home", icon: "ri-home-5-line" },
+  { href: "/stream", label: "Stream Studio", icon: "ri-broadcast-line" },
   { href: "/auctions", label: "Auctions", icon: "ri-auction-line" },
   { href: "/pricing", label: "Plans", icon: "ri-vip-crown-line" },
 ];
 
 /**
- * Header for signed-in app pages (dashboard, profile, pricing, stream studio).
+ * Header for app pages (home, stream studio, auctions, profile, pricing).
  * `leading` renders before the logo (e.g. a sidebar toggle); `trailing` before the user menu.
  * With `showNav`, phones get a bottom tab bar instead of the inline nav.
  */
@@ -72,7 +73,7 @@ export function AppHeader({
 
           {showNav && (
             <nav aria-label="Primary" className="ml-4 hidden items-center gap-1 md:flex">
-              {NAV.map((item) => {
+              {APP_NAV.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
                   <Link
@@ -100,9 +101,9 @@ export function AppHeader({
             {user ? (
               <UserMenu name={user.name} hasSubscription={user.hasSubscription} />
             ) : ready ? (
-              <ButtonLink href={`/?login=true&redirect=${encodeURIComponent(pathname)}`} size="sm">
+              <Button size="sm" icon="ri-login-box-line" onClick={() => requestLogin()}>
                 Log in
-              </ButtonLink>
+              </Button>
             ) : (
               <span className="skeleton h-8 w-8 rounded-full" aria-hidden />
             )}

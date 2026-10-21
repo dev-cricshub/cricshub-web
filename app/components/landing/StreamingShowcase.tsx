@@ -76,7 +76,7 @@ export default function StreamingShowcase() {
       </ol>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/dashboard" className={cn("flex h-[54px] items-center gap-2.5 rounded-full px-6 text-[15px] font-bold", gradientCta)}>
+        <Link href="/stream" className={cn("flex h-[54px] items-center gap-2.5 rounded-full px-6 text-[15px] font-bold", gradientCta)}>
           Open Stream Studio
           <ArrowRightIcon />
         </Link>

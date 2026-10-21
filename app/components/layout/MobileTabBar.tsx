@@ -3,23 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/app/components/ui";
+import { loginHref } from "@/lib/session";
 
 const TABS = [
   { href: "/dashboard", label: "Home", icon: "ri-home-5-line", activeIcon: "ri-home-5-fill" },
+  { href: "/stream", label: "Stream", icon: "ri-broadcast-line", activeIcon: "ri-broadcast-fill" },
   { href: "/auctions", label: "Auctions", icon: "ri-auction-line", activeIcon: "ri-auction-fill" },
-  { href: "/pricing", label: "Plans", icon: "ri-vip-crown-line", activeIcon: "ri-vip-crown-fill" },
-  { href: "/profile", label: "Profile", icon: "ri-user-3-line", activeIcon: "ri-user-3-fill" },
+  { href: "/profile", label: "Account", icon: "ri-user-3-line", activeIcon: "ri-user-3-fill" },
 ];
 
 /**
- * Native-style bottom navigation for signed-in app pages on phones (hidden from md up).
+ * Native-style bottom navigation for app pages on phones (hidden from md up).
  * `data-tabbar` lets globals.css reserve space for it and lift other fixed bottom UI above it.
  */
 export function MobileTabBar({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
   const tabs = signedIn
     ? TABS
-    : [...TABS.slice(0, 3), { href: `/?login=true&redirect=${encodeURIComponent(pathname)}`, label: "Log in", icon: "ri-login-box-line", activeIcon: "ri-login-box-line" }];
+    : [...TABS.slice(0, 3), { href: loginHref(pathname), label: "Log in", icon: "ri-login-box-line", activeIcon: "ri-login-box-line" }];
 
   return (
     <nav

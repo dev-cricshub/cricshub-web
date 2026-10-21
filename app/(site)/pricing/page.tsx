@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import UpiCheckoutModal from "@/app/components/UpiCheckoutModal";
 import { AppHeader } from "@/app/components/layout/AppHeader";
+import { requestLogin } from "@/lib/session";
 import {
   Alert,
   Badge,
@@ -13,7 +14,6 @@ import {
   Modal,
   SectionTitle,
   cn,
-  useToast,
 } from "@/app/components/ui";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -827,14 +827,14 @@ function SuccessScreen({
       <h2 className="font-display text-3xl font-bold uppercase leading-none text-fg sm:text-4xl">You&rsquo;re all set</h2>
       <p className="mx-auto mt-2 max-w-sm text-sm text-fg-muted sm:text-base">
         Your <strong className="font-medium text-fg">{plan.name}</strong> plan is active once the owner confirms
-        your payment. Head to the streaming dashboard to get started.
+        your payment. Open Stream Studio to use your overlays.
       </p>
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
         <Button variant="secondary" size="lg" className="flex-1" onClick={onDone}>
           Back to plans
         </Button>
-        <ButtonLink href="/dashboard" size="lg" icon="ri-live-line" className="flex-1">
-          Go to dashboard
+        <ButtonLink href="/stream" size="lg" icon="ri-live-line" className="flex-1">
+          Open Stream Studio
         </ButtonLink>
       </div>
     </Card>
@@ -851,8 +851,10 @@ const HOW_IT_WORKS = [
   "Activate overlays on your stream.",
 ];
 
+/** Plan picked before signing in; restored after the post-login reload. */
+const PENDING_PLAN_KEY = "cricshub.pendingPlan";
+
 export default function PricingPage() {
-  const toast = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [step, setStep] = useState<PageStep>("plans");
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
@@ -866,6 +868,18 @@ export default function PricingPage() {
     setPreviewBundle(null);
     setPreviewOverlay({ key, title, bg });
   };
+
+  useEffect(() => {
+    try {
+      const id = sessionStorage.getItem(PENDING_PLAN_KEY);
+      sessionStorage.removeItem(PENDING_PLAN_KEY);
+      const plan = SUBSCRIPTION_PLANS.find((p) => p.id === id);
+      if (plan && localStorage.getItem("userUUID")) togglePlan(plan);
+    } catch {
+      /* storage unavailable */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isInCart = (id: string) => cart.some((c) => c.id === id);
   const total = cartTotal(cart); // No GST
@@ -891,11 +905,13 @@ export default function PricingPage() {
   const handleCheckout = () => {
     const userId = localStorage.getItem("userUUID");
     if (!userId) {
-      // The pricing page uses AppHeader (no login-modal listener), so point to its Log in button.
-      toast("Log in to continue", {
-        tone: "warning",
-        description: "You must be logged in to purchase a plan. Use Log in at the top of the page.",
-      });
+      // Sign in over the page; it reloads afterwards, so keep the cart for the next load.
+      try {
+        if (selectedPlan) sessionStorage.setItem(PENDING_PLAN_KEY, selectedPlan.id);
+      } catch {
+        /* storage unavailable: the user re-picks the plan */
+      }
+      requestLogin();
       return;
     }
     if (!selectedPlan) return;

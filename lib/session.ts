@@ -49,7 +49,29 @@ export async function logout() {
   window.location.href = "/";
 }
 
-/** Ask the site header to open the login modal, optionally returning to `redirect` afterwards. */
+/** What the user was trying to do when we asked them to sign in; tailors the login copy. */
+export type LoginIntent = "stream" | "auction" | "register" | "plans";
+
+/** Infers the intent from the page the user is heading to. */
+export function intentFor(path: string | null | undefined): LoginIntent | undefined {
+  if (!path) return undefined;
+  if (path.startsWith("/stream")) return "stream";
+  if (path.startsWith("/join")) return "register";
+  if (path.startsWith("/auctions")) return "auction";
+  if (path.startsWith("/pricing")) return "plans";
+  return undefined;
+}
+
+/** Full-page login URL (used by middleware, 401 handling and links); returns to `redirect` after sign-in. */
+export function loginHref(redirect?: string) {
+  const safe = safeRedirect(redirect, "");
+  return safe ? `/login?redirect=${encodeURIComponent(safe)}` : "/login";
+}
+
+/**
+ * Open the login sheet over the current page (AuthProvider listens for this), then go to `redirect`.
+ * Without a redirect the user stays on the current page, which reloads signed in.
+ */
 export function requestLogin(redirect?: string) {
   window.dispatchEvent(new CustomEvent("openLoginModal", { detail: { redirect } }));
 }

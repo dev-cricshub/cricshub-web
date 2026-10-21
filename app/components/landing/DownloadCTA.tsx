@@ -32,8 +32,8 @@ export default async function DownloadCTA() {
           </p>
           <div className="flex flex-wrap gap-3">
             <PlayStoreButton />
-            <Link href="/dashboard" className={cn("flex h-[60px] items-center rounded-full px-6 text-base text-primary-soft-fg", ghostCta)}>
-              Log in to Stream Studio
+            <Link href="/stream" className={cn("flex h-[60px] items-center rounded-full px-6 text-base text-primary-soft-fg", ghostCta)}>
+              Open Stream Studio
             </Link>
           </div>
         </div>

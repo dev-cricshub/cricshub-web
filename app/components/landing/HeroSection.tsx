@@ -72,6 +72,21 @@ export default function HeroSection() {
         </a>
       </div>
 
+      {/* Web tools: each goes straight to its module (sign-in happens on the way if needed). */}
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-semibold">
+        <span className="text-fg-muted">In your browser:</span>
+        <Link href="/stream" className="flex items-center gap-1.5 text-accent-soft transition-colors hover:text-white">
+          <i className="ri-broadcast-line" aria-hidden />
+          Stream Studio
+          <ChevronRightIcon />
+        </Link>
+        <Link href="/auctions" className="flex items-center gap-1.5 text-accent-soft transition-colors hover:text-white">
+          <i className="ri-auction-line" aria-hidden />
+          Auctions
+          <ChevronRightIcon />
+        </Link>
+      </div>
+
       <div className="flex flex-wrap justify-center gap-[22px] text-[13px] font-semibold text-fg-muted">
         <CheckItem>Free to use</CheckItem>
         <CheckItem>Free YouTube overlay</CheckItem>

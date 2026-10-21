@@ -4,15 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import LoginModal from "@/app/components/LoginModal";
 import { Button, ButtonLink, Logo, ThemeToggle, cn } from "@/app/components/ui";
-import { getStoredUser, safeRedirect, type StoredUser } from "@/lib/session";
+import { getStoredUser, requestLogin, type StoredUser } from "@/lib/session";
 import { PLAY_STORE_URL } from "@/lib/site";
 import { UserMenu } from "./UserMenu";
 
 const LINKS = [
   { href: "/#features", label: "Features" },
-  { href: "/#how", label: "How it works" },
+  { href: "/stream", label: "Stream Studio" },
   { href: "/auctions", label: "Auctions" },
   { href: "/pricing", label: "Pricing" },
   { href: "/contact-us", label: "Contact" },
@@ -21,17 +20,20 @@ const LINKS = [
 // Landing page: in-page anchors for the sections that live there.
 const CINEMATIC_LINKS = [
   { href: "/#features", label: "Features" },
-  { href: "/#how", label: "How it works" },
+  { href: "/stream", label: "Stream Studio" },
   { href: "/auctions", label: "Auctions" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
   { href: "/contact-us", label: "Contact" },
 ];
 
-/**
- * Public/marketing header. Owns the login modal: opens on `?login=true`
- * (set by middleware.ts redirects) and on the `openLoginModal` window event.
- */
+/** The two things people sign in to do; signed-out phones get them as big tiles in the menu. */
+const PRODUCTS = [
+  { href: "/stream", label: "Stream Studio", body: "Score overlays for YouTube", icon: "ri-broadcast-line" },
+  { href: "/auctions", label: "Auctions", body: "Run your league's player auction", icon: "ri-auction-line" },
+];
+
+/** Public/marketing header. Login opens the shared sheet from AuthProvider. */
 export default function SiteHeader({
   variant = "default",
 }: {
@@ -42,7 +44,6 @@ export default function SiteHeader({
   const links = cinematic ? CINEMATIC_LINKS : LINKS;
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [ready, setReady] = useState(false);
@@ -57,21 +58,6 @@ export default function SiteHeader({
   useEffect(() => {
     setUser(getStoredUser());
     setReady(true);
-
-    if (new URLSearchParams(window.location.search).get("login") === "true") {
-      setLoginOpen(true);
-    }
-
-    const handleOpenModal = (e: Event) => {
-      const redirect = (e as CustomEvent).detail?.redirect as string | undefined;
-      // Only allow relative paths — blocks open redirect injection
-      if (redirect && safeRedirect(redirect, "") === redirect) {
-        window.history.replaceState({}, "", `/?redirect=${encodeURIComponent(redirect)}`);
-      }
-      setLoginOpen(true);
-    };
-    window.addEventListener("openLoginModal", handleOpenModal);
-    return () => window.removeEventListener("openLoginModal", handleOpenModal);
   }, []);
 
   // Close the mobile panel on navigation and on Escape
@@ -83,11 +69,9 @@ export default function SiteHeader({
     return () => document.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
-  const onLoginSuccess = () => {
-    setLoginOpen(false);
-    setUser(getStoredUser());
-    const redirect = new URLSearchParams(window.location.search).get("redirect");
-    window.location.href = safeRedirect(redirect);
+  const login = () => {
+    setMobileOpen(false);
+    requestLogin();
   };
 
   return (
@@ -146,8 +130,8 @@ export default function SiteHeader({
               <span className="skeleton h-9 w-20 rounded-lg" aria-hidden />
             ) : user ? (
               <>
-                <ButtonLink href="/dashboard" size="sm" variant="primary" icon="ri-dashboard-line" className="hidden sm:inline-flex">
-                  Dashboard
+                <ButtonLink href="/dashboard" size="sm" variant="primary" icon="ri-home-5-line" className="hidden sm:inline-flex">
+                  Open CricsHub
                 </ButtonLink>
                 <UserMenu name={user.name} hasSubscription={user.hasSubscription} />
               </>
@@ -156,16 +140,13 @@ export default function SiteHeader({
                 {cinematic ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      window.history.replaceState({}, "", `/?redirect=${encodeURIComponent("/dashboard")}`);
-                      setLoginOpen(true);
-                    }}
+                    onClick={login}
                     className="hidden rounded-full px-4 py-[11px] text-sm font-bold text-[#E8EDF5] transition-colors hover:bg-white/5 sm:inline-flex"
                   >
-                    Stream Studio
+                    Log in
                   </button>
                 ) : (
-                  <Button size="sm" variant="ghost" onClick={() => setLoginOpen(true)} className="hidden sm:inline-flex">
+                  <Button size="sm" variant="ghost" onClick={login} className="hidden sm:inline-flex">
                     Log in
                   </Button>
                 )}
@@ -179,7 +160,7 @@ export default function SiteHeader({
                     Get the app
                   </a>
                 ) : (
-                  <Button size="sm" variant="primary" onClick={() => setLoginOpen(true)}>
+                  <Button size="sm" variant="primary" onClick={login}>
                     Get started
                   </Button>
                 )}
@@ -213,7 +194,8 @@ export default function SiteHeader({
             )}
           >
             <div className="container-page flex flex-col py-3">
-              {links.map((l, i) => (
+              {/* Signed out, the products appear as tiles below instead of plain rows. */}
+              {(user ? links : links.filter((l) => !PRODUCTS.some((p) => p.href === l.href))).map((l, i) => (
                 <Link
                   key={l.href}
                   href={l.href}
@@ -226,38 +208,44 @@ export default function SiteHeader({
                 </Link>
               ))}
               {!user && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileOpen(false);
-                    setLoginOpen(true);
-                  }}
-                  className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-3 text-base font-medium text-fg"
-                >
-                  <i className="ri-login-box-line" aria-hidden />
-                  Log in to Stream Studio
-                </button>
+                <>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {PRODUCTS.map((p) => (
+                      <Link
+                        key={p.href}
+                        href={p.href}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex flex-col gap-1.5 rounded-xl border border-line bg-surface p-3 transition-colors hover:border-primary/40"
+                      >
+                        <i className={cn(p.icon, "text-xl text-primary")} aria-hidden />
+                        <span className="text-sm font-semibold text-fg">{p.label}</span>
+                        <span className="text-xs leading-snug text-fg-muted">{p.body}</span>
+                      </Link>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={login}
+                    className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-3 text-base font-medium text-fg"
+                  >
+                    <i className="ri-login-box-line" aria-hidden />
+                    Log in or sign up
+                  </button>
+                </>
               )}
               {user && (
                 <Link
                   href="/dashboard"
                   className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-3 text-base font-medium text-primary-fg"
                 >
-                  <i className="ri-dashboard-line" aria-hidden />
-                  Go to dashboard
+                  <i className="ri-home-5-line" aria-hidden />
+                  Open CricsHub
                 </Link>
               )}
             </div>
           </nav>
         )}
       </header>
-
-      <LoginModal
-        isOpen={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        onSuccess={onLoginSuccess}
-        theme={cinematic ? "dark" : undefined}
-      />
     </>
   );
 }

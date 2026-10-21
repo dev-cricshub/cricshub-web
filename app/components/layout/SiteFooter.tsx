@@ -11,7 +11,8 @@ const COLUMNS = [
       { label: "Streaming & tournaments", href: "/#streaming" },
       { label: "Android app", href: "/#download" },
       { label: "Pricing", href: "/pricing" },
-      { label: "Dashboard", href: "/dashboard" },
+      { label: "Stream Studio", href: "/stream" },
+      { label: "Auctions", href: "/auctions" },
     ],
   },
   {

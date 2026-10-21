@@ -1,4 +1,5 @@
 import { API_BASE } from "@/lib/site";
+import { clearSession, loginHref } from "@/lib/session";
 
 // Central fetch wrapper — always sends cookies, redirects to login on 401, adds fallback header
 async function apiFetch(
@@ -23,12 +24,8 @@ async function apiFetch(
   });
 
   if (res.status === 401 && !skipAuthRedirect && typeof window !== "undefined") {
-    ["userUUID", "userName", "hasSubscription", "jwtToken"].forEach(
-      (k) => localStorage.removeItem(k),
-    );
-    document.cookie = "sessionActive=; path=/; Max-Age=0";
-    const returnPath = encodeURIComponent(window.location.pathname);
-    window.location.href = `/?login=true&redirect=${returnPath}`;
+    clearSession();
+    window.location.href = loginHref(window.location.pathname + window.location.search);
   }
 
   return res;

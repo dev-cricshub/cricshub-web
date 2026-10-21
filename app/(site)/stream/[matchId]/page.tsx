@@ -55,6 +55,7 @@ import {
 } from "@/app/components/ui";
 import type { TabItem } from "@/app/components/ui";
 import { AppHeader } from "@/app/components/layout/AppHeader";
+import { loginHref } from "@/lib/session";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -1352,8 +1353,7 @@ export default function StreamDashboard() {
   useEffect(() => {
     const userId = localStorage.getItem("userUUID");
     if (!userId) {
-      const returnUrl = encodeURIComponent(window.location.pathname);
-      window.location.href = `/?login=true&redirect=${returnUrl}`;
+      window.location.href = loginHref(window.location.pathname);
       return;
     }
     setCurrentUser({
@@ -1655,8 +1655,8 @@ export default function StreamDashboard() {
               You do not have permission to view the streaming dashboard for this
               match. Ask the match admin to add you as an operator.
             </p>
-            <ButtonLink href="/dashboard" variant="outline" block className="mt-7" icon="ri-arrow-left-line">
-              Back to my dashboard
+            <ButtonLink href="/stream" variant="outline" block className="mt-7" icon="ri-arrow-left-line">
+              Back to my matches
             </ButtonLink>
           </Card>
         </div>
@@ -2196,13 +2196,13 @@ export default function StreamDashboard() {
         trailing={
           <>
             <ButtonLink
-              href="/dashboard"
+              href="/stream"
               variant="ghost"
               size="sm"
               icon="ri-arrow-left-line"
               className="hidden xl:inline-flex"
             >
-              Dashboard
+              All matches
             </ButtonLink>
             {matchRole === "admin" && (
               <GoldBadge icon="ri-shield-star-line" className="hidden sm:inline-flex">
@@ -2490,8 +2490,8 @@ export default function StreamDashboard() {
                     <Button icon="ri-refresh-line" onClick={() => window.location.reload()}>
                       Retry
                     </Button>
-                    <ButtonLink href="/dashboard" variant="outline">
-                      Back to dashboard
+                    <ButtonLink href="/stream" variant="outline">
+                      Back to my matches
                     </ButtonLink>
                   </div>
                 }
