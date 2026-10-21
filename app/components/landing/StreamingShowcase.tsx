@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/app/components/ui";
+import { EXPLORE_HREF } from "@/lib/site";
 import { ArrowRightIcon } from "./icons";
 import { Kicker, ghostCta, gradientCta } from "./primitives";
 
@@ -76,8 +77,8 @@ export default function StreamingShowcase() {
       </ol>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/stream" className={cn("flex h-[54px] items-center gap-2.5 rounded-full px-6 text-[15px] font-bold", gradientCta)}>
-          Open Stream Studio
+        <Link href={EXPLORE_HREF} className={cn("flex h-[54px] items-center gap-2.5 rounded-full px-6 text-[15px] font-bold", gradientCta)}>
+          Explore Stream Studio
           <ArrowRightIcon />
         </Link>
         <Link href="/pricing" className={cn("flex h-[54px] items-center rounded-full px-[22px] text-[15px] text-primary-soft-fg", ghostCta)}>

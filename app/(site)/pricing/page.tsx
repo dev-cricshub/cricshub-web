@@ -905,7 +905,7 @@ export default function PricingPage() {
   const handleCheckout = () => {
     const userId = localStorage.getItem("userUUID");
     if (!userId) {
-      // Sign in over the page; it reloads afterwards, so keep the cart for the next load.
+      // Sign-in happens on /login and comes back here; keep the chosen plan for that load.
       try {
         if (selectedPlan) sessionStorage.setItem(PENDING_PLAN_KEY, selectedPlan.id);
       } catch {

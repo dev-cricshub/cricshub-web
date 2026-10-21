@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button, Logo, ThemeToggle, cn } from "@/app/components/ui";
-import { getStoredUser, requestLogin, type StoredUser } from "@/lib/session";
+import { ButtonLink, Logo, cn } from "@/app/components/ui";
+import { getStoredUser, loginHref, type StoredUser } from "@/lib/session";
 import { MobileTabBar } from "./MobileTabBar";
 import { UserMenu } from "./UserMenu";
 
@@ -27,6 +27,7 @@ export function AppHeader({
   showNav = true,
   user: userProp,
   maxWidth = "max-w-7xl",
+  badges,
 }: {
   leading?: React.ReactNode;
   trailing?: React.ReactNode;
@@ -36,6 +37,8 @@ export function AppHeader({
   /** Override the user read from localStorage (e.g. after subscription verification) */
   user?: StoredUser | null;
   maxWidth?: string;
+  /** Small status shown inside a nav item, keyed by its href (e.g. LIVE on Stream Studio). */
+  badges?: Partial<Record<string, React.ReactNode>>;
 }) {
   const pathname = usePathname();
   const [stored, setStored] = useState<StoredUser | null>(null);
@@ -72,7 +75,10 @@ export function AppHeader({
           )}
 
           {showNav && (
-            <nav aria-label="Primary" className="ml-4 hidden items-center gap-1 md:flex">
+            <nav
+              aria-label="Primary"
+              className="ml-2 hidden items-center gap-0.5 rounded-[13px] border border-line bg-well p-1 md:flex"
+            >
               {APP_NAV.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
@@ -81,14 +87,15 @@ export function AppHeader({
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "relative rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-                      active ? "text-fg" : "text-fg-muted hover:bg-surface-2 hover:text-fg",
+                      "flex h-9 items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3 text-[13px] transition-colors",
+                      active
+                        ? "bg-raised font-semibold text-white ring-1 ring-inset ring-line-accent"
+                        : "font-medium text-fg-muted hover:bg-surface-2 hover:text-fg",
                     )}
                   >
+                    <i className={cn(item.icon, "text-[15px]", active ? "text-accent-soft" : "text-fg-subtle")} aria-hidden />
                     {item.label}
-                    {active && (
-                      <span className="absolute inset-x-3 -bottom-[13px] h-0.5 rounded-full bg-primary sm:-bottom-[17px]" aria-hidden />
-                    )}
+                    {badges?.[item.href]}
                   </Link>
                 );
               })}
@@ -97,13 +104,12 @@ export function AppHeader({
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
             {trailing}
-            <ThemeToggle />
             {user ? (
               <UserMenu name={user.name} hasSubscription={user.hasSubscription} />
             ) : ready ? (
-              <Button size="sm" icon="ri-login-box-line" onClick={() => requestLogin()}>
+              <ButtonLink href={loginHref(pathname)} size="sm" icon="ri-login-box-line">
                 Log in
-              </Button>
+              </ButtonLink>
             ) : (
               <span className="skeleton h-8 w-8 rounded-full" aria-hidden />
             )}

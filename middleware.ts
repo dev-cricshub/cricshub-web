@@ -7,7 +7,16 @@ const PROTECTED_PATHS = ["/dashboard", "/profile", "/stream", "/auctions"];
 const PUBLIC_PATHS = [/^\/auctions\/[^/]+\/watch\/?$/];
 
 export function middleware(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
+  const { pathname, search, searchParams } = request.nextUrl;
+
+  // Old "/?login=true&redirect=…" links: sign-in no longer lives on the landing page.
+  if (pathname === "/") {
+    if (searchParams.get("login") !== "true") return NextResponse.next();
+    const loginUrl = new URL("/login", request.url);
+    const redirect = searchParams.get("redirect");
+    if (redirect) loginUrl.searchParams.set("redirect", redirect);
+    return NextResponse.redirect(loginUrl);
+  }
 
   const isProtected = PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   if (!isProtected || PUBLIC_PATHS.some((re) => re.test(pathname))) return NextResponse.next();
@@ -25,5 +34,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*", "/stream/:path*", "/stream", "/auctions/:path*", "/auctions"],
+  matcher: ["/", "/dashboard/:path*", "/profile/:path*", "/stream/:path*", "/stream", "/auctions/:path*", "/auctions"],
 };

@@ -4,15 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button, ButtonLink, Logo, ThemeToggle, cn } from "@/app/components/ui";
-import { getStoredUser, requestLogin, type StoredUser } from "@/lib/session";
-import { PLAY_STORE_URL } from "@/lib/site";
-import { UserMenu } from "./UserMenu";
+import { ButtonLink, Logo, cn } from "@/app/components/ui";
+import { EXPLORE_HREF, PLAY_STORE_URL } from "@/lib/site";
 
 const LINKS = [
   { href: "/#features", label: "Features" },
-  { href: "/stream", label: "Stream Studio" },
-  { href: "/auctions", label: "Auctions" },
+  { href: "/#how", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
   { href: "/contact-us", label: "Contact" },
 ];
@@ -20,24 +17,20 @@ const LINKS = [
 // Landing page: in-page anchors for the sections that live there.
 const CINEMATIC_LINKS = [
   { href: "/#features", label: "Features" },
-  { href: "/stream", label: "Stream Studio" },
-  { href: "/auctions", label: "Auctions" },
+  { href: "/#how", label: "How it works" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
   { href: "/contact-us", label: "Contact" },
 ];
 
-/** The two things people sign in to do; signed-out phones get them as big tiles in the menu. */
-const PRODUCTS = [
-  { href: "/stream", label: "Stream Studio", body: "Score overlays for YouTube", icon: "ri-broadcast-line" },
-  { href: "/auctions", label: "Auctions", body: "Run your league's player auction", icon: "ri-auction-line" },
-];
-
-/** Public/marketing header. Login opens the shared sheet from AuthProvider. */
+/**
+ * Public/marketing header. It knows nothing about the session: its only way into the product is
+ * Explore, which goes through /login when needed (see middleware.ts).
+ */
 export default function SiteHeader({
   variant = "default",
 }: {
-  /** "cinematic" = always-dark landing page: no theme toggle, Play Store as the primary CTA */
+  /** "cinematic" = landing page: landing palette and logo artwork, Play Store link beside Explore */
   variant?: "default" | "cinematic";
 }) {
   const cinematic = variant === "cinematic";
@@ -45,19 +38,12 @@ export default function SiteHeader({
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState<StoredUser | null>(null);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-    setReady(true);
   }, []);
 
   // Close the mobile panel on navigation and on Escape
@@ -69,14 +55,8 @@ export default function SiteHeader({
     return () => document.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
-  const login = () => {
-    setMobileOpen(false);
-    requestLogin();
-  };
-
   return (
-    <>
-      <header className="sticky top-0 z-40 h-16">
+    <header className="sticky top-0 z-40 h-16">
         {/* Full-width transparent bar at the top; condenses into a floating pill once scrolled. */}
         <div
           className={cn(
@@ -125,46 +105,28 @@ export default function SiteHeader({
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            {!cinematic && <ThemeToggle />}
-            {!ready ? (
-              <span className="skeleton h-9 w-20 rounded-lg" aria-hidden />
-            ) : user ? (
-              <>
-                <ButtonLink href="/dashboard" size="sm" variant="primary" icon="ri-home-5-line" className="hidden sm:inline-flex">
-                  Open CricsHub
-                </ButtonLink>
-                <UserMenu name={user.name} hasSubscription={user.hasSubscription} />
-              </>
+            {cinematic && (
+              <a
+                href={PLAY_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden rounded-full px-4 py-[11px] text-sm font-bold text-[#E8EDF5] transition-colors hover:bg-white/5 sm:inline-flex"
+              >
+                Get the app
+              </a>
+            )}
+            {cinematic ? (
+              <Link
+                href={EXPLORE_HREF}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-[18px] py-[11px] text-sm font-bold text-white shadow-[0_6px_18px_rgba(47,109,184,0.4)] transition-colors hover:bg-primary-hover"
+              >
+                Explore
+                <i className="ri-arrow-right-line" aria-hidden />
+              </Link>
             ) : (
-              <>
-                {cinematic ? (
-                  <button
-                    type="button"
-                    onClick={login}
-                    className="hidden rounded-full px-4 py-[11px] text-sm font-bold text-[#E8EDF5] transition-colors hover:bg-white/5 sm:inline-flex"
-                  >
-                    Log in
-                  </button>
-                ) : (
-                  <Button size="sm" variant="ghost" onClick={login} className="hidden sm:inline-flex">
-                    Log in
-                  </Button>
-                )}
-                {cinematic ? (
-                  <a
-                    href={PLAY_STORE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center rounded-full bg-primary px-[18px] py-[11px] text-sm font-bold text-white shadow-[0_6px_18px_rgba(47,109,184,0.4)] transition-colors hover:bg-primary-hover"
-                  >
-                    Get the app
-                  </a>
-                ) : (
-                  <Button size="sm" variant="primary" onClick={login}>
-                    Get started
-                  </Button>
-                )}
-              </>
+              <ButtonLink href={EXPLORE_HREF} size="sm" variant="primary" trailingIcon="ri-arrow-right-line">
+                Explore
+              </ButtonLink>
             )}
             <button
               type="button"
@@ -194,8 +156,7 @@ export default function SiteHeader({
             )}
           >
             <div className="container-page flex flex-col py-3">
-              {/* Signed out, the products appear as tiles below instead of plain rows. */}
-              {(user ? links : links.filter((l) => !PRODUCTS.some((p) => p.href === l.href))).map((l, i) => (
+              {links.map((l, i) => (
                 <Link
                   key={l.href}
                   href={l.href}
@@ -207,45 +168,17 @@ export default function SiteHeader({
                   <i className="ri-arrow-right-s-line text-fg-subtle" aria-hidden />
                 </Link>
               ))}
-              {!user && (
-                <>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {PRODUCTS.map((p) => (
-                      <Link
-                        key={p.href}
-                        href={p.href}
-                        onClick={() => setMobileOpen(false)}
-                        className="flex flex-col gap-1.5 rounded-xl border border-line bg-surface p-3 transition-colors hover:border-primary/40"
-                      >
-                        <i className={cn(p.icon, "text-xl text-primary")} aria-hidden />
-                        <span className="text-sm font-semibold text-fg">{p.label}</span>
-                        <span className="text-xs leading-snug text-fg-muted">{p.body}</span>
-                      </Link>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={login}
-                    className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-3 text-base font-medium text-fg"
-                  >
-                    <i className="ri-login-box-line" aria-hidden />
-                    Log in or sign up
-                  </button>
-                </>
-              )}
-              {user && (
-                <Link
-                  href="/dashboard"
-                  className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-3 text-base font-medium text-primary-fg"
-                >
-                  <i className="ri-home-5-line" aria-hidden />
-                  Open CricsHub
-                </Link>
-              )}
+              <Link
+                href={EXPLORE_HREF}
+                onClick={() => setMobileOpen(false)}
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-3 text-base font-medium text-primary-fg"
+              >
+                Explore Stream Studio &amp; Auctions
+                <i className="ri-arrow-right-line" aria-hidden />
+              </Link>
             </div>
           </nav>
         )}
-      </header>
-    </>
+    </header>
   );
 }

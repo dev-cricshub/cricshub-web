@@ -43,15 +43,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Lets content reach under the notch / home indicator; headers and bars pad with env(safe-area-inset-*).
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#060A12" },
-    { media: "(prefers-color-scheme: dark)", color: "#060A12" },
-  ],
+  themeColor: "#060A12",
+  colorScheme: "dark",
 };
-
-// Applies the saved theme before first paint so there's no light/dark flash.
-// Stored value: "light" | "dark" | "system" (default "dark" — the signature CricsHub look).
-const themeInit = `(function(){try{var t=localStorage.getItem('ch-theme')||'dark';if(t==='system'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -59,13 +53,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning={true}>
+    // Dark only: there is no light theme. data-theme drives the tokens and Tailwind's `dark:` variant.
+    <html lang="en" data-theme="dark" suppressHydrationWarning={true}>
       <body
         className={`${fontVariables} antialiased`}
       >
-        <Script id="theme-init" strategy="beforeInteractive">
-          {themeInit}
-        </Script>
         <Script
           src="https://checkout.razorpay.com/v1/checkout.js"
           strategy="lazyOnload"

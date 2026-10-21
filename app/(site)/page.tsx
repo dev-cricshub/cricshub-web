@@ -12,7 +12,7 @@ import PricingSection from "@/app/components/landing/PricingSection";
 import FAQSection from "@/app/components/landing/FAQSection";
 import DownloadCTA from "@/app/components/landing/DownloadCTA";
 
-// The landing page is always-dark, independent of the app theme toggle:
+// The landing page has its own dark palette:
 // data-theme="dark" scopes the dark tokens to this subtree, and .landing swaps in
 // the landing palette + body font (see app/styles/tokens.css).
 //

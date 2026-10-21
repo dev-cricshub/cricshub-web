@@ -39,14 +39,14 @@ export function clearSession() {
   document.cookie = "sessionActive=; path=/; Max-Age=0";
 }
 
-/** Clears the backend httpOnly cookie (best-effort) and local state, then returns home. */
+/** Clears the backend httpOnly cookie (best-effort) and local state, then shows the login page. */
 export async function logout() {
   await fetch(`${API_BASE}/api/v1/auth/logout`, {
     method: "POST",
     credentials: "include",
   }).catch(() => {});
   clearSession();
-  window.location.href = "/";
+  window.location.href = "/login";
 }
 
 /** What the user was trying to do when we asked them to sign in; tailors the login copy. */
@@ -62,18 +62,15 @@ export function intentFor(path: string | null | undefined): LoginIntent | undefi
   return undefined;
 }
 
-/** Full-page login URL (used by middleware, 401 handling and links); returns to `redirect` after sign-in. */
+/** The login page URL; returns to `redirect` after sign-in. All sign-in goes through /login. */
 export function loginHref(redirect?: string) {
   const safe = safeRedirect(redirect, "");
   return safe ? `/login?redirect=${encodeURIComponent(safe)}` : "/login";
 }
 
-/**
- * Open the login sheet over the current page (AuthProvider listens for this), then go to `redirect`.
- * Without a redirect the user stays on the current page, which reloads signed in.
- */
+/** Send the user to /login, then on to `redirect` (default: back to the current page). */
 export function requestLogin(redirect?: string) {
-  window.dispatchEvent(new CustomEvent("openLoginModal", { detail: { redirect } }));
+  window.location.href = loginHref(redirect ?? window.location.pathname + window.location.search);
 }
 
 /** Only allow same-origin relative paths — blocks open-redirect injection. */

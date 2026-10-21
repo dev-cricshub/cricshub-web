@@ -21,10 +21,15 @@ export function UserMenu({
           {...props}
           type="button"
           aria-label={`Account menu for ${name}`}
-          className="flex items-center gap-2 rounded-full p-0.5 pr-0.5 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:pr-2"
+          className="flex h-10 items-center gap-2 rounded-full border border-line bg-well p-1 transition-colors hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:pr-2"
         >
           <Avatar name={name} size="sm" shape="circle" />
-          <span className="hidden max-w-[120px] truncate text-sm font-medium text-fg sm:block">{name}</span>
+          <span className="hidden min-w-0 flex-col items-start leading-tight lg:flex">
+            <span className="max-w-[140px] truncate text-[13px] font-semibold text-fg">{name}</span>
+            <span className={cn("text-[11px] font-semibold", hasSubscription ? "text-success" : "text-accent-soft")}>
+              {hasSubscription ? "Active plan" : "Free plan"}
+            </span>
+          </span>
           <i className="ri-arrow-down-s-line hidden text-fg-subtle sm:block" aria-hidden />
         </button>
       )}

@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LoginForm } from "@/app/components/auth/LoginForm";
-import { Logo, ThemeToggle } from "@/app/components/ui";
+import { Logo } from "@/app/components/ui";
 import { getStoredUser, intentFor, safeRedirect } from "@/lib/session";
 
 const FEATURES = [
@@ -13,8 +12,9 @@ const FEATURES = [
 ];
 
 /**
- * Full-page sign-in. Middleware and expired sessions send people here with `?redirect=`,
- * so it works on a phone without the landing page in the way.
+ * The only sign-in screen, for every feature (Stream Studio, Auctions, registrations, plans).
+ * Middleware, expired sessions and "Log in" buttons send people here with `?redirect=`; it has no
+ * link back to the landing site and, after sign-in, opens the app home or the page they asked for.
  */
 export default function LoginPage() {
   const [redirect, setRedirect] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export default function LoginPage() {
     <div className="grid min-h-dvh bg-canvas lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       {/* Brand panel: desktop only, phones go straight to the form */}
       <aside className="relative hidden overflow-hidden border-r border-line bg-surface-2 lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <Logo />
+        <Logo href={null} />
         <div className="max-w-md space-y-8">
           <h1 className="font-display text-5xl font-bold uppercase leading-[0.95] text-fg">
             Everything for your <span className="text-accent">match day</span>
@@ -57,20 +57,8 @@ export default function LoginPage() {
       </aside>
 
       <main className="flex min-h-dvh flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-8">
-        <div className="flex h-14 items-center justify-between">
-          <span className="lg:invisible">
-            <Logo size="sm" />
-          </span>
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            <Link
-              href="/"
-              className="flex h-9 items-center gap-1 rounded-lg px-2.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
-            >
-              <i className="ri-close-line text-lg" aria-hidden />
-              <span className="hidden sm:inline">Close</span>
-            </Link>
-          </div>
+        <div className="flex h-14 items-center lg:invisible">
+          <Logo size="sm" href={null} />
         </div>
 
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-8">

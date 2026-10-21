@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/app/components/ui";
+import { EXPLORE_HREF } from "@/lib/site";
 import { BatIcon, BroadcastIcon, GavelBoxIcon, StarIcon, TrophyIcon, UsersIcon } from "./icons";
 import { IconChip, Section, SectionHead, card } from "./primitives";
 
@@ -113,7 +114,7 @@ export default function FeatureBento() {
           </IconChip>
           <h3 className={tileTitle}>Player auctions</h3>
           <p className={tileBody}>Run a live auction for your league and build teams the IPL way.</p>
-          <Link href="/auctions" className="mt-auto text-sm font-bold text-accent-soft hover:text-primary-soft-fg">
+          <Link href={EXPLORE_HREF} className="mt-auto text-sm font-bold text-accent-soft hover:text-primary-soft-fg">
             Explore auctions →
           </Link>
         </div>

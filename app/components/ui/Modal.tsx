@@ -37,8 +37,6 @@ export interface ModalProps {
   children?: React.ReactNode;
   /** Accessible label when no visible title is rendered */
   ariaLabel?: string;
-  /** Force a theme for this dialog (e.g. dark on the always-dark landing page) */
-  theme?: "dark" | "light";
 }
 
 /**
@@ -61,7 +59,6 @@ export function Modal({
   bodyClassName,
   children,
   ariaLabel,
-  theme,
 }: ModalProps) {
   const [mounted, setMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -125,7 +122,6 @@ export function Modal({
 
   return createPortal(
     <div
-      data-theme={theme}
       className={cn(
         "fixed inset-0 z-[200] flex justify-center",
         sheetOnMobile ? "items-end sm:items-center sm:p-4" : "items-center p-4",

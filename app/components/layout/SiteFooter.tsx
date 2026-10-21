@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Logo } from "@/app/components/ui";
-import { PLAY_STORE_URL, SOCIAL_LINKS, SUPPORT_EMAIL } from "@/lib/site";
+import { EXPLORE_HREF, PLAY_STORE_URL, SOCIAL_LINKS, SUPPORT_EMAIL } from "@/lib/site";
 
 const COLUMNS = [
   {
@@ -11,8 +11,7 @@ const COLUMNS = [
       { label: "Streaming & tournaments", href: "/#streaming" },
       { label: "Android app", href: "/#download" },
       { label: "Pricing", href: "/pricing" },
-      { label: "Stream Studio", href: "/stream" },
-      { label: "Auctions", href: "/auctions" },
+      { label: "Explore Stream Studio & Auctions", href: EXPLORE_HREF },
     ],
   },
   {

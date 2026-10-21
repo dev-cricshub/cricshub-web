@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/app/components/ui";
+import { EXPLORE_HREF } from "@/lib/site";
 import { CheckItem, PlayStoreButton, ghostCta } from "./primitives";
 import { ChevronRightIcon, PlayIcon, ScreenPlayIcon } from "./icons";
 
@@ -46,7 +47,7 @@ export default function HeroSection() {
   return (
     <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-[26px] px-6 pt-16 text-center sm:pt-[84px]">
       <Link
-        href="/auctions"
+        href={EXPLORE_HREF}
         className="flex items-center gap-2.5 rounded-full border border-line-accent bg-primary-soft/70 py-1.5 pl-1.5 pr-3.5 text-[13px] font-bold text-[#C9D3E2] transition-colors hover:bg-primary-soft"
       >
         <span className="rounded-full bg-primary px-[9px] py-1 text-[11px] font-extrabold tracking-[1px] text-white">NEW</span>
@@ -70,21 +71,6 @@ export default function HeroSection() {
           </span>
           See how it works
         </a>
-      </div>
-
-      {/* Web tools: each goes straight to its module (sign-in happens on the way if needed). */}
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-semibold">
-        <span className="text-fg-muted">In your browser:</span>
-        <Link href="/stream" className="flex items-center gap-1.5 text-accent-soft transition-colors hover:text-white">
-          <i className="ri-broadcast-line" aria-hidden />
-          Stream Studio
-          <ChevronRightIcon />
-        </Link>
-        <Link href="/auctions" className="flex items-center gap-1.5 text-accent-soft transition-colors hover:text-white">
-          <i className="ri-auction-line" aria-hidden />
-          Auctions
-          <ChevronRightIcon />
-        </Link>
       </div>
 
       <div className="flex flex-wrap justify-center gap-[22px] text-[13px] font-semibold text-fg-muted">

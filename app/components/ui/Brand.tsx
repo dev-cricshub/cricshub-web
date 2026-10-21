@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cn } from "./cn";
 
-/** CricsHub logo mark + wordmark. The wordmark is live text so it adapts to light/dark themes. */
+/** CricsHub logo mark + wordmark. The wordmark is live text in the theme's foreground colour. */
 export function Logo({
   href = "/",
   size = "md",

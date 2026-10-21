@@ -1,7 +1,7 @@
 import Link from "next/link";
 import QRCode from "qrcode";
 import { cn } from "@/app/components/ui";
-import { PLAY_STORE_URL } from "@/lib/site";
+import { EXPLORE_HREF, PLAY_STORE_URL } from "@/lib/site";
 import { PlayStoreButton, Section, ghostCta } from "./primitives";
 
 export default async function DownloadCTA() {
@@ -28,12 +28,12 @@ export default async function DownloadCTA() {
             <span className="text-accent">starts here.</span>
           </h2>
           <p className="m-0 max-w-[480px] text-[17px] leading-relaxed text-[#C9D3E2]">
-            Download CricsHub free on Android, or open Stream Studio in your browser to go live on YouTube.
+            Download CricsHub free on Android, or explore Stream Studio and Auctions in your browser.
           </p>
           <div className="flex flex-wrap gap-3">
             <PlayStoreButton />
-            <Link href="/stream" className={cn("flex h-[60px] items-center rounded-full px-6 text-base text-primary-soft-fg", ghostCta)}>
-              Open Stream Studio
+            <Link href={EXPLORE_HREF} className={cn("flex h-[60px] items-center rounded-full px-6 text-base text-primary-soft-fg", ghostCta)}>
+              Explore on the web
             </Link>
           </div>
         </div>

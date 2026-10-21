@@ -35,7 +35,7 @@
   --brand-sky: 34 164 220;
 }
 
-/* Dark navy is the signature look and the default. */
+/* Dark navy is the only theme. */
 :root,
 [data-theme='dark'] {
   --canvas: 6 10 18;
@@ -82,53 +82,6 @@
   --shadow: 1 4 12;
 }
 
-/* Daylight theme for operational screens. Same roles, tuned for contrast on white. */
-:root[data-theme='light'],
-[data-theme='light'] {
-  --canvas: 245 247 251;
-  --surface: 255 255 255;
-  --surface-2: 238 242 248;
-  --surface-3: 225 231 240;
-  --surface-inverse: 11 17 29;
-
-  --line: 221 227 236;
-  --line-strong: 194 203 217;
-
-  --fg: 11 17 29;
-  --fg-muted: 72 85 106;
-  --fg-subtle: 112 124 144;
-  --fg-inverse: 255 255 255;
-
-  --primary: var(--brand-blue);
-  --primary-hover: 24 100 158;
-  --primary-fg: 255 255 255;
-  --primary-soft: 232 242 251;
-  --primary-soft-fg: 22 88 140;
-
-  --secondary: var(--brand-navy);
-  --secondary-fg: 255 255 255;
-
-  --accent: 24 100 158;
-  --brand: var(--brand-blue);
-  --gold: 161 112 8;
-
-  --success: 22 163 74;
-  --success-soft: 236 253 243;
-  --success-soft-fg: 21 112 59;
-
-  --warning: 217 119 6;
-  --warning-soft: 255 247 230;
-  --warning-soft-fg: 146 72 6;
-
-  --danger: 220 38 38;
-  --danger-soft: 254 242 242;
-  --danger-soft-fg: 165 28 28;
-
-  --live: 220 45 41;
-  --ring: 32 123 190;
-  --shadow: 15 23 42;
-}
-
 /* Landing page palette — a cooler, softer navy than the app, with rounder
    geometry. Overrides the standard roles inside .landing so shared components
    (header, login modal, footer) pick it up, and adds a few landing-only roles. */
@@ -168,10 +121,6 @@
 html:has(.app-shell),
 .app-shell [data-theme='dark'] {
   color-scheme: dark;
-}
-html[data-theme='light']:has(.app-shell),
-.app-shell [data-theme='light'] {
-  color-scheme: light;
 }
 
 :root {

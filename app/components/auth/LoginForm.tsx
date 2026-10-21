@@ -24,7 +24,7 @@ const COPY: Record<LoginIntent | "default", { title: string; lead: string; next:
 
 /**
  * Phone + OTP sign-in. The same flow signs existing users in and creates new accounts.
- * Rendered in the login sheet (LoginModal) and on the full-page /login route.
+ * Rendered by the /login page, the one sign-in screen for every feature.
  */
 export function LoginForm({
   intent,

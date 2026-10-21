@@ -11,7 +11,6 @@ export type { TabItem } from "./Tabs";
 export { Skeleton, Spinner, EmptyState, Alert } from "./Feedback";
 export { Reveal } from "./Reveal";
 export { Logo, Avatar, initials } from "./Brand";
-export { ThemeToggle } from "./ThemeToggle";
 export { Menu } from "./Menu";
 export type { MenuEntry } from "./Menu";
 export { PageHeader, SectionTitle, MarketingHeading, StatTile } from "./Layout";
