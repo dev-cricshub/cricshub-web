@@ -25,7 +25,7 @@ const CINEMATIC_LINKS = [
 
 /**
  * Public/marketing header. It knows nothing about the session: its only way into the product is
- * Explore, which goes through /login when needed (see middleware.ts).
+ * Explore, which goes through /login when needed (see proxy.ts).
  */
 export default function SiteHeader({
   variant = "default",

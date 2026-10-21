@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchUserMatches } from "@/lib/api";
 import { AppHeader } from "@/app/components/layout/AppHeader";
+import { primaryBtn, secondaryBtn } from "@/app/components/layout/appStyles";
 import { Alert, ButtonLink, Skeleton, useToast, cn } from "@/app/components/ui";
 import { formatWhen } from "@/lib/auction/format";
 import { readPendingInvite, type PendingInvite } from "@/lib/auction/invite";
@@ -89,7 +90,7 @@ function pickNextStep(matches: MatchSummary[], auctions: AuctionListItem[]): Nex
         .filter(Boolean)
         .join(" · "),
       cta: "Continue setup",
-      href: `/auctions/${draft.id}/setup`,
+      href: `/auctions/${draft.id}`,
       progress: check,
     };
   }
@@ -136,7 +137,7 @@ export default function HomePage() {
     const result = await auctionService.createDraft();
     setCreating(false);
     if (!result.ok) toast(result.error, { tone: "error" });
-    else router.push(`/auctions/${result.value.id}/setup`);
+    else router.push(`/auctions/${result.value.id}`);
   };
 
   const liveMatches = (matches ?? []).filter((m) => m.status === "Live");
@@ -223,7 +224,7 @@ export default function HomePage() {
             chips={["Registration link", "Live bidding room", "Spectator screen"]}
             actions={
               <>
-                <button type="button" onClick={createAuction} disabled={creating} className={cn(primaryBtn, "disabled:opacity-60")}>
+                <button type="button" onClick={createAuction} disabled={creating} className={primaryBtn}>
                   <i className={cn(creating ? "ri-loader-4-line animate-spin" : "ri-add-line", "text-[15px]")} aria-hidden />
                   New auction
                 </button>
@@ -264,10 +265,6 @@ export default function HomePage() {
 
 // ─── Building blocks ──────────────────────────────────────────────────────
 
-const primaryBtn =
-  "inline-flex h-10 items-center gap-2 rounded-[11px] bg-[#2F6DB8] px-4 text-[13px] font-bold text-white shadow-[0_6px_16px_rgba(47,109,184,0.3)] transition-colors hover:bg-[#3A7BC8]";
-const secondaryBtn =
-  "inline-flex h-10 flex-shrink-0 items-center gap-2 rounded-[11px] border border-line bg-well px-3.5 text-[13px] font-semibold text-fg transition-colors hover:border-line-strong";
 
 function PulseDot() {
   return <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent animate-pulse motion-reduce:animate-none" aria-hidden />;

@@ -1,258 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { AppHeader } from "@/app/components/layout/AppHeader";
-import { AuctionSubnav, ConfirmDialog, PendingStartDialog, PlayerStateBadge, Select, downloadText } from "@/app/components/auction/chrome";
+import { ConfirmDialog, PlayerStateBadge, Select, downloadText } from "@/app/components/auction/chrome";
 import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
-import { RegistrationsPanel } from "@/app/components/auction/Registrations";
-import { Alert, Badge, Button, ButtonLink, Card, EmptyState, Input, Tabs, useToast } from "@/app/components/ui";
+import { Alert, Badge, Button, Input, useToast } from "@/app/components/ui";
 import { normalizePhone, squadsToCsv } from "@/lib/auction/csv";
-import {
-  highestBid,
-  queue,
-  roleCounts,
-  shortSquads,
-  squadOf,
-  teamBudget,
-  teamRemaining,
-  teamSpent,
-  validateConfig,
-} from "@/lib/auction/engine";
+import { shortSquads, squadOf, teamRemaining, teamSpent } from "@/lib/auction/engine";
 import { formatWhen, inr } from "@/lib/auction/format";
 import { auctionService } from "@/lib/auction/store";
 import type { Auction, LinkableTournament, PlayerRole, PlayerState } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
-const SECTIONS = ["overview", "teams", "players", "registrations", "rules", "results", "settings"] as const;
-type Section = (typeof SECTIONS)[number];
+// Panels the auction admin (AuctionAdmin.tsx) shows once an auction is underway.
 
-export function Manage({ auction }: { auction: Auction }) {
-  const params = useSearchParams();
-  const router = useRouter();
-  const requested = params.get("section");
-  const section: Section = SECTIONS.includes(requested as Section) ? (requested as Section) : "overview";
-  const setSection = (key: Section) => {
-    const url = key === "overview" ? `/auctions/${auction.id}` : `/auctions/${auction.id}?section=${key}`;
-    router.replace(url);
-  };
-
-  return (
-    <>
-      <AppHeader context={auction.name} />
-      <main className="container-page space-y-6 py-6 sm:py-10">
-        <AuctionSubnav auction={auction} />
-        <Tabs
-          ariaLabel="Auction sections"
-          value={section}
-          onChange={setSection}
-          items={[
-            { key: "overview", label: "Overview" },
-            { key: "teams", label: "Teams", count: auction.teams.length },
-            { key: "players", label: "Players", count: auction.players.length },
-            { key: "registrations", label: "Registrations", count: auction.pendingRegistrations || undefined },
-            { key: "rules", label: "Rules" },
-            { key: "results", label: "Results" },
-            { key: "settings", label: "Settings" },
-          ]}
-        />
-        {section === "overview" && <Overview auction={auction} />}
-        {section === "teams" && <Teams auction={auction} />}
-        {section === "players" && <Players auction={auction} />}
-        {section === "registrations" && <RegistrationsPanel auction={auction} />}
-        {section === "rules" && <Rules auction={auction} />}
-        {section === "results" && <Results auction={auction} />}
-        {section === "settings" && <Settings auction={auction} />}
-      </main>
-    </>
-  );
-}
-
-function Overview({ auction }: { auction: Auction }) {
-  const toast = useToast();
-  const router = useRouter();
-  const issues = validateConfig(auction).filter((i) => i.severity === "error");
-  const [pendingStart, setPendingStart] = useState<string | null>(null);
-  const start = async (pending?: "reject" | "expire") => {
-    const result = await auctionService.start(auction.id, pending);
-    if (result.ok) router.push(`/auctions/${auction.id}/live`);
-    else if (result.code === "REGISTRATIONS_PENDING") setPendingStart(result.error);
-    else toast(result.error, { tone: "error" });
-  };
-  const sold = auction.players.filter((p) => p.status === "sold").length;
-  const unsold = auction.players.filter((p) => p.status === "unsold").length;
-  const roles = roleCounts(auction.players);
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4">
-          <p className="text-xs text-fg-muted">Starts</p>
-          <p className="mt-1 font-medium">{formatWhen(auction.startsAt, auction.timezone)}</p>
-          <p className="text-xs text-fg-subtle">{auction.timezone}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-fg-muted">Sold / unsold</p>
-          <p className="mt-1 font-display text-2xl font-bold tabular-nums">
-            {sold} <span className="text-fg-subtle">/</span> {unsold}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-fg-muted">Still to come</p>
-          <p className="mt-1 font-display text-2xl font-bold tabular-nums">{queue(auction).length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-fg-muted">Purse each</p>
-          <p className="mt-1 font-medium tabular-nums">{inr(auction.rules.pursePerTeam)}</p>
-        </Card>
-      </div>
-      {issues.length > 0 && (auction.status === "draft" || auction.status === "scheduled") && (
-        <Alert tone="warning" title="Setup is incomplete" action={<ButtonLink href={`/auctions/${auction.id}/setup`} size="sm">Continue setup</ButtonLink>}>
-          {issues[0].message}
-          {issues.length > 1 ? ` and ${issues.length - 1} more.` : ""}
-        </Alert>
-      )}
-      {(auction.pendingRegistrations ?? 0) > 0 && (auction.status === "draft" || auction.status === "scheduled") && (
-        <Alert
-          tone="info"
-          title={`${auction.pendingRegistrations} registration${auction.pendingRegistrations === 1 ? "" : "s"} waiting for you`}
-          action={
-            <ButtonLink href={`/auctions/${auction.id}?section=registrations`} size="sm">
-              Review
-            </ButtonLink>
-          }
-        >
-          Approve players into the pool before the auction starts.
-        </Alert>
-      )}
-      <div className="flex flex-wrap gap-2 text-sm text-fg-muted">
-        {PLAYER_ROLES.map((role) => (
-          <span key={role} className="rounded-control bg-surface px-2 py-1 ring-1 ring-line">
-            {ROLE_LABEL[role]} <span className="font-mono text-fg">{roles[role]}</span>
-          </span>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {auction.status === "scheduled" && (
-          <Button onClick={() => void start()}>Start auction</Button>
-        )}
-        {(auction.status === "live" || auction.status === "paused") && (
-          <ButtonLink href={`/auctions/${auction.id}/live`}>Open live console</ButtonLink>
-        )}
-        <ButtonLink href={`/auctions/${auction.id}/watch`} variant="outline">
-          Spectator view
-        </ButtonLink>
-      </div>
-      <PendingStartDialog
-        message={pendingStart}
-        onClose={() => setPendingStart(null)}
-        onChoose={(pending) => {
-          setPendingStart(null);
-          void start(pending);
-        }}
-      />
-    </div>
-  );
-}
-
-function Teams({ auction }: { auction: Auction }) {
-  const [open, setOpen] = useState<string | null>(null);
-  return (
-    <div className="space-y-3">
-      {auction.teams.length === 0 ? (
-        <EmptyState icon="ri-team-line" title="No teams" description="Add teams from setup before the auction starts." />
-      ) : (
-        <ul className="grid gap-3 lg:grid-cols-2">
-          {auction.teams.map((team) => {
-            const squad = squadOf(auction, team.id);
-            const budget = teamBudget(auction, team);
-            const spent = teamSpent(auction, team.id);
-            const remaining = teamRemaining(auction, team.id);
-            const full = squad.length >= auction.rules.maxSquad || remaining <= 0;
-            return (
-              <li key={team.id}>
-                <button type="button" onClick={() => setOpen(team.id)} className="w-full rounded-card border border-line bg-surface p-4 text-left hover:border-primary/40">
-                  <div className="flex items-center gap-3">
-                    <span className="h-9 w-9 rounded-md" style={{ background: team.color }} aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-display text-lg font-bold uppercase tracking-wide">{team.shortName}</p>
-                      <p className="truncate text-sm text-fg-muted">{team.name}</p>
-                    </div>
-                    {full && <Badge tone="warning">At limit</Badge>}
-                  </div>
-                  <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                    <div>
-                      <dt className="text-xs text-fg-subtle">Spent</dt>
-                      <dd className="tabular-nums">{inr(spent)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-fg-subtle">Left</dt>
-                      <dd className="tabular-nums">{inr(remaining)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-fg-subtle">Squad</dt>
-                      <dd className="tabular-nums">
-                        {squad.length}/{auction.rules.maxSquad}
-                      </dd>
-                    </div>
-                  </dl>
-                  <p className="mt-2 text-xs text-fg-subtle">Budget {inr(budget)}{team.ownerName ? ` · ${team.ownerName}` : ""}</p>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {open && <TeamDrawer auction={auction} teamId={open} onClose={() => setOpen(null)} />}
-    </div>
-  );
-}
-
-function TeamDrawer({ auction, teamId, onClose }: { auction: Auction; teamId: string; onClose: () => void }) {
-  const team = auction.teams.find((t) => t.id === teamId);
-  if (!team) return null;
-  const squad = squadOf(auction, team.id);
-  const history = auction.events.filter((e) => !e.reverted && (e.payload.teamId === team.id || squad.some((p) => p.id === e.payload.playerId)));
-  const roles = roleCounts(squad.map((p) => ({ ...p, status: "available" as const })));
-  return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-bold uppercase">{team.name}</h2>
-          <p className="text-sm text-fg-muted">{team.ownerName || "No representative listed"}</p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          Close
-        </Button>
-      </div>
-      <p className="mt-3 text-sm text-fg-muted">
-        {PLAYER_ROLES.map((role) => `${ROLE_LABEL[role]} ${roles[role]}`).join(" · ")}
-      </p>
-      {squad.length === 0 ? (
-        <p className="mt-4 text-sm text-fg-subtle">No players bought yet.</p>
-      ) : (
-        <ul className="mt-4 divide-y divide-line">
-          {squad.map((p) => (
-            <li key={p.id} className="flex items-center justify-between py-2 text-sm">
-              <span>
-                {p.name} <span className="text-fg-subtle">{ROLE_LABEL[p.role]}</span>
-              </span>
-              <span className="tabular-nums">{inr(p.soldPrice ?? 0)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <h3 className="mt-4 text-xs font-semibold uppercase tracking-wider text-fg-subtle">Related activity</h3>
-      <ul className="mt-2 space-y-1 text-sm text-fg-muted">
-        {history.slice(-8).reverse().map((e) => (
-          <li key={e.id}>{e.message}</li>
-        ))}
-        {history.length === 0 && <li>No transactions yet.</li>}
-      </ul>
-    </Card>
-  );
-}
-
-function Players({ auction }: { auction: Auction }) {
+/** The pool once bidding has started: filter, withdraw, reopen unsold players. */
+export function PlayerPool({ auction }: { auction: Auction }) {
   const toast = useToast();
   const [q, setQ] = useState("");
   const [role, setRole] = useState<PlayerRole | "all">("all");
@@ -395,44 +157,7 @@ function Players({ auction }: { auction: Auction }) {
   );
 }
 
-function Rules({ auction }: { auction: Auction }) {
-  return (
-    <div className="max-w-2xl space-y-3 text-sm">
-      <p className="text-fg-muted">
-        Purse {inr(auction.rules.pursePerTeam)} · squad {auction.rules.minSquad}–{auction.rules.maxSquad} · overseas{" "}
-        {auction.rules.overseasLimit ?? "no cap"} · overrides {auction.rules.allowPurseOverride ? "allowed" : "off"} · purse reserve for minimum squad{" "}
-        {auction.rules.reserveForMinSquad === false ? "off" : "on"}
-      </p>
-      <ul className="space-y-1">
-        {auction.rules.increments.map((slab, i) => (
-          <li key={i} className="text-fg-muted">
-            Step {inr(slab.step)} {slab.upTo == null ? "thereafter" : `below ${inr(slab.upTo)}`}
-          </li>
-        ))}
-      </ul>
-      <ul className="space-y-1">
-        {auction.rules.roleLimits.map((limit) => (
-          <li key={limit.role} className="text-fg-muted">
-            {ROLE_LABEL[limit.role]}: min {limit.min}
-            {limit.max != null ? `, max ${limit.max}` : ""}
-          </li>
-        ))}
-      </ul>
-      {(auction.status === "draft" || auction.status === "scheduled") && (
-        <ButtonLink href={`/auctions/${auction.id}/setup`} variant="outline" size="sm">
-          Edit in setup
-        </ButtonLink>
-      )}
-      {auction.status !== "draft" && auction.status !== "scheduled" && (
-        <Alert tone="info" title="Rules are locked">
-          Purse, increments and squad limits stay as they were when the auction started.
-        </Alert>
-      )}
-    </div>
-  );
-}
-
-function Results({ auction }: { auction: Auction }) {
+export function Results({ auction }: { auction: Auction }) {
   const sold = auction.players.filter((p) => p.status === "sold");
   const unsold = auction.players.filter((p) => p.status === "unsold");
   const exportCsv = () => {
@@ -642,7 +367,8 @@ function TournamentHandover({ auction }: { auction: Auction }) {
   );
 }
 
-function Settings({ auction }: { auction: Auction }) {
+/** Cancel or end the auction, and the activity log. */
+export function Settings({ auction }: { auction: Auction }) {
   const toast = useToast();
   const [confirm, setConfirm] = useState<"cancel" | "complete" | null>(null);
   const short = shortSquads(auction);
@@ -703,11 +429,4 @@ function Settings({ auction }: { auction: Auction }) {
       />
     </div>
   );
-}
-
-export function currentBidLabel(auction: Auction): string {
-  const playerId = auction.currentPlayerId;
-  if (!playerId) return "—";
-  const bid = highestBid(auction, playerId);
-  return bid ? inr(bid.amount) : "No bid yet";
 }

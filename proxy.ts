@@ -6,7 +6,7 @@ const PROTECTED_PATHS = ["/dashboard", "/profile", "/stream", "/auctions"];
 // Spectator view of an auction stays open, so a shared "watch" link works without an account.
 const PUBLIC_PATHS = [/^\/auctions\/[^/]+\/watch\/?$/];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, search, searchParams } = request.nextUrl;
 
   // Old "/?login=true&redirect=…" links: sign-in no longer lives on the landing page.

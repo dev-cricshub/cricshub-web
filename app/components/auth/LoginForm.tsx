@@ -103,7 +103,7 @@ export function LoginForm({
         localStorage.setItem("jwtToken", res.data.token);
         localStorage.setItem("userUUID", res.data.user.id);
         localStorage.setItem("userName", res.data.user.name);
-        // sessionActive: non-httpOnly, used only by Next.js middleware to gate routes
+        // sessionActive: non-httpOnly, used only by proxy.ts to gate routes
         // Remember me: 30 days | Default: session cookie (expires on browser close)
         const sessionCookie = rememberMe
           ? "sessionActive=1; path=/; SameSite=Lax; Max-Age=2592000"

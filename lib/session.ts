@@ -1,6 +1,6 @@
 // Client-side session helpers shared by headers, dashboard, profile and pricing.
 // The real JWT lives in an httpOnly cookie on the API domain; these keys only
-// drive UI state and the `sessionActive` cookie that middleware.ts checks.
+// drive UI state and the `sessionActive` cookie that proxy.ts checks.
 
 import { API_BASE } from "@/lib/site";
 

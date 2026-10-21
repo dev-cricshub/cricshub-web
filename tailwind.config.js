@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 
-// Semantic colours resolve to CSS variables defined in app/styles/tokens.css, so
-// light/dark themes swap without per-component `dark:` variants.
+// Semantic colours resolve to CSS variables defined in app/styles/tokens.css (dark theme only),
+// so components use roles like `bg-surface` instead of raw hex values.
 const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 
 module.exports = {

@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useParams } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
-import { Manage } from "@/app/components/auction/Manage";
+import { AuctionAdmin } from "@/app/components/auction/AuctionAdmin";
 import { Watch } from "@/app/components/auction/Watch";
 import { EmptyState, Skeleton } from "@/app/components/ui";
 import { useAuction } from "@/lib/auction/store";
@@ -39,6 +39,6 @@ function AuctionPageInner() {
       </>
     );
   }
-  // Viewers and registered players see the room view; management is the auctioneer's.
-  return auction.role === "auctioneer" ? <Manage auction={auction} /> : <Watch auction={auction} />;
+  // Viewers and registered players see the room view; setup and management are the auctioneer's.
+  return auction.role === "auctioneer" ? <AuctionAdmin auction={auction} /> : <Watch auction={auction} />;
 }

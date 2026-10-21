@@ -87,7 +87,7 @@ export default function AuctionsPage() {
     const result = await auctionService.createDraft();
     setCreating(false);
     if (!result.ok) toast(result.error, { tone: "error" });
-    else router.push(`/auctions/${result.value.id}/setup`);
+    else router.push(`/auctions/${result.value.id}`);
   };
 
   return (
@@ -237,7 +237,7 @@ export default function AuctionsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {auction.status === "draft" || auction.status === "scheduled" ? (
-                    <ButtonLink href={`/auctions/${auction.id}/setup`} size="sm" variant="outline">
+                    <ButtonLink href={`/auctions/${auction.id}`} size="sm" variant="outline">
                       Edit
                     </ButtonLink>
                   ) : null}

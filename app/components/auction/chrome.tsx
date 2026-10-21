@@ -39,7 +39,6 @@ export function downloadText(filename: string, text: string) {
 
 const LINKS = [
   { key: "overview", label: "Overview", href: (id: string) => `/auctions/${id}` },
-  { key: "setup", label: "Setup", href: (id: string) => `/auctions/${id}/setup` },
   { key: "live", label: "Live", href: (id: string) => `/auctions/${id}/live` },
   { key: "watch", label: "Spectator", href: (id: string) => `/auctions/${id}/watch` },
 ] as const;
@@ -60,7 +59,6 @@ export function AuctionSubnav({ auction }: { auction: Auction }) {
         {LINKS.map((link) => {
           const href = link.href(auction.id);
           const active = pathname === href;
-          if (link.key === "setup" && auction.status !== "draft" && auction.status !== "scheduled") return null;
           // Viewers and registered players only get the room view.
           if (auction.role !== "auctioneer" && link.key !== "watch") return null;
           return (
