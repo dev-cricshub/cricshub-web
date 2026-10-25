@@ -7,9 +7,8 @@ import { auctionService, type NewTournamentInput } from "@/lib/auction/store";
 import type { Auction } from "@/lib/auction/types";
 
 /**
- * Creates a CricsHub tournament from the auction and links it (same fields as creating one in the app).
- * If the auction has already ended, the server adds the teams and squads to it straight away.
- * A plain block rather than a <form>, so it can sit inside the setup wizard's Details form.
+ * Creates a CricsHub tournament from a completed auction and links it (same fields as creating one in the app).
+ * The server then adds the teams and squads to it straight away.
  */
 export function CreateTournamentForm({
   auction,

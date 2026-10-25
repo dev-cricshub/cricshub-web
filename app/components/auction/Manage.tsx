@@ -504,23 +504,26 @@ function Results({ auction }: { auction: Auction }) {
 }
 
 /**
- * Auction + tournament mode on the Results tab: link a CricsHub tournament (also after the auction),
- * fill phones for sold players, and push teams and squads into the tournament (or retry a failed push).
+ * Results tab, after the auction is completed: link it to a CricsHub tournament (an existing one, or create one)
+ * so it can be played on CricsHub. Linking pushes the teams and squads straight into the tournament; a failed
+ * push can be retried. Sold players need phone numbers first.
  */
 function TournamentHandover({ auction }: { auction: Auction }) {
   const toast = useToast();
+  const [open, setOpen] = useState(false);
   const [tournaments, setTournaments] = useState<LinkableTournament[] | null>(null);
   const [choice, setChoice] = useState("");
   const [busy, setBusy] = useState(false);
   const [phones, setPhones] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
 
+  const completed = auction.status === "completed";
   const linked = !!auction.tournamentId;
   const done = auction.handoverStatus === "done";
   const soldNoPhone = auction.players.filter((p) => p.status === "sold" && !p.phone);
 
   useEffect(() => {
-    if (linked) return;
+    if (!open || linked) return;
     let alive = true;
     auctionService.linkableTournaments().then((r) => {
       if (alive) setTournaments(r.ok ? r.value.filter((t) => !t.linkedAuctionId || t.linkedAuctionId === auction.id) : []);
@@ -528,7 +531,7 @@ function TournamentHandover({ auction }: { auction: Auction }) {
     return () => {
       alive = false;
     };
-  }, [linked, auction.id]);
+  }, [open, linked, auction.id]);
 
   const act = async (fn: () => Promise<{ ok: boolean; error?: string }>, success: string) => {
     setBusy(true);
@@ -536,6 +539,15 @@ function TournamentHandover({ auction }: { auction: Auction }) {
     setBusy(false);
     if (!result.ok) toast(result.error ?? "That did not work.", { tone: "error" });
     else toast(success, { tone: "success" });
+  };
+
+  const link = async () => {
+    setBusy(true);
+    const result = await auctionService.linkTournament(auction.id, choice);
+    setBusy(false);
+    if (!result.ok) toast(result.error, { tone: "error" });
+    else if (result.value.handoverStatus === "done") toast(`Linked to ${result.value.tournament} and added the squads.`, { tone: "success" });
+    else toast(`Linked to ${result.value.tournament}, but the squads were not added. See below.`, { tone: "error" });
   };
 
   const savePhone = async (playerId: string) => {
@@ -548,6 +560,31 @@ function TournamentHandover({ auction }: { auction: Auction }) {
     await act(() => auctionService.updatePlayer(auction.id, p.id, { ...p, phone }), `Phone saved for ${p.name}.`);
   };
 
+  const phoneList =
+    soldNoPhone.length > 0 ? (
+      <div className="space-y-2">
+        <p className="text-sm text-fg-muted">Add phone numbers for these players so they can be added to the tournament:</p>
+        <ul className="space-y-2">
+          {soldNoPhone.map((p) => (
+            <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="w-40 truncate">{p.name}</span>
+              <Input
+                aria-label={`Phone for ${p.name}`}
+                inputMode="tel"
+                placeholder="10-digit mobile"
+                value={phones[p.id] ?? ""}
+                onChange={(e) => setPhones({ ...phones, [p.id]: e.target.value })}
+                className="max-w-[12rem]"
+              />
+              <Button size="xs" variant="outline" disabled={busy} onClick={() => savePhone(p.id)}>
+                Save
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+
   if (done) {
     return (
       <Alert tone="success" title={`Squads added to ${auction.tournament}`}>
@@ -559,45 +596,66 @@ function TournamentHandover({ auction }: { auction: Auction }) {
   }
 
   if (!linked) {
+    // The CricsHub step only appears once the auction is fully completed.
+    if (!completed) return null;
     return (
-      <section className="space-y-2 rounded-card border border-line bg-surface p-4">
+      <section className="space-y-3 rounded-card border border-line bg-surface p-4">
         <h2 className="text-sm font-semibold">Play this tournament on CricsHub</h2>
         <p className="text-sm text-fg-muted">
-          Create a CricsHub tournament, or link one you already have, to add these teams and squads to it
-          {auction.status === "completed" ? "." : " when the auction ends."}
+          Link the auction to a CricsHub tournament. Its teams and bought players are added to the tournament, so you can
+          schedule and score the matches in the app.
         </p>
-        {creating ? (
-          <CreateTournamentForm auction={auction} onCreated={() => setCreating(false)} onCancel={() => setCreating(false)} />
-        ) : (
-          <Button size="sm" variant="outline" icon="ri-add-line" onClick={() => setCreating(true)}>
-            Create a new tournament
+        {!open ? (
+          <Button size="sm" icon="ri-links-line" onClick={() => setOpen(true)}>
+            Link to CricsHub
           </Button>
-        )}
-        {creating ? null : tournaments && tournaments.length === 0 ? (
-          <p className="text-sm text-fg-subtle">You have no open tournaments to link.</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            <Select aria-label="Tournament" value={choice} onChange={(e) => setChoice(e.target.value)} className="max-w-xs">
-              <option value="">{tournaments ? "Choose a tournament" : "Loading…"}</option>
-              {(tournaments ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-            <Button
-              size="sm"
-              disabled={!choice || busy}
-              onClick={() => act(() => auctionService.linkTournament(auction.id, choice), "Tournament linked.")}
-            >
-              Link tournament
-            </Button>
-          </div>
+          <>
+            {phoneList}
+            {creating ? (
+              <CreateTournamentForm auction={auction} onCreated={() => setCreating(false)} onCancel={() => setCreating(false)} />
+            ) : (
+              <>
+                {tournaments && tournaments.length === 0 ? (
+                  <p className="text-sm text-fg-subtle">You have no open tournaments to link. Create a new one.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <Select aria-label="Tournament" value={choice} onChange={(e) => setChoice(e.target.value)} className="max-w-xs">
+                      <option value="">{tournaments ? "Choose a tournament" : "Loading…"}</option>
+                      {(tournaments ?? []).map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button size="sm" disabled={!choice || busy || soldNoPhone.length > 0} onClick={link}>
+                      Link and add squads
+                    </Button>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon="ri-add-line"
+                    disabled={soldNoPhone.length > 0}
+                    onClick={() => setCreating(true)}
+                  >
+                    Create a new tournament
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            )}
+          </>
         )}
       </section>
     );
   }
 
+  // Linked but squads not added yet: a failed push to retry (or an auction linked before it ended, under the old flow).
   return (
     <section className="space-y-3 rounded-card border border-line bg-surface p-4">
       <h2 className="text-sm font-semibold">Linked to {auction.tournament}</h2>
@@ -606,30 +664,8 @@ function TournamentHandover({ auction }: { auction: Auction }) {
           {auction.handoverError}
         </Alert>
       )}
-      {soldNoPhone.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm text-fg-muted">Add phone numbers for these players so they can be added to the tournament:</p>
-          <ul className="space-y-2">
-            {soldNoPhone.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="w-40 truncate">{p.name}</span>
-                <Input
-                  aria-label={`Phone for ${p.name}`}
-                  inputMode="tel"
-                  placeholder="10-digit mobile"
-                  value={phones[p.id] ?? ""}
-                  onChange={(e) => setPhones({ ...phones, [p.id]: e.target.value })}
-                  className="max-w-[12rem]"
-                />
-                <Button size="xs" variant="outline" disabled={busy} onClick={() => savePhone(p.id)}>
-                  Save
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {auction.status === "completed" ? (
+      {phoneList}
+      {completed ? (
         <Button
           size="sm"
           disabled={busy || soldNoPhone.length > 0}

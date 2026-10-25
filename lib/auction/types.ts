@@ -353,8 +353,6 @@ export interface AuctionDraftInput {
   startsAt: string;
   timezone: string;
   visibility: AuctionVisibility;
-  /** "" unlinks; omitted leaves the link unchanged. */
-  tournamentId?: string;
   homeCountry?: string;
 }
 

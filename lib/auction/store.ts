@@ -277,7 +277,6 @@ export const auctionService = {
         timezone: input?.timezone || "Asia/Kolkata",
         visibility: input?.visibility || "private",
         format: "player",
-        ...(input?.tournamentId ? { tournamentId: input.tournamentId } : {}),
       },
     });
     if (!result.ok) return result;

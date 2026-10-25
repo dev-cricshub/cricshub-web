@@ -4,14 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/app/components/layout/AppHeader";
 import { AuctionSubnav, Select } from "@/app/components/auction/chrome";
-import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
 import { Alert, Badge, Button, EmptyState, Field, Input, Switch, Textarea, useToast, cn } from "@/app/components/ui";
 import { csvTemplate, normalizePhone } from "@/lib/auction/csv";
 import { InviteLinks, RegistrationSettings, ReviewQueue, useRegistrations } from "@/app/components/auction/Registrations";
 import { validateConfig, type ConfigIssue } from "@/lib/auction/engine";
 import { fromDateTimeLocal, inr, toDateTimeLocal } from "@/lib/auction/format";
 import { auctionService, fetchMyCricshubTeams } from "@/lib/auction/store";
-import type { Auction, AuctionRules, AuctionTeam, LinkableTournament, PlayerRole } from "@/lib/auction/types";
+import type { Auction, AuctionRules, AuctionTeam, PlayerRole } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
 const STEPS = ["Details", "Rules", "Teams", "Registration", "Players", "Review"] as const;
@@ -111,18 +110,8 @@ function DetailsStep({
   const [starts, setStarts] = useState(toDateTimeLocal(auction.startsAt, auction.timezone));
   const [visibility, setVisibility] = useState(auction.visibility);
   const [homeCountry, setHomeCountry] = useState(auction.homeCountry ?? "India");
-  // "name": the tournament is just a label (auction only). "linked": a CricsHub tournament gets the squads.
-  const [mode, setMode] = useState<"name" | "linked">(auction.tournamentId ? "linked" : "name");
-  const [tournamentId, setTournamentId] = useState(auction.tournamentId ?? "");
-  const [options, setOptions] = useState<LinkableTournament[] | null>(null);
-  const [creatingTournament, setCreatingTournament] = useState(false);
-
-  useEffect(() => {
-    if (mode !== "linked" || options) return;
-    auctionService.linkableTournaments().then((r) =>
-      setOptions(r.ok ? r.value.filter((t) => !t.linkedAuctionId || t.linkedAuctionId === auction.id) : []),
-    );
-  }, [mode, options, auction.id]);
+  // The tournament is just a name during setup. Linking it to a CricsHub tournament comes after the auction
+  // is completed (Results tab).
 
   return (
     <form
@@ -134,21 +123,15 @@ function DetailsStep({
           onSaved({ ok: false, error: "Choose an auction date and time." });
           return;
         }
-        if (mode === "linked" && !tournamentId) {
-          onSaved({ ok: false, error: "Choose the CricsHub tournament to link." });
-          return;
-        }
-        const linkedName = options?.find((t) => t.id === tournamentId)?.name;
         onSaved(
           await auctionService.saveDetails(auction.id, {
             name,
-            tournament: mode === "linked" ? linkedName ?? auction.tournament : tournament,
+            tournament,
             description,
             startsAt,
             timezone,
             visibility,
             homeCountry: homeCountry.trim() || "India",
-            tournamentId: mode === "linked" ? tournamentId : "",
           }),
         );
       }}
@@ -158,59 +141,9 @@ function DetailsStep({
           <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} value={name} onChange={(e) => setName(e.target.value)} required />
         )}
       </Field>
-      <Field label="Where will the tournament be played?">
-        {({ id }) => (
-          <Select id={id} value={mode} onChange={(e) => setMode(e.target.value as "name" | "linked")}>
-            <option value="name">Somewhere else — just name the tournament</option>
-            <option value="linked">On CricsHub — add the squads to my tournament</option>
-          </Select>
-        )}
+      <Field label="Tournament" required hint="Once the auction is completed, you can link it to a CricsHub tournament and play it there.">
+        {({ id }) => <Input id={id} value={tournament} onChange={(e) => setTournament(e.target.value)} required />}
       </Field>
-      {mode === "name" ? (
-        <Field label="Tournament" required>
-          {({ id }) => <Input id={id} value={tournament} onChange={(e) => setTournament(e.target.value)} required />}
-        </Field>
-      ) : (
-        <Field
-          label="CricsHub tournament"
-          required
-          hint="When the auction ends, its teams and bought players are added to this tournament. Players then need phone numbers."
-        >
-          {({ id }) =>
-            options && options.length === 0 ? (
-              <p id={id} className="text-sm text-fg-subtle">
-                You have no open tournaments yet. Create one below.
-              </p>
-            ) : (
-              <Select id={id} value={tournamentId} onChange={(e) => setTournamentId(e.target.value)}>
-                <option value="">{options ? "Choose a tournament" : "Loading…"}</option>
-                {(options ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                    {t.startDate ? ` · ${t.startDate}` : ""}
-                  </option>
-                ))}
-              </Select>
-            )
-          }
-        </Field>
-      )}
-      {mode === "linked" &&
-        (creatingTournament ? (
-          <CreateTournamentForm
-            auction={auction}
-            onCreated={(updated) => {
-              setCreatingTournament(false);
-              setTournamentId(updated.tournamentId ?? "");
-              setOptions(null); // reload the picker, which now includes the new tournament
-            }}
-            onCancel={() => setCreatingTournament(false)}
-          />
-        ) : (
-          <Button type="button" size="sm" variant="outline" icon="ri-add-line" onClick={() => setCreatingTournament(true)}>
-            Create a new CricsHub tournament
-          </Button>
-        ))}
       <Field label="Description" optional>
         {({ id }) => <Textarea id={id} value={description} onChange={(e) => setDescription(e.target.value)} />}
       </Field>
