@@ -1,78 +1,78 @@
 import { cn } from "@/app/components/ui";
-import { CheckIcon } from "./icons";
-import { Kicker } from "./primitives";
+import { CheckItem, Section, SectionHead, tile } from "./primitives";
 
 const ROWS = [
-  { team: "Mumbai Strikers", p: 5, w: 4, pts: 8, nrr: "+1.24", top: true },
-  { team: "Andheri Warriors", p: 5, w: 4, pts: 8, nrr: "+0.87", top: true },
+  { team: "Mumbai Strikers", p: 5, w: 4, pts: 8, nrr: "+1.24", q: true },
+  { team: "Andheri Warriors", p: 5, w: 4, pts: 8, nrr: "+0.87", q: true },
   { team: "Thane Titans", p: 5, w: 2, pts: 4, nrr: "−0.31" },
   { team: "Borivali Blasters", p: 5, w: 0, pts: 0, nrr: "−1.76" },
 ];
 
-const row = "grid grid-cols-[2fr_repeat(4,minmax(0,1fr))]";
+const cell = "p-3";
+const edge = "py-3 pl-[22px] pr-3";
+const last = "py-3 pl-3 pr-[22px]";
 
 export default function TournamentShowcase() {
   return (
-    <div className="flex flex-wrap-reverse items-center gap-14">
-      <div aria-hidden className="relative min-w-0 flex-[1_1_460px]">
-        <div
-          className="absolute -inset-10 rounded-full"
-          style={{ background: "radial-gradient(closest-side, rgba(74,158,224,0.22), rgba(74,158,224,0) 100%)" }}
-        />
-        <div className="relative grid grid-cols-2 gap-3.5">
-          <div className="col-span-2 flex flex-col gap-2 rounded-[22px] border border-line-strong bg-surface p-5 shadow-[0_30px_70px_rgba(0,0,0,0.5)]">
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-sm font-extrabold">Points table · Group A</span>
-              <span className="text-[11px] font-bold text-accent-soft">Top 2 qualify</span>
-            </div>
-            <div className={cn(row, "px-2.5 text-[11px] font-bold text-fg-subtle")}>
-              <span>Team</span>
-              <span>P</span>
-              <span>W</span>
-              <span>Pts</span>
-              <span>NRR</span>
-            </div>
-            {ROWS.map((r) => (
-              <div key={r.team} className={cn(row, "rounded-[10px] p-2.5 text-[13px]", r.top ? "bg-raised" : "text-[#C9D3E2]")}>
-                <span className={r.top ? "font-extrabold" : "font-semibold"}>{r.team}</span>
-                <span>{r.p}</span>
-                <span>{r.w}</span>
-                <span className={r.top ? "font-extrabold" : undefined}>{r.pts}</span>
-                <span>{r.nrr}</span>
-              </div>
-            ))}
+    <Section className="flex flex-wrap-reverse items-center gap-14">
+      <div data-anim="left" className={cn(tile, "min-w-0 flex-[1_1_480px] overflow-hidden rounded-3xl")}>
+        <div className="flex justify-between border-b border-white/10 px-[22px] py-[18px] text-sm">
+          <strong className="text-white">Points table · Group A</strong>
+          <span className="text-[#C3CEE0]">Top 2 qualify</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="text-left text-[#C3CEE0]">
+                <th className={cn(edge, "font-medium")}>Team</th>
+                <th className={cn(cell, "font-medium")}>P</th>
+                <th className={cn(cell, "font-medium")}>W</th>
+                <th className={cn(cell, "font-medium")}>Pts</th>
+                <th className={cn(last, "font-medium")}>NRR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ROWS.map((r) => (
+                <tr key={r.team} className={r.q ? "bg-[rgba(90,169,240,0.12)] text-white" : "text-[#D6E2F5]"}>
+                  <td className={cn(edge, r.q && "font-semibold")}>{r.team}</td>
+                  <td className={cell}>{r.p}</td>
+                  <td className={cell}>{r.w}</td>
+                  <td className={cell}>{r.pts}</td>
+                  <td className={last}>{r.nrr}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5 px-[22px] pb-[22px] pt-4 text-[13px]">
+          <div className="rounded-[14px] border border-white/10 bg-white/[0.06] p-3.5">
+            <div className="font-bold text-[#5AA9F0]">FINAL · SUN 9:00 AM</div>
+            <div className="font-semibold text-white">MUM vs AND</div>
+            <div className="text-[#C3CEE0]">Oval Maidan</div>
           </div>
-          <div className="flex flex-col gap-1.5 rounded-[18px] border border-line bg-surface p-4">
-            <span className="text-[10px] font-extrabold tracking-[1px] text-accent-soft">FINAL · SUN 9:00 AM</span>
-            <span className="text-[15px] font-extrabold">MUM vs AND</span>
-            <span className="text-[11px] text-fg-muted">Oval Maidan</span>
-          </div>
-          <div className="flex flex-col gap-1.5 rounded-[18px] border border-line bg-surface p-4">
-            <span className="text-[10px] font-extrabold tracking-[1px] text-fg-muted">RESULT</span>
-            <span className="text-[15px] font-extrabold">THA beat BOR</span>
-            <span className="text-[11px] text-fg-muted">by 6 wickets</span>
+          <div className="rounded-[14px] border border-white/10 bg-white/[0.06] p-3.5">
+            <div className="font-bold text-[#C3CEE0]">RESULT</div>
+            <div className="font-semibold text-white">THA beat BOR</div>
+            <div className="text-[#C3CEE0]">by 6 wickets</div>
           </div>
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-[1_1_380px] flex-col gap-[18px]">
-        <Kicker>Tournaments</Kicker>
-        <h2 className="m-0 font-display text-[clamp(2.4rem,4.6vw,3.6rem)] font-extrabold uppercase leading-none">
-          Run your whole league from one place
-        </h2>
-        <p className="m-0 text-[17px] leading-relaxed text-fg-lead">
-          Create fixtures, track the points table with net run rate, and take it all the way through the knockouts. Every
-          result updates the standings automatically.
-        </p>
-        <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-[15px] text-[#DCE3EE]">
-          {["League, groups and knockout stages", "Automatic points and NRR", "Player auctions to build teams"].map((item) => (
-            <li key={item} className="flex gap-2.5">
-              <CheckIcon size={20} strokeWidth={2.6} className="shrink-0 text-accent" />
-              {item}
+      <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-[22px]">
+        <SectionHead
+          kicker="Tournaments"
+          title="Run your whole league from one place"
+          lead="Create fixtures, track the points table with net run rate, and take it all the way through the knockouts. Every result updates the standings automatically."
+          gap="gap-[22px]"
+        />
+        <ul className="m-0 flex list-none flex-col gap-3 p-0 text-base text-[#EEF3FB]" data-anim-stagger="80">
+          {["League, groups and knockout stages", "Automatic points and NRR", "Player auctions to build teams"].map((t) => (
+            <li key={t} data-anim="up">
+              <CheckItem>{t}</CheckItem>
             </li>
           ))}
         </ul>
       </div>
-    </div>
+    </Section>
   );
 }

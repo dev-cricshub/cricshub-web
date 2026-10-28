@@ -1,52 +1,56 @@
 import Link from "next/link";
 import { cn } from "@/app/components/ui";
-import { Section, SectionHead } from "./primitives";
+import { Section, SectionHead, tile } from "./primitives";
 
-const price = "font-display text-[52px] font-extrabold leading-none";
-const unit = "text-xl text-fg-muted";
-const body = "m-0 text-sm leading-[1.55] text-fg-muted";
-const plan = "flex flex-col gap-3.5 rounded-[28px] border p-[30px]";
+const price = "font-display text-[56px] font-bold leading-none text-white";
+const unit = "font-sans text-base font-medium text-[#C3CEE0]";
+const name = "text-[15px] font-semibold text-[#D6E2F5]";
+const text = "m-0 text-[15px] leading-relaxed text-[#C3CEE0]";
+const plan = "ch-lift flex flex-col gap-3.5 rounded-[26px] p-8";
 
 export default function PricingSection() {
   return (
-    <Section id="pricing" className="pb-20 pt-[60px]">
+    <Section id="pricing" className="flex flex-col gap-10">
       <SectionHead kicker="Pricing" title="Free to play. Pay only for premium." />
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
-        <div className={cn(plan, "border-line bg-surface")}>
-          <span className="text-[15px] font-extrabold">App &amp; scoring</span>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] items-stretch gap-5" data-anim-stagger="110">
+        <article data-anim="scale" className={cn(tile, plan)}>
+          <span className={name}>App &amp; scoring</span>
           <span className={price}>Free</span>
-          <p className={body}>Live scoring, tournaments, teams and the standard score overlay for every match admin.</p>
-        </div>
+          <p className={text}>Live scoring, tournaments, teams and the standard score overlay for every match admin.</p>
+        </article>
 
-        <div
+        <article
+          data-anim="scale"
           className={cn(
             plan,
-            "border-primary bg-[linear-gradient(160deg,#16274A_0%,#131A2A_70%)] shadow-[0_20px_50px_rgba(47,109,184,0.25)]",
+            "ch-gl relative border-[1.5px] border-[#5AA9F0] bg-white/[0.11] shadow-[0_30px_80px_-30px_#5AA9F0]",
           )}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[15px] font-extrabold">Subscription</span>
-            <span className="rounded-full bg-primary px-2.5 py-[5px] text-[11px] font-extrabold text-white">Best value</span>
-          </div>
+          <span className="absolute -top-[13px] right-6 rounded-full bg-[#5AA9F0] px-3 py-[5px] text-xs font-bold text-[#060A14]">
+            Best value
+          </span>
+          <span className={name}>Subscription</span>
           <span className={price}>
             ₹149<span className={unit}>/month</span>
           </span>
-          <p className={body}>Or ₹499 for 6 months. Includes a free premium overlay bundle credit for every match.</p>
-        </div>
+          <p className={text}>Or ₹499 for 6 months. Includes a free premium overlay bundle credit for every match.</p>
+        </article>
 
-        <div className={cn(plan, "border-line bg-surface")}>
-          <span className="text-[15px] font-extrabold">Overlay bundles</span>
+        <article data-anim="scale" className={cn(tile, plan)}>
+          <span className={name}>Overlay bundles</span>
           <span className={price}>
             <span className={unit}>from </span>₹49<span className={unit}>/match</span>
           </span>
-          <p className={body}>Premium broadcast graphics for the matches that matter most.</p>
-        </div>
+          <p className={text}>Premium broadcast graphics for the matches that matter most.</p>
+        </article>
       </div>
-      <div className="mt-6 flex justify-center">
-        <Link href="/pricing" className="text-[15px] font-bold text-accent-soft hover:text-primary-soft-fg">
-          See full pricing →
-        </Link>
-      </div>
+      <Link
+        data-anim="up"
+        href="/pricing"
+        className="inline-flex min-h-11 items-center self-start text-[15px] font-semibold text-[#5AA9F0] hover:text-[#7CC4FF]"
+      >
+        See full pricing →
+      </Link>
     </Section>
   );
 }

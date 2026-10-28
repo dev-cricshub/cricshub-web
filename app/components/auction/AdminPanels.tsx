@@ -8,7 +8,7 @@ import { normalizePhone, squadsToCsv } from "@/lib/auction/csv";
 import { shortSquads, squadOf, teamRemaining, teamSpent } from "@/lib/auction/engine";
 import { formatWhen, inr } from "@/lib/auction/format";
 import { auctionService } from "@/lib/auction/store";
-import type { Auction, LinkableTournament, PlayerRole, PlayerState } from "@/lib/auction/types";
+import type { Auction, LinkableTournament, PlayerRole, PlayerState, ServiceResult } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
 // Panels the auction admin (AuctionAdmin.tsx) shows once an auction is underway.
@@ -124,7 +124,7 @@ export function PlayerPool({ auction }: { auction: Auction }) {
                       </Badge>
                     )}
                     <span className="mt-0.5 block text-xs text-fg-subtle">
-                      {p.category} · {p.overseas ? "Overseas" : p.nationality} · {p.matches} matches
+                      {[p.category && `Cat ${p.category}`, p.nationality, p.matches ? `${p.matches} matches` : ""].filter(Boolean).join(" · ")}
                     </span>
                   </td>
                   <td className="px-3 py-2">{ROLE_LABEL[p.role]}</td>
@@ -181,7 +181,7 @@ export function Results({ auction }: { auction: Auction }) {
           Export CSV
         </Button>
       </div>
-      {auction.role !== "viewer" && auction.status !== "cancelled" && <TournamentHandover auction={auction} />}
+      {auction.role === "auctioneer" && <TournamentHandover auction={auction} />}
       {auction.teams.map((team) => {
         const squad = squadOf(auction, team.id);
         const short = squad.length < auction.rules.minSquad;
@@ -227,8 +227,8 @@ export function Results({ auction }: { auction: Auction }) {
 }
 
 /**
- * Auction + tournament mode on the Results tab: link a CricsHub tournament (also after the auction),
- * fill phones for sold players, and push teams and squads into the tournament (or retry a failed push).
+ * "Link to CricsHub" on the Results tab (auctioneer only, once the auction is completed): fill phones for sold
+ * players first, then link an existing tournament or create one. Either call links it and pushes the squads.
  */
 function TournamentHandover({ auction }: { auction: Auction }) {
   const toast = useToast();
@@ -240,10 +240,12 @@ function TournamentHandover({ auction }: { auction: Auction }) {
 
   const linked = !!auction.tournamentId;
   const done = auction.handoverStatus === "done";
+  const completed = auction.status === "completed";
   const soldNoPhone = auction.players.filter((p) => p.status === "sold" && !p.phone);
+  const blocked = soldNoPhone.length > 0;
 
   useEffect(() => {
-    if (linked) return;
+    if (linked || !completed) return;
     let alive = true;
     auctionService.linkableTournaments().then((r) => {
       if (alive) setTournaments(r.ok ? r.value.filter((t) => !t.linkedAuctionId || t.linkedAuctionId === auction.id) : []);
@@ -251,14 +253,16 @@ function TournamentHandover({ auction }: { auction: Auction }) {
     return () => {
       alive = false;
     };
-  }, [linked, auction.id]);
+  }, [linked, completed, auction.id]);
 
-  const act = async (fn: () => Promise<{ ok: boolean; error?: string }>, success: string) => {
+  /** The push can fail after the link succeeds; the document then says why. */
+  const act = async (fn: () => Promise<ServiceResult<Auction>>) => {
     setBusy(true);
     const result = await fn();
     setBusy(false);
-    if (!result.ok) toast(result.error ?? "That did not work.", { tone: "error" });
-    else toast(success, { tone: "success" });
+    if (!result.ok) toast(result.error, { tone: "error" });
+    else if (result.value.handoverStatus === "done") toast(`Squads added to ${result.value.tournament}.`, { tone: "success" });
+    else if (result.value.handoverStatus === "failed") toast(result.value.handoverError ?? "Squads were not added.", { tone: "error" });
   };
 
   const savePhone = async (playerId: string) => {
@@ -268,7 +272,11 @@ function TournamentHandover({ auction }: { auction: Auction }) {
       toast("Enter a 10-digit mobile number.", { tone: "error" });
       return;
     }
-    await act(() => auctionService.updatePlayer(auction.id, p.id, { ...p, phone }), `Phone saved for ${p.name}.`);
+    setBusy(true);
+    const result = await auctionService.updatePlayer(auction.id, p.id, { ...p, phone });
+    setBusy(false);
+    if (!result.ok) toast(result.error, { tone: "error" });
+    else toast(`Phone saved for ${p.name}.`, { tone: "success" });
   };
 
   if (done) {
@@ -281,87 +289,90 @@ function TournamentHandover({ auction }: { auction: Auction }) {
     );
   }
 
-  if (!linked) {
-    return (
-      <section className="space-y-2 rounded-card border border-line bg-surface p-4">
-        <h2 className="text-sm font-semibold">Play this tournament on CricsHub</h2>
-        <p className="text-sm text-fg-muted">
-          Create a CricsHub tournament, or link one you already have, to add these teams and squads to it
-          {auction.status === "completed" ? "." : " when the auction ends."}
-        </p>
-        {creating ? (
-          <CreateTournamentForm auction={auction} onCreated={() => setCreating(false)} onCancel={() => setCreating(false)} />
-        ) : (
-          <Button size="sm" variant="outline" icon="ri-add-line" onClick={() => setCreating(true)}>
-            Create a new tournament
-          </Button>
-        )}
-        {creating ? null : tournaments && tournaments.length === 0 ? (
-          <p className="text-sm text-fg-subtle">You have no open tournaments to link.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Select aria-label="Tournament" value={choice} onChange={(e) => setChoice(e.target.value)} className="max-w-xs">
-              <option value="">{tournaments ? "Choose a tournament" : "Loading…"}</option>
-              {(tournaments ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-            <Button
-              size="sm"
-              disabled={!choice || busy}
-              onClick={() => act(() => auctionService.linkTournament(auction.id, choice), "Tournament linked.")}
-            >
-              Link tournament
+  // Auctions linked under the old flow push their squads automatically when they complete.
+  if (!completed) {
+    return linked ? (
+      <p className="text-sm text-fg-muted">Teams and squads are added to {auction.tournament} automatically when the auction ends.</p>
+    ) : null;
+  }
+
+  const phoneList = blocked && (
+    <div className="space-y-2">
+      <p className="text-sm text-fg-muted">
+        Every sold player needs a phone number first. It finds their CricsHub account ({soldNoPhone.length} missing):
+      </p>
+      <ul className="space-y-2">
+        {soldNoPhone.map((p) => (
+          <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="w-40 truncate">{p.name}</span>
+            <Input
+              aria-label={`Phone for ${p.name}`}
+              inputMode="tel"
+              placeholder="10-digit mobile"
+              value={phones[p.id] ?? ""}
+              onChange={(e) => setPhones({ ...phones, [p.id]: e.target.value })}
+              className="max-w-[12rem]"
+            />
+            <Button size="xs" variant="outline" disabled={busy} onClick={() => savePhone(p.id)}>
+              Save
             </Button>
-          </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
+  if (linked) {
+    return (
+      <section className="space-y-3 rounded-card border border-line bg-surface p-4">
+        <h2 className="text-sm font-semibold">Linked to {auction.tournament}</h2>
+        {auction.handoverStatus === "failed" && (
+          <Alert tone="danger" title="Squads were not added to the tournament">
+            {auction.handoverError}
+          </Alert>
         )}
+        {phoneList}
+        <Button size="sm" disabled={busy || blocked} onClick={() => act(() => auctionService.handover(auction.id))}>
+          {auction.handoverStatus === "failed" ? "Retry" : "Add teams and squads to tournament"}
+        </Button>
       </section>
     );
   }
 
   return (
     <section className="space-y-3 rounded-card border border-line bg-surface p-4">
-      <h2 className="text-sm font-semibold">Linked to {auction.tournament}</h2>
-      {auction.handoverStatus === "failed" && (
-        <Alert tone="danger" title="Squads were not added to the tournament">
-          {auction.handoverError}
-        </Alert>
-      )}
-      {soldNoPhone.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm text-fg-muted">Add phone numbers for these players so they can be added to the tournament:</p>
-          <ul className="space-y-2">
-            {soldNoPhone.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="w-40 truncate">{p.name}</span>
-                <Input
-                  aria-label={`Phone for ${p.name}`}
-                  inputMode="tel"
-                  placeholder="10-digit mobile"
-                  value={phones[p.id] ?? ""}
-                  onChange={(e) => setPhones({ ...phones, [p.id]: e.target.value })}
-                  className="max-w-[12rem]"
-                />
-                <Button size="xs" variant="outline" disabled={busy} onClick={() => savePhone(p.id)}>
-                  Save
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {auction.status === "completed" ? (
-        <Button
-          size="sm"
-          disabled={busy || soldNoPhone.length > 0}
-          onClick={() => act(() => auctionService.handover(auction.id), `Squads added to ${auction.tournament}.`)}
-        >
-          {auction.handoverStatus === "failed" ? "Retry adding squads" : "Add teams and squads to tournament"}
-        </Button>
+      <h2 className="text-sm font-semibold">Link to CricsHub</h2>
+      <p className="text-sm text-fg-muted">
+        Add these teams and squads to a CricsHub tournament, so it can be scheduled and scored in the app. The auction doesn&apos;t create
+        fixtures.
+      </p>
+      {phoneList}
+      {creating ? (
+        <CreateTournamentForm auction={auction} disabled={blocked} onCreated={() => setCreating(false)} onCancel={() => setCreating(false)} />
       ) : (
-        <p className="text-sm text-fg-muted">Teams and squads are added to the tournament automatically when the auction ends.</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {tournaments && tournaments.length === 0 ? (
+            <span className="text-sm text-fg-subtle">You have no open tournaments to link.</span>
+          ) : (
+            <>
+              <Select aria-label="Existing tournament" value={choice} onChange={(e) => setChoice(e.target.value)} className="max-w-xs">
+                <option value="">{tournaments ? "Choose an existing tournament" : "Loading…"}</option>
+                {(tournaments ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.startDate ? ` · ${t.startDate}` : ""}
+                  </option>
+                ))}
+              </Select>
+              <Button size="sm" disabled={!choice || busy || blocked} onClick={() => act(() => auctionService.linkTournament(auction.id, choice))}>
+                Link and add squads
+              </Button>
+            </>
+          )}
+          <Button size="sm" variant="outline" icon="ri-add-line" disabled={blocked} onClick={() => setCreating(true)}>
+            Create a new tournament
+          </Button>
+        </div>
       )}
     </section>
   );

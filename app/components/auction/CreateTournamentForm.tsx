@@ -7,16 +7,18 @@ import { auctionService, type NewTournamentInput } from "@/lib/auction/store";
 import type { Auction } from "@/lib/auction/types";
 
 /**
- * Creates a CricsHub tournament from the auction and links it (same fields as creating one in the app).
- * If the auction has already ended, the server adds the teams and squads to it straight away.
- * A plain block rather than a <form>, so it can sit inside the setup wizard's Details form.
+ * Creates a CricsHub tournament from a completed auction, links it and adds the teams and squads in one call
+ * (same fields as creating one in the app). Format, ball, start and end date are required.
  */
 export function CreateTournamentForm({
   auction,
+  disabled,
   onCreated,
   onCancel,
 }: {
   auction: Auction;
+  /** e.g. while sold players still need phone numbers. */
+  disabled?: boolean;
   onCreated?: (auction: Auction) => void;
   onCancel?: () => void;
 }) {
@@ -29,7 +31,7 @@ export function CreateTournamentForm({
     overs: "20",
     startDate: "",
     endDate: "",
-    matchesPerDay: 1,
+    matchesPerDay: "",
     venues: "",
   });
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
@@ -40,7 +42,11 @@ export function CreateTournamentForm({
       return;
     }
     if (!form.startDate || !form.endDate) {
-      toast("Choose the tournament dates.", { tone: "error" });
+      toast("Choose the tournament start and end dates.", { tone: "error" });
+      return;
+    }
+    if (form.endDate < form.startDate) {
+      toast("The end date can't be before the start date.", { tone: "error" });
       return;
     }
     setBusy(true);
@@ -48,10 +54,10 @@ export function CreateTournamentForm({
       name: form.name.trim(),
       format: form.format,
       ballType: form.ballType,
-      type: form.overs.trim(),
+      type: form.overs.trim() || undefined,
       startDate: form.startDate,
       endDate: form.endDate,
-      matchesPerDay: form.matchesPerDay,
+      matchesPerDay: Number(form.matchesPerDay) || undefined,
       venues: form.venues.split(",").map((v) => v.trim()).filter(Boolean),
     });
     setBusy(false);
@@ -59,10 +65,11 @@ export function CreateTournamentForm({
       toast(result.error, { tone: "error" });
       return;
     }
-    const done = result.value.handoverStatus === "done";
-    toast(done ? `Created ${result.value.tournament} and added the squads.` : `Created ${result.value.tournament}.`, {
-      tone: "success",
-    });
+    if (result.value.handoverStatus === "failed") {
+      toast(result.value.handoverError ?? `Created ${result.value.tournament}, but the squads were not added.`, { tone: "error" });
+    } else {
+      toast(`Squads added to ${result.value.tournament}. Schedule matches from the tournament in the app.`, { tone: "success" });
+    }
     onCreated?.(result.value);
   };
 
@@ -90,7 +97,7 @@ export function CreateTournamentForm({
             </Select>
           )}
         </Field>
-        <Field label="Overs per innings">
+        <Field label="Overs per innings" optional>
           {({ id }) => <Input id={id} type="number" min={1} value={form.overs} onChange={(e) => set({ overs: e.target.value })} />}
         </Field>
         <Field label="Start date" required>
@@ -101,24 +108,16 @@ export function CreateTournamentForm({
             <Input id={id} type="date" value={form.endDate} min={form.startDate || undefined} onChange={(e) => set({ endDate: e.target.value })} />
           )}
         </Field>
-        <Field label="Matches per day">
-          {({ id }) => (
-            <Input
-              id={id}
-              type="number"
-              min={1}
-              value={form.matchesPerDay}
-              onChange={(e) => set({ matchesPerDay: Math.max(1, Number(e.target.value) || 1) })}
-            />
-          )}
+        <Field label="Matches per day" optional>
+          {({ id }) => <Input id={id} type="number" min={1} value={form.matchesPerDay} onChange={(e) => set({ matchesPerDay: e.target.value })} />}
         </Field>
         <Field label="Venues" optional hint="Separate with commas.">
           {({ id }) => <Input id={id} value={form.venues} onChange={(e) => set({ venues: e.target.value })} />}
         </Field>
       </div>
       <div className="flex gap-2">
-        <Button type="button" disabled={busy} onClick={submit}>
-          {auction.status === "completed" ? "Create tournament & add squads" : "Create tournament"}
+        <Button type="button" disabled={busy || disabled} onClick={submit}>
+          Create tournament and add squads
         </Button>
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>

@@ -223,39 +223,42 @@ export interface NewTournamentInput {
   name: string;
   format: "SINGLE_ROUND_ROBIN" | "DOUBLE_ROUND_ROBIN" | "CUSTOM";
   ballType: "TENNIS" | "LEATHER";
-  type: string;
+  /** Overs per innings (optional). */
+  type?: string;
   startDate: string;
   endDate: string;
-  matchesPerDay: number;
-  venues: string[];
+  matchesPerDay?: number;
+  venues?: string[];
 }
 
 type TeamInput = Omit<AuctionTeam, "id">;
 type PlayerInput = Omit<AuctionPlayer, "id" | "status" | "soldToTeamId" | "soldPrice" | "queueOrder">;
 
+/** name and shortName are required; the rest is optional. */
 function teamBody(team: TeamInput) {
   return {
     name: team.name,
     shortName: team.shortName,
-    ownerName: team.ownerName,
-    color: team.color,
+    ownerName: team.ownerName || undefined,
+    color: team.color || undefined,
     purseOverride: team.purseOverride,
     appTeamId: team.appTeamId ?? "",
     ownerPhone: team.ownerPhone ?? "",
   };
 }
 
+/** name, role and basePrice are required; blank optional fields are left out. */
 function playerBody(p: PlayerInput) {
+  const text = (v: string | null | undefined) => (v && v.trim() && v !== "—" ? v.trim() : undefined);
   return {
     name: p.name,
     role: p.role,
-    nationality: p.nationality,
-    overseas: p.overseas,
-    category: p.category,
     basePrice: p.basePrice,
-    matches: p.matches,
-    battingAvg: p.battingAvg === "—" ? "" : p.battingAvg,
-    bowlingAvg: p.bowlingAvg === "—" ? "" : p.bowlingAvg,
+    nationality: text(p.nationality),
+    category: text(p.category),
+    matches: p.matches || undefined,
+    battingAvg: text(p.battingAvg),
+    bowlingAvg: text(p.bowlingAvg),
     phone: p.phone ?? "",
   };
 }
@@ -272,13 +275,11 @@ export const auctionService = {
     const result = await request<ServerAuction>("POST", "", {
       body: {
         name: input?.name?.trim() || "Untitled auction",
-        tournament: input?.tournament?.trim() || "",
-        description: input?.description?.trim() || "",
-        startsAt: input?.startsAt || new Date(Date.now() + 7 * 86400000).toISOString(),
+        tournament: input?.tournament?.trim() || undefined,
+        description: input?.description?.trim() || undefined,
+        startsAt: input?.startsAt || undefined,
         timezone: input?.timezone || "Asia/Kolkata",
         visibility: input?.visibility || "private",
-        format: "player",
-        ...(input?.tournamentId ? { tournamentId: input.tournamentId } : {}),
       },
     });
     if (!result.ok) return result;
@@ -288,7 +289,7 @@ export const auctionService = {
   },
 
   saveDetails: (id: string, input: AuctionDraftInput) => mutate(id, "PATCH", "", { body: input }),
-  /** Link ("" to unlink) a CricsHub tournament; also allowed after the auction ends. */
+  /** Only once the auction is completed: links an existing CricsHub tournament and pushes the squads in one call. */
   linkTournament: (id: string, tournamentId: string) => mutate(id, "PATCH", "", { body: { tournamentId } }),
   saveRules: (id: string, rules: AuctionRules) => mutate(id, "PUT", "/rules", { body: rules }),
 
@@ -350,9 +351,9 @@ export const auctionService = {
   complete: (id: string) => mutate(id, "POST", "/complete", { idempotent: true }),
   cancel: (id: string) => mutate(id, "POST", "/cancel"),
   archive: (id: string) => mutate(id, "POST", "/archive"),
-  /** Push teams and squads into the linked tournament (runs automatically on complete; this retries). */
+  /** Retries pushing teams and squads into the linked tournament after a failed link. */
   handover: (id: string) => mutate(id, "POST", "/handover"),
-  /** Create a CricsHub tournament from this auction and link it; if the auction has ended, squads go in right away. */
+  /** Only once the auction is completed: creates a CricsHub tournament, links it and pushes the squads. */
   createTournament: (id: string, input: NewTournamentInput) => mutate(id, "POST", "/create-tournament", { body: input }),
 
   async linkableTournaments(): Promise<ServiceResult<LinkableTournament[]>> {
@@ -368,7 +369,7 @@ export const auctionService = {
   saveRegistration: (id: string, config: RegistrationConfig) => mutate(id, "PUT", "/registration", { body: config }),
   registrations: (id: string) => request<RegistrationsOverview>("GET", `/${id}/registrations`),
   registrationsCsv: (id: string) => csv(`/${id}/registrations.csv`),
-  approve: (id: string, registrationId: string, input: { category?: string; basePrice?: number; overseas?: boolean } = {}) =>
+  approve: (id: string, registrationId: string, input: { category?: string; basePrice?: number } = {}) =>
     mutate(id, "POST", `/registrations/${registrationId}/approve`, { body: input }),
   reject: (id: string, registrationId: string, reason?: string) =>
     mutate(id, "POST", `/registrations/${registrationId}/reject`, { body: { reason: reason?.trim() || null } }),

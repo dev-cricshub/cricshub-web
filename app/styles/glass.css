@@ -1,0 +1,232 @@
+/* Glass theme shared by /login (app/(site)/login, app/components/auth) and the landing page
+   (app/components/landing). Always dark: frosted panels over drifting colour orbs.
+   Colours are scoped to .ch-login / .ch-home; the ch-* animation and surface classes are shared. */
+.ch-login {
+  --ch-accent: #5aa9f0;
+  --ch-bg: #060a14;
+  background: var(--ch-bg);
+  color: #eef3fb;
+  color-scheme: dark;
+}
+.ch-login a {
+  color: #d6e2f5;
+}
+.ch-login a:hover {
+  color: #fff;
+}
+.ch-login input::placeholder {
+  color: #7f8ea8;
+}
+/* Text inputs show focus on their .ch-field wrapper instead. */
+.ch-login :is(button, a, input[type="checkbox"]):focus-visible {
+  outline: 2px solid #7cc4ff;
+  outline-offset: 3px;
+}
+
+.ch-glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.ch-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(32px) saturate(170%);
+  -webkit-backdrop-filter: blur(32px) saturate(170%);
+  box-shadow: 0 40px 120px -30px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+@keyframes ch-drift-a {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(120px, 80px) scale(1.15); }
+  100% { transform: translate(-60px, 160px) scale(0.95); }
+}
+@keyframes ch-drift-b {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-140px, -60px) scale(1.2); }
+  100% { transform: translate(80px, -120px) scale(1); }
+}
+@keyframes ch-drift-c {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-100px, 90px); }
+}
+@keyframes ch-rise {
+  from { opacity: 0; transform: translateY(24px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes ch-pop {
+  0% { opacity: 0; transform: scale(0.4); }
+  70% { transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ch-shine {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  60%, 100% { transform: translateX(320%) skewX(-20deg); }
+}
+@keyframes ch-caret {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 196, 255, 0); }
+  50% { box-shadow: 0 0 18px 2px rgba(124, 196, 255, 0.45); }
+}
+@keyframes ch-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ch-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.ch-orb-a { animation: ch-drift-a 22s ease-in-out infinite alternate; }
+.ch-orb-b { animation: ch-drift-b 26s ease-in-out infinite alternate; }
+.ch-orb-c { animation: ch-drift-c 18s ease-in-out infinite alternate; }
+.ch-ring { animation: ch-spin 60s linear infinite; transform-origin: center; }
+.ch-rise { animation: ch-rise 0.9s cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+.ch-pop { animation: ch-pop 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.ch-active { animation: ch-caret 1.4s ease-in-out infinite; }
+.ch-shake { animation: ch-shake 0.4s ease-in-out; }
+
+.ch-btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+}
+.ch-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px -10px rgba(90, 169, 240, 0.75);
+}
+.ch-btn:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: ch-shine 3.2s ease-in-out infinite;
+}
+
+.ch-field {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+.ch-field:focus-within {
+  border-color: rgba(124, 196, 255, 0.8) !important;
+  box-shadow: 0 0 0 4px rgba(90, 169, 240, 0.18);
+  background: rgba(255, 255, 255, 0.09) !important;
+}
+
+.ch-chip {
+  transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+.ch-chip:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Landing page ── */
+.ch-home {
+  --ch-accent: #5aa9f0;
+  background: #060a14;
+  color: #eef3fb;
+  color-scheme: dark;
+}
+.ch-home :is(a, button):focus-visible {
+  outline: 2px solid #7cc4ff;
+  outline-offset: 3px;
+}
+.ch-gl {
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+/* Standard glass tile: translucent fill + hairline border. */
+.ch-tile {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.ch-lift {
+  transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+}
+.ch-lift:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.09);
+}
+.ch-key {
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.ch-key:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.25);
+}
+
+@keyframes ch-home-drift-a {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(160px, 120px) scale(1.2); }
+}
+@keyframes ch-home-drift-b {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-160px, -100px) scale(1.15); }
+}
+@keyframes ch-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@keyframes ch-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+}
+.ch-home-orb-a { animation: ch-home-drift-a 26s ease-in-out infinite alternate; }
+.ch-home-orb-b { animation: ch-home-drift-b 30s ease-in-out infinite alternate; }
+.ch-float { animation: ch-float 7s ease-in-out infinite; }
+.ch-float2 { animation: ch-float 8.5s ease-in-out infinite; animation-delay: -3s; }
+.ch-live { animation: ch-pulse 1.8s ease-out infinite; }
+
+/* ── Scroll in/out motion (landing; driven by app/components/landing/ScrollMotion.tsx) ──
+   Mark an element with data-anim="up|left|right|scale|fade". ScrollMotion adds .ch-motion to the page
+   and toggles data-in as the element enters/leaves the viewport; data-pos says which edge it left by,
+   so it slides back out the way it came. Without JS (or with reduced motion) nothing is hidden.
+   The visible state sets no transform, so hover lifts (.ch-lift) keep working. */
+.ch-motion [data-anim] {
+  --ch-ease: cubic-bezier(0.2, 0.75, 0.2, 1);
+  transition:
+    opacity 0.8s var(--ch-ease),
+    transform 0.8s var(--ch-ease),
+    border-color 0.3s ease,
+    background 0.3s ease;
+  transition-delay: var(--d, 0ms);
+}
+/* Once in, hovers respond at normal speed with no stagger delay. */
+.ch-motion [data-anim][data-settled] {
+  transition-duration: 0.3s;
+  transition-delay: 0ms;
+}
+.ch-motion [data-anim]:not([data-in="true"]) {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+.ch-motion [data-anim="up"]:not([data-in="true"]) { transform: translateY(48px); }
+.ch-motion [data-anim="up"][data-pos="above"]:not([data-in="true"]) { transform: translateY(-48px); }
+.ch-motion [data-anim="left"]:not([data-in="true"]) { transform: translateX(-64px); }
+.ch-motion [data-anim="right"]:not([data-in="true"]) { transform: translateX(64px); }
+.ch-motion [data-anim="scale"]:not([data-in="true"]) { transform: translateY(32px) scale(0.92); }
+.ch-motion [data-anim="scale"][data-pos="above"]:not([data-in="true"]) { transform: translateY(-32px) scale(0.92); }
+
+/* First-paint entrance for the hero: pure CSS, so there's no flash before JS. "backwards" fill
+   (not "both") hands control back to the scroll motion once it finishes. */
+.ch-enter {
+  animation: ch-rise 0.9s cubic-bezier(0.2, 0.75, 0.2, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-home *,
+  .ch-home *::before,
+  .ch-home *::after,
+  .ch-login *,
+  .ch-login *::before,
+  .ch-login *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

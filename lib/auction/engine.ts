@@ -81,12 +81,6 @@ export function teamCanBid(auction: Auction, teamId: string, amount: number, pla
   if (squad.length >= auction.rules.maxSquad) {
     return { ok: false, reason: `${team.shortName} already has ${auction.rules.maxSquad} players.` };
   }
-  if (player.overseas && auction.rules.overseasLimit != null) {
-    const overseas = squad.filter((p) => p.overseas).length;
-    if (overseas >= auction.rules.overseasLimit) {
-      return { ok: false, reason: `${team.shortName} has reached the overseas limit of ${auction.rules.overseasLimit}.` };
-    }
-  }
   const limit = auction.rules.roleLimits.find((r) => r.role === player.role);
   if (limit?.max != null) {
     const count = squad.filter((p) => p.role === player.role).length;
@@ -114,15 +108,18 @@ export function validateConfig(auction: Auction): ConfigIssue[] {
   const warning = (step: ConfigIssue["step"], message: string) => issues.push({ step, message, severity: "warning" });
   const { rules } = auction;
   if (!auction.name.trim()) error("details", "Auction name is required.");
-  if (!auction.tournament.trim()) error("details", "Tournament name is required.");
-  if (!auction.startsAt || Number.isNaN(new Date(auction.startsAt).getTime())) {
-    error("details", "A valid auction date and time is required.");
+  if (auction.startsAt && Number.isNaN(new Date(auction.startsAt).getTime())) {
+    error("details", "The auction date and time is not valid.");
   }
   if (rules.pursePerTeam <= 0) error("rules", "Team purse must be greater than zero.");
   if (rules.minSquad < 1) error("rules", "Minimum squad size must be at least 1.");
   if (rules.maxSquad < rules.minSquad) error("rules", "Maximum squad size cannot be below the minimum.");
   if (!rules.increments.length || rules.increments.some((s) => s.step <= 0)) {
     error("rules", "Add at least one bid increment greater than zero.");
+  } else if (rules.increments.at(-1)?.upTo != null) {
+    error("rules", "Leave the last increment's amount empty so it covers every bid above.");
+  } else if (rules.increments.slice(0, -1).some((s, i, all) => s.upTo == null || (i > 0 && s.upTo <= (all[i - 1].upTo ?? 0)))) {
+    error("rules", "Increment amounts must go up from one row to the next.");
   }
   if (auction.teams.length < 2) error("teams", "Add at least two teams.");
   const shorts = new Set<string>();
@@ -201,13 +198,7 @@ export function defaultRules(): AuctionRules {
     ],
     minSquad: 11,
     maxSquad: 15,
-    overseasLimit: 2,
-    roleLimits: [
-      { role: "WK", min: 1, max: 3 },
-      { role: "BAT", min: 3, max: null },
-      { role: "BOWL", min: 3, max: null },
-      { role: "AR", min: 1, max: null },
-    ],
+    roleLimits: [],
     allowPurseOverride: true,
     reserveForMinSquad: true,
   };

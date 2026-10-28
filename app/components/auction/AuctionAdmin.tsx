@@ -13,7 +13,7 @@ import { Input, Modal, Switch, useToast, cn } from "@/app/components/ui";
 import { editable, highestBid, playerById, queue, squadOf, teamBudget, teamById, teamRemaining, teamSpent, validateConfig } from "@/lib/auction/engine";
 import { formatWhen, fromDateTimeLocal, inr, toDateTimeLocal } from "@/lib/auction/format";
 import { auctionService } from "@/lib/auction/store";
-import type { Auction, AuctionRules, AuctionTeam, LinkableTournament } from "@/lib/auction/types";
+import type { Auction, AuctionRules, AuctionTeam } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
 /*
@@ -273,13 +273,7 @@ export function AuctionAdmin({ auction }: { auction: Auction }) {
                 {auction.startsAt ? formatWhen(auction.startsAt, auction.timezone) : "Date not set"}
               </span>
               <span>{inr(auction.rules.pursePerTeam)} purse per team</span>
-              {auction.tournamentId ? (
-                <span>Tournament: {auction.tournament}</span>
-              ) : auction.tournament ? (
-                <span>{auction.tournament}</span>
-              ) : (
-                <span className="text-warning-soft-fg">No tournament linked</span>
-              )}
+              {auction.tournamentId ? <span>Tournament: {auction.tournament}</span> : auction.tournament ? <span>{auction.tournament}</span> : null}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1121,12 +1115,11 @@ function PlayersSection({ auction, onRegistrations }: { auction: Auction; onRegi
                     <tr key={p.id} className="border-t border-line transition-colors hover:bg-surface">
                       <td className="px-4 py-3 sm:px-[22px]">
                         <span className="font-semibold text-fg">{p.name}</span>
-                        <span className="ml-2 text-xs text-fg-subtle">{p.overseas ? "Overseas" : p.nationality}</span>
+                        {p.nationality && <span className="ml-2 text-xs text-fg-subtle">{p.nationality}</span>}
                         {p.source === "registration" && <span className="ml-2 text-xs font-semibold text-primary-soft-fg">Registered</span>}
-                        {auction.tournamentId && !p.phone && <span className="ml-2 text-xs text-danger">No phone</span>}
                       </td>
                       <td className="px-2 py-3 text-fg-lead">{ROLE_LABEL[p.role]}</td>
-                      <td className="px-2 py-3 font-mono text-xs text-fg-lead">{p.category}</td>
+                      <td className="px-2 py-3 font-mono text-xs text-fg-lead">{p.category || "—"}</td>
                       <td className="px-2 py-3 tabular-nums text-fg">{inr(p.basePrice)}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-right sm:px-[22px]">
                         {canEdit && (
@@ -1175,8 +1168,6 @@ function RulesSection({ auction }: { auction: Auction }) {
   const [rules, setRules] = useState<AuctionRules>(auction.rules);
   const [base, setBase] = useState<AuctionRules>(auction.rules);
   const [saving, setSaving] = useState(false);
-  // Locked rules can't be edited, so show everything.
-  const [more, setMore] = useState(!canEdit);
   const set = (patch: Partial<AuctionRules>) => setRules((r) => ({ ...r, ...patch }));
   const dirty = JSON.stringify(rules) !== JSON.stringify(base);
 
@@ -1214,23 +1205,12 @@ function RulesSection({ auction }: { auction: Auction }) {
       }
     >
       <fieldset disabled={!canEdit} className="grid gap-x-6 gap-y-[18px] px-4 py-5 sm:grid-cols-2 sm:px-[22px]">
-        <RuleField label="Purse per team">
+        <RuleField label="Purse per team" required>
           <FieldBox prefix="₹">
             <input inputMode="numeric" value={rules.pursePerTeam.toLocaleString("en-IN")} onChange={(e) => set({ pursePerTeam: num(e.target.value) })} className={inputCls} />
           </FieldBox>
         </RuleField>
-        <RuleField label="Overseas players per team">
-          <FieldBox>
-            <input
-              inputMode="numeric"
-              placeholder="No limit"
-              value={rules.overseasLimit ?? ""}
-              onChange={(e) => set({ overseasLimit: e.target.value === "" ? null : num(e.target.value) })}
-              className={inputCls}
-            />
-          </FieldBox>
-        </RuleField>
-        <RuleField label="Squad size">
+        <RuleField label="Squad size" required>
           <span className="flex gap-2">
             <FieldBox prefix="Min" grow>
               <input inputMode="numeric" value={rules.minSquad} onChange={(e) => set({ minSquad: num(e.target.value) })} className={inputCls} />
@@ -1309,26 +1289,33 @@ function RulesSection({ auction }: { auction: Auction }) {
           <span className="text-xs text-fg-subtle">Leave the last row&apos;s amount empty so it covers every bid above.</span>
         </div>
 
-        <div className="sm:col-span-2">
-          {canEdit ? (
-            <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} className="flex items-center gap-1 text-[13px] font-semibold text-fg-muted hover:text-fg">
-              <i className={cn("ri-arrow-right-s-line text-base transition-transform", more && "rotate-90")} aria-hidden />
-              Role limits
-            </button>
-          ) : (
-            <span className="text-[13px] font-semibold text-fg">Role limits</span>
-          )}
-          {more && (
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="flex flex-col gap-3 sm:col-span-2">
+          <Switch
+            checked={rules.roleLimits.length > 0}
+            onChange={(on) => set({ roleLimits: on ? PLAYER_ROLES.map((role) => ({ role, min: null, max: null })) : [] })}
+            label="Role limits"
+          />
+          <span className="-mt-1 text-xs text-fg-subtle">
+            Optional. A maximum stops a team buying more of that role; a minimum never blocks a sale, results flag teams below it.
+          </span>
+          {rules.roleLimits.length > 0 && (
+            <ul className="grid gap-2 sm:grid-cols-2">
               {PLAYER_ROLES.map((role) => {
-                const limit = rules.roleLimits.find((r) => r.role === role) ?? { role, min: 0, max: null };
+                const limit = rules.roleLimits.find((r) => r.role === role) ?? { role, min: null, max: null };
                 const write = (patch: Partial<typeof limit>) =>
                   set({ roleLimits: [...rules.roleLimits.filter((r) => r.role !== role), { ...limit, ...patch }] });
                 return (
                   <li key={role} className="grid grid-cols-[7rem_1fr_1fr] items-center gap-2">
                     <span className="text-[13px] text-fg-lead">{ROLE_LABEL[role]}</span>
                     <FieldBox prefix="Min" compact>
-                      <input inputMode="numeric" aria-label={`${ROLE_LABEL[role]} minimum`} value={limit.min} onChange={(e) => write({ min: num(e.target.value) })} className={inputCls} />
+                      <input
+                        inputMode="numeric"
+                        aria-label={`${ROLE_LABEL[role]} minimum`}
+                        placeholder="Any"
+                        value={limit.min ?? ""}
+                        onChange={(e) => write({ min: e.target.value === "" ? null : num(e.target.value) })}
+                        className={inputCls}
+                      />
                     </FieldBox>
                     <FieldBox prefix="Max" compact>
                       <input
@@ -1364,37 +1351,24 @@ function focusBasics() {
 }
 
 /**
- * The few details an auction can't be set up without, edited in place: name, tournament, when, and
- * how much each team gets. Description, visibility and home country stay in Settings.
+ * The basics, edited in place: name (the only required field), tournament label, when, and how much each
+ * team gets. Description, visibility and home country stay in Settings. Linking a CricsHub tournament is
+ * not part of setup: it happens on Results once the auction is completed.
  */
 function BasicsForm({ auction, onDone, onCancel }: { auction: Auction; onDone: () => void; onCancel?: () => void }) {
   const toast = useToast();
   const [name, setName] = useState(auction.name === "Untitled auction" ? "" : auction.name);
-  const [mode, setMode] = useState<"name" | "linked">(auction.tournamentId ? "linked" : "name");
-  const [tournament, setTournament] = useState(auction.tournamentId ? "" : auction.tournament);
-  const [tournamentId, setTournamentId] = useState(auction.tournamentId ?? "");
-  const [options, setOptions] = useState<LinkableTournament[] | null>(null);
+  const [tournament, setTournament] = useState(auction.tournament);
   const [starts, setStarts] = useState(toDateTimeLocal(auction.startsAt, auction.timezone));
   const [timezone, setTimezone] = useState(auction.timezone);
   const [purse, setPurse] = useState(auction.rules.pursePerTeam);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (mode !== "linked" || options) return;
-    auctionService
-      .linkableTournaments()
-      .then((r) => setOptions(r.ok ? r.value.filter((t) => !t.linkedAuctionId || t.linkedAuctionId === auction.id) : []));
-  }, [mode, options, auction.id]);
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const startsAt = fromDateTimeLocal(starts, timezone);
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Give your auction a name.";
-    if (mode === "name" && !tournament.trim()) next.tournament = "Enter the tournament this auction is for.";
-    if (mode === "linked" && !tournamentId) next.tournament = "Choose the CricsHub tournament.";
-    if (!startsAt) next.starts = "Pick the auction date and time.";
     if (!purse || purse <= 0) next.purse = "Enter how much each team can spend.";
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -1402,13 +1376,9 @@ function BasicsForm({ auction, onDone, onCancel }: { auction: Auction; onDone: (
     setSaving(true);
     const details = await auctionService.saveDetails(auction.id, {
       name: name.trim(),
-      tournament: mode === "linked" ? (options?.find((t) => t.id === tournamentId)?.name ?? auction.tournament) : tournament.trim(),
-      description: auction.description,
-      startsAt,
+      tournament: tournament.trim(),
+      startsAt: starts ? fromDateTimeLocal(starts, timezone) : null,
       timezone,
-      visibility: auction.visibility,
-      homeCountry: auction.homeCountry ?? "India",
-      tournamentId: mode === "linked" ? tournamentId : "",
     });
     if (!details.ok) {
       setSaving(false);
@@ -1428,23 +1398,9 @@ function BasicsForm({ auction, onDone, onCancel }: { auction: Auction; onDone: (
     onDone();
   };
 
-  const segment = (key: "name" | "linked", label: string) => (
-    <button
-      type="button"
-      aria-pressed={mode === key}
-      onClick={() => setMode(key)}
-      className={cn(
-        "h-8 flex-1 rounded-lg px-3 text-[13px] font-semibold transition-colors sm:flex-none",
-        mode === key ? "bg-raised text-white ring-1 ring-inset ring-line-accent" : "text-fg-muted hover:text-fg",
-      )}
-    >
-      {label}
-    </button>
-  );
-
   return (
     <form id={BASICS_ID} onSubmit={submit} noValidate className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
-      <RuleField label="Auction name" error={errors.name} full>
+      <RuleField label="Auction name" required error={errors.name} full>
         <FieldBox invalid={!!errors.name}>
           <input
             id={`${BASICS_ID}-name`}
@@ -1458,41 +1414,19 @@ function BasicsForm({ auction, onDone, onCancel }: { auction: Auction; onDone: (
         </FieldBox>
       </RuleField>
 
-      <RuleField label="Tournament" error={errors.tournament} full>
-        <span className="flex w-full gap-1 self-start rounded-[10px] border border-line bg-well p-1 sm:w-auto">
-          {segment("name", "Just a name")}
-          {segment("linked", "My CricsHub tournament")}
-        </span>
-        {mode === "name" ? (
-          <FieldBox invalid={!!errors.tournament}>
-            <input value={tournament} onChange={(e) => setTournament(e.target.value)} placeholder="e.g. City Premier League" maxLength={120} className={inputCls} />
-          </FieldBox>
-        ) : options && options.length === 0 ? (
-          <span className="text-[13px] text-fg-subtle">
-            You have no open tournaments on CricsHub. Use &ldquo;Just a name&rdquo;, or create one in Settings.
-          </span>
-        ) : (
-          <FieldBox invalid={!!errors.tournament}>
-            <select value={tournamentId} onChange={(e) => setTournamentId(e.target.value)} className={cn(inputCls, "h-full")}>
-              <option value="">{options ? "Choose a tournament" : "Loading your tournaments…"}</option>
-              {(options ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                  {t.startDate ? ` · ${t.startDate}` : ""}
-                </option>
-              ))}
-            </select>
-          </FieldBox>
-        )}
-        {mode === "linked" && <span className="text-xs text-fg-subtle">When the auction ends, its teams and squads are added to this tournament.</span>}
+      <RuleField label="Tournament" optional full>
+        <FieldBox>
+          <input value={tournament} onChange={(e) => setTournament(e.target.value)} placeholder="e.g. City Premier League" maxLength={120} className={inputCls} />
+        </FieldBox>
+        <span className="text-xs text-fg-subtle">Just a label for now. After the auction you can add the squads to a CricsHub tournament.</span>
       </RuleField>
 
-      <RuleField label="Auction date and time" error={errors.starts}>
-        <FieldBox invalid={!!errors.starts}>
+      <RuleField label="Auction date and time" optional>
+        <FieldBox>
           <input type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} className={inputCls} />
         </FieldBox>
       </RuleField>
-      <RuleField label="Time zone">
+      <RuleField label="Time zone" optional>
         <FieldBox>
           <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className={cn(inputCls, "h-full")}>
             {TIME_ZONES.map((z) => (
@@ -1502,7 +1436,7 @@ function BasicsForm({ auction, onDone, onCancel }: { auction: Auction; onDone: (
         </FieldBox>
       </RuleField>
 
-      <RuleField label="Purse per team" error={errors.purse}>
+      <RuleField label="Purse per team" required error={errors.purse}>
         <FieldBox prefix="₹" invalid={!!errors.purse}>
           <input
             inputMode="numeric"
@@ -1533,10 +1467,32 @@ function BasicsForm({ auction, onDone, onCancel }: { auction: Auction; onDone: (
 const inputCls =
   "h-full w-full min-w-0 flex-1 border-0 bg-transparent text-sm text-fg outline-none placeholder:text-fg-subtle focus-visible:outline-none disabled:text-fg-muted";
 
-function RuleField({ label, error, full, children }: { label: string; error?: string; full?: boolean; children: React.ReactNode }) {
+function RuleField({
+  label,
+  error,
+  full,
+  required,
+  optional,
+  children,
+}: {
+  label: string;
+  error?: string;
+  full?: boolean;
+  required?: boolean;
+  optional?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <label className={cn("flex flex-col gap-1.5", full && "sm:col-span-2")}>
-      <span className="text-[13px] font-semibold text-fg">{label}</span>
+      <span className="text-[13px] font-semibold text-fg">
+        {label}
+        {required && (
+          <span className="ml-0.5 text-danger" aria-hidden>
+            *
+          </span>
+        )}
+        {optional && <span className="ml-1.5 font-normal text-fg-subtle">(optional)</span>}
+      </span>
       {children}
       {error && (
         <span role="alert" className="flex items-center gap-1 text-xs font-medium text-danger">

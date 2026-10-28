@@ -147,3 +147,10 @@ export const QuoteIcon = ({ size = 28, className }: IconProps) => (
     <path d="M4 18v-5a6 6 0 0 1 6-6v3a3 3 0 0 0-3 3h3v5zm10 0v-5a6 6 0 0 1 6-6v3a3 3 0 0 0-3 3h3v5z" />
   </svg>
 );
+
+export const UndoIcon = (p: IconProps) => (
+  <Svg size={16} strokeWidth={2} {...p}>
+    <path d="M9 14 4 9l5-5" />
+    <path d="M4 9h11a5 5 0 0 1 0 10h-3" />
+  </Svg>
+);

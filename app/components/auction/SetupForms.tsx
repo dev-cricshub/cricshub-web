@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Select } from "@/app/components/auction/chrome";
-import { CreateTournamentForm } from "@/app/components/auction/CreateTournamentForm";
 import { ReviewQueue, useRegistrations } from "@/app/components/auction/Registrations";
-import { Button, Field, Input, Switch, Textarea, useToast } from "@/app/components/ui";
+import { Button, Field, Input, Textarea, useToast } from "@/app/components/ui";
 import { csvTemplate, normalizePhone } from "@/lib/auction/csv";
 import { fromDateTimeLocal, inr, toDateTimeLocal } from "@/lib/auction/format";
 import { auctionService, fetchMyCricshubTeams } from "@/lib/auction/store";
-import type { Auction, AuctionTeam, LinkableTournament, PlayerRole } from "@/lib/auction/types";
+import type { Auction, AuctionTeam, PlayerRole } from "@/lib/auction/types";
 import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 
 // Forms the auction admin (AuctionAdmin.tsx) opens in dialogs and sections.
@@ -16,7 +15,7 @@ import { PLAYER_ROLES, ROLE_LABEL } from "@/lib/auction/types";
 export const TEAM_COLORS = ["#1E88E5", "#E2B94B", "#C46B4E", "#8A9BA8", "#207BBE", "#273687", "#3D8F6E", "#A15C8A"];
 export const TIME_ZONES = ["Asia/Kolkata", "Asia/Dubai", "Asia/Colombo", "Europe/London", "Australia/Sydney"];
 
-/** Auction name, tournament, date and visibility. */
+/** Auction name, tournament, date and visibility. Only the name is required. */
 export function DetailsForm({
   auction,
   onSaved,
@@ -31,44 +30,26 @@ export function DetailsForm({
   const [starts, setStarts] = useState(toDateTimeLocal(auction.startsAt, auction.timezone));
   const [visibility, setVisibility] = useState(auction.visibility);
   const [homeCountry, setHomeCountry] = useState(auction.homeCountry ?? "India");
-  // "name": the tournament is just a label (auction only). "linked": a CricsHub tournament gets the squads.
-  const [mode, setMode] = useState<"name" | "linked">(auction.tournamentId ? "linked" : "name");
-  const [tournamentId, setTournamentId] = useState(auction.tournamentId ?? "");
-  const [options, setOptions] = useState<LinkableTournament[] | null>(null);
-  const [creatingTournament, setCreatingTournament] = useState(false);
-
-  useEffect(() => {
-    if (mode !== "linked" || options) return;
-    auctionService.linkableTournaments().then((r) =>
-      setOptions(r.ok ? r.value.filter((t) => !t.linkedAuctionId || t.linkedAuctionId === auction.id) : []),
-    );
-  }, [mode, options, auction.id]);
 
   return (
     <form
       className="max-w-2xl space-y-4"
       onSubmit={async (e) => {
         e.preventDefault();
-        const startsAt = fromDateTimeLocal(starts, timezone);
-        if (!startsAt) {
-          onSaved({ ok: false, error: "Choose an auction date and time." });
+        if (!name.trim()) {
+          onSaved({ ok: false, error: "Give your auction a name." });
           return;
         }
-        if (mode === "linked" && !tournamentId) {
-          onSaved({ ok: false, error: "Choose the CricsHub tournament to link." });
-          return;
-        }
-        const linkedName = options?.find((t) => t.id === tournamentId)?.name;
+        // Tournament linking is not part of setup: it happens on Results once the auction is completed.
         onSaved(
           await auctionService.saveDetails(auction.id, {
-            name,
-            tournament: mode === "linked" ? linkedName ?? auction.tournament : tournament,
-            description,
-            startsAt,
+            name: name.trim(),
+            tournament: tournament.trim(),
+            description: description.trim(),
+            startsAt: starts ? fromDateTimeLocal(starts, timezone) : null,
             timezone,
             visibility,
             homeCountry: homeCountry.trim() || "India",
-            tournamentId: mode === "linked" ? tournamentId : "",
           }),
         );
       }}
@@ -78,67 +59,17 @@ export function DetailsForm({
           <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} value={name} onChange={(e) => setName(e.target.value)} required />
         )}
       </Field>
-      <Field label="Where will the tournament be played?">
-        {({ id }) => (
-          <Select id={id} value={mode} onChange={(e) => setMode(e.target.value as "name" | "linked")}>
-            <option value="name">Somewhere else — just name the tournament</option>
-            <option value="linked">On CricsHub — add the squads to my tournament</option>
-          </Select>
-        )}
+      <Field label="Tournament" optional hint="Just a label. You can add the squads to a CricsHub tournament after the auction ends.">
+        {({ id }) => <Input id={id} value={tournament} onChange={(e) => setTournament(e.target.value)} />}
       </Field>
-      {mode === "name" ? (
-        <Field label="Tournament" required>
-          {({ id }) => <Input id={id} value={tournament} onChange={(e) => setTournament(e.target.value)} required />}
-        </Field>
-      ) : (
-        <Field
-          label="CricsHub tournament"
-          required
-          hint="When the auction ends, its teams and bought players are added to this tournament. Players then need phone numbers."
-        >
-          {({ id }) =>
-            options && options.length === 0 ? (
-              <p id={id} className="text-sm text-fg-subtle">
-                You have no open tournaments yet. Create one below.
-              </p>
-            ) : (
-              <Select id={id} value={tournamentId} onChange={(e) => setTournamentId(e.target.value)}>
-                <option value="">{options ? "Choose a tournament" : "Loading…"}</option>
-                {(options ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                    {t.startDate ? ` · ${t.startDate}` : ""}
-                  </option>
-                ))}
-              </Select>
-            )
-          }
-        </Field>
-      )}
-      {mode === "linked" &&
-        (creatingTournament ? (
-          <CreateTournamentForm
-            auction={auction}
-            onCreated={(updated) => {
-              setCreatingTournament(false);
-              setTournamentId(updated.tournamentId ?? "");
-              setOptions(null); // reload the picker, which now includes the new tournament
-            }}
-            onCancel={() => setCreatingTournament(false)}
-          />
-        ) : (
-          <Button type="button" size="sm" variant="outline" icon="ri-add-line" onClick={() => setCreatingTournament(true)}>
-            Create a new CricsHub tournament
-          </Button>
-        ))}
       <Field label="Description" optional>
         {({ id }) => <Textarea id={id} value={description} onChange={(e) => setDescription(e.target.value)} />}
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Date and time" required>
-          {({ id }) => <Input id={id} type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} required />}
+        <Field label="Date and time" optional>
+          {({ id }) => <Input id={id} type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} />}
         </Field>
-        <Field label="Time zone" required>
+        <Field label="Time zone" optional>
           {({ id }) => (
             <Select id={id} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
               {TIME_ZONES.map((z) => (
@@ -148,15 +79,15 @@ export function DetailsForm({
           )}
         </Field>
       </div>
-      <Field label="Who can open the spectator view" hint="Private keeps it with the auctioneer. Link means anyone with the spectator URL, once accounts exist.">
+      <Field label="Who can open the spectator view" optional hint="Registered players can always watch. Link lets any signed-in user with the spectator URL watch too.">
         {({ id }) => (
           <Select id={id} value={visibility} onChange={(e) => setVisibility(e.target.value as Auction["visibility"])}>
-            <option value="private">Private — auctioneer only</option>
+            <option value="private">Private — auctioneer and registered players</option>
             <option value="link">Anyone with the spectator link</option>
           </Select>
         )}
       </Field>
-      <Field label="Home country" hint="Registered players from any other country count as overseas.">
+      <Field label="Home country" optional hint="Default nationality for players who register themselves.">
         {({ id }) => <Input id={id} maxLength={64} value={homeCountry} onChange={(e) => setHomeCountry(e.target.value)} />}
       </Field>
       <p className="text-sm text-fg-muted">Format: player auction. Other formats are not part of this version.</p>
@@ -179,11 +110,10 @@ export function TeamEditor({
   const toast = useToast();
   const [form, setForm] = useState(initial);
   const [myTeams, setMyTeams] = useState<{ id: string; name: string }[] | null>(null);
-  const linked = !!auction.tournamentId;
 
   useEffect(() => {
-    if (linked) fetchMyCricshubTeams().then(setMyTeams);
-  }, [linked]);
+    fetchMyCricshubTeams().then(setMyTeams);
+  }, []);
 
   return (
     <form
@@ -221,50 +151,55 @@ export function TeamEditor({
         </Field>
         <Field label="Short name" required>
           {({ id }) => (
-            <Input id={id} value={form.shortName} maxLength={5} onChange={(e) => setForm({ ...form, shortName: e.target.value.toUpperCase() })} required />
+            <Input
+              id={id}
+              value={form.shortName}
+              maxLength={16}
+              placeholder="e.g. MUM"
+              onChange={(e) => setForm({ ...form, shortName: e.target.value.toUpperCase() })}
+              required
+            />
           )}
         </Field>
         <Field label="Representative" optional>
           {({ id }) => <Input id={id} value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} />}
         </Field>
-        <Field label="Colour">
-          {({ id }) => <Input id={id} type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="h-10 px-1" />}
+        <Field label="Colour" optional>
+          {({ id }) => (
+            <Input id={id} type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="h-10 px-1" />
+          )}
         </Field>
-        {linked && (
-          <Field label="Owner phone" optional hint="The owner will manage this team in the CricsHub app.">
-            {({ id }) => (
-              <Input
-                id={id}
-                inputMode="tel"
-                placeholder="10-digit mobile"
-                value={form.ownerPhone ?? ""}
-                onChange={(e) => setForm({ ...form, ownerPhone: e.target.value })}
-              />
-            )}
-          </Field>
-        )}
-        {linked && (
-          <Field label="CricsHub team" optional hint="Use one of your existing teams, or leave it to create a new one.">
-            {({ id }) => (
-              <Select
-                id={id}
-                value={form.appTeamId ?? ""}
-                onChange={(e) => {
-                  const picked = (myTeams ?? []).find((t) => t.id === e.target.value);
-                  // A linked team plays under its CricsHub name; use it here too.
-                  setForm({ ...form, appTeamId: picked?.id ?? null, name: picked ? picked.name : form.name });
-                }}
-              >
-                <option value="">Create a new team</option>
-                {(myTeams ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </Field>
-        )}
+        <Field label="Owner phone" optional hint="10-digit mobile. That user will manage the team on CricsHub after the auction.">
+          {({ id }) => (
+            <Input
+              id={id}
+              inputMode="tel"
+              placeholder="10-digit mobile"
+              value={form.ownerPhone ?? ""}
+              onChange={(e) => setForm({ ...form, ownerPhone: e.target.value })}
+            />
+          )}
+        </Field>
+        <Field label="CricsHub team" optional hint="Link one of your existing teams, or leave it to create a new one when the squads go to CricsHub.">
+          {({ id }) => (
+            <Select
+              id={id}
+              value={form.appTeamId ?? ""}
+              onChange={(e) => {
+                const picked = (myTeams ?? []).find((t) => t.id === e.target.value);
+                // A linked team plays under its CricsHub name; use it here too.
+                setForm({ ...form, appTeamId: picked?.id ?? null, name: picked ? picked.name : form.name });
+              }}
+            >
+              <option value="">Create a new team</option>
+              {(myTeams ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
       </div>
       {auction.rules.allowPurseOverride && (
         <Field label="Purse override (₹)" optional hint={`Leave empty to use ${inr(auction.rules.pursePerTeam)}.`} >
@@ -272,6 +207,7 @@ export function TeamEditor({
             <Input
               id={id}
               type="number"
+              min={1}
               value={form.purseOverride ?? ""}
               onChange={(e) => setForm({ ...form, purseOverride: e.target.value === "" ? null : Number(e.target.value) })}
             />
@@ -291,9 +227,8 @@ export function TeamEditor({
 const emptyPlayer = {
   name: "",
   role: "BAT" as PlayerRole,
-  nationality: "India",
-  overseas: false,
-  category: "B",
+  nationality: "",
+  category: "",
   basePrice: 20000,
   matches: 0,
   battingAvg: "",
@@ -349,7 +284,6 @@ export function PlayerEditor({ auction, playerId, onClose }: { auction: Auction;
           name: existing.name,
           role: existing.role,
           nationality: existing.nationality,
-          overseas: existing.overseas,
           category: existing.category,
           basePrice: existing.basePrice,
           matches: existing.matches,
@@ -364,6 +298,10 @@ export function PlayerEditor({ auction, playerId, onClose }: { auction: Auction;
       className="space-y-3"
       onSubmit={async (e) => {
         e.preventDefault();
+        if (!form.basePrice || form.basePrice <= 0) {
+          toast("Base price must be more than zero.", { tone: "error" });
+          return;
+        }
         const phone = normalizePhone(form.phone);
         if (phone === null) {
           toast("Phone must be a 10-digit mobile number.", { tone: "error" });
@@ -392,19 +330,21 @@ export function PlayerEditor({ auction, playerId, onClose }: { auction: Auction;
             </Select>
           )}
         </Field>
-        <Field label="Nationality">
-          {({ id }) => <Input id={id} value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} />}
+        <Field label="Nationality" optional>
+          {({ id }) => <Input id={id} placeholder="India" value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} />}
         </Field>
-        <Field label="Category">
-          {({ id }) => <Input id={id} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />}
+        <Field label="Category" optional hint="e.g. A, B or C">
+          {({ id }) => <Input id={id} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value.toUpperCase() })} />}
         </Field>
         <Field label="Base price (₹)" required>
           {({ id }) => (
-            <Input id={id} type="number" min={1} value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} />
+            <Input id={id} type="number" min={1} step={1} value={form.basePrice || ""} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} required />
           )}
         </Field>
-        <Field label="Matches">
-          {({ id }) => <Input id={id} type="number" min={0} value={form.matches} onChange={(e) => setForm({ ...form, matches: Number(e.target.value) })} />}
+        <Field label="Matches" optional>
+          {({ id }) => (
+            <Input id={id} type="number" min={0} value={form.matches || ""} onChange={(e) => setForm({ ...form, matches: Number(e.target.value) })} />
+          )}
         </Field>
         <Field label="Batting average" optional>
           {({ id }) => <Input id={id} value={form.battingAvg} onChange={(e) => setForm({ ...form, battingAvg: e.target.value })} />}
@@ -412,18 +352,12 @@ export function PlayerEditor({ auction, playerId, onClose }: { auction: Auction;
         <Field label="Bowling average" optional>
           {({ id }) => <Input id={id} value={form.bowlingAvg} onChange={(e) => setForm({ ...form, bowlingAvg: e.target.value })} />}
         </Field>
-        <Field
-          label="Phone"
-          optional={!auction.tournamentId}
-          required={!!auction.tournamentId}
-          hint={auction.tournamentId ? "Needed to add the player to the CricsHub tournament." : "Optional. Needed only if you later add the squads to a CricsHub tournament."}
-        >
-          {({ id }) => (
-            <Input id={id} inputMode="tel" placeholder="10-digit mobile" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          )}
-        </Field>
       </div>
-      <Switch checked={form.overseas} onChange={(overseas) => setForm({ ...form, overseas })} label="Overseas player" />
+      <Field label="Phone" optional hint="10-digit mobile, unique in this auction. Sold players need one before the squads can go to CricsHub.">
+        {({ id }) => (
+          <Input id={id} inputMode="tel" placeholder="10-digit mobile" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        )}
+      </Field>
       <div className="flex gap-2">
         <Button type="submit">{playerId ? "Save player" : "Add player"}</Button>
         <Button type="button" variant="ghost" onClick={onClose}>

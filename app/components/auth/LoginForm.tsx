@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { sendOtp, verifyOtp } from "@/lib/api";
 import type { LoginIntent } from "@/lib/session";
-import { Button, Checkbox, cn } from "@/app/components/ui";
+import { cn } from "@/app/components/ui";
 
 type Step = "phone" | "otp" | "success";
 
@@ -15,12 +15,47 @@ const COUNTRY_DATA = { code: "+91", label: "IN" };
 
 /** Heading and hand-off copy per feature, so the user knows why they are signing in and where they go next. */
 const COPY: Record<LoginIntent | "default", { title: string; lead: string; next: string }> = {
-  default: { title: "Log in or sign up", lead: "Score, stream and run auctions with one account.", next: "Taking you to CricsHub…" },
+  default: { title: "Log in or sign up", lead: "", next: "Taking you to your dashboard…" },
   stream: { title: "Log in to Stream Studio", lead: "Put live score overlays on your YouTube stream.", next: "Opening Stream Studio…" },
   auction: { title: "Log in to Auctions", lead: "Set up and run player auctions for your league.", next: "Opening Auctions…" },
   register: { title: "Sign in to register", lead: "Use the phone number on your CricsHub profile.", next: "Opening your registration…" },
   plans: { title: "Log in to buy a plan", lead: "Plans and bundles are linked to your account.", next: "Back to plans…" },
 };
+
+/** "9876543210" → "98765 43210" */
+const formatPhone = (p: string) => (p.length > 5 ? `${p.slice(0, 5)} ${p.slice(5)}` : p);
+
+function StepBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="self-start rounded-full border border-white/[0.16] bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white">
+      {children}
+    </span>
+  );
+}
+
+function Spin() {
+  return <i className="ri-loader-4-line animate-spin" aria-hidden />;
+}
+
+/** Primary CTA: accent fill when enabled, muted glass when not. */
+function PrimaryButton({ enabled, loading, className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { enabled: boolean; loading?: boolean }) {
+  return (
+    <button
+      {...props}
+      disabled={!enabled || loading}
+      className={cn(
+        "ch-btn flex h-[58px] items-center justify-center gap-2.5 rounded-2xl border text-base font-semibold",
+        enabled ? "border-transparent bg-[#5AA9F0] text-[#060A14]" : "cursor-not-allowed border-white/[0.12] bg-white/[0.06] text-[#9AA8BF]",
+        loading && "cursor-wait",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+const linkButton = "rounded-sm border-0 bg-transparent p-0 font-medium text-[#5AA9F0] underline underline-offset-2 hover:text-[#7CC4FF] disabled:opacity-50";
 
 /**
  * Phone + OTP sign-in. The same flow signs existing users in and creates new accounts.
@@ -39,14 +74,15 @@ export function LoginForm({
   const copy = COPY[intent ?? "default"];
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [otp, setOtp] = useState("");
+  const [otpFocused, setOtpFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [errorKey, setErrorKey] = useState(0);
   const [resendTimer, setResendTimer] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const otpRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Countdown timer for resend
@@ -66,8 +102,11 @@ export function LoginForm({
     setErrorKey((k) => k + 1); // re-trigger shake animation
   };
 
+  const phoneOk = phone.length === 10;
+  const otpOk = otp.length === OTP_LENGTH;
+
   const handleSendOtp = async () => {
-    if (phone.length < 10) {
+    if (!phoneOk) {
       fail("Please enter a valid 10-digit phone number");
       return;
     }
@@ -76,9 +115,10 @@ export function LoginForm({
     try {
       const res = await sendOtp(phone);
       if (res.success) {
+        setOtp("");
         setStep("otp");
         startResendTimer();
-        setTimeout(() => otpRefs.current[0]?.focus(), 100);
+        setTimeout(() => otpRef.current?.focus(), 100);
       } else {
         fail(res.message || "Failed to send OTP. Try again.");
       }
@@ -89,14 +129,13 @@ export function LoginForm({
     }
   };
 
-  const handleVerifyOtpWithValues = async (otpValues: string[]) => {
-    const otpString = otpValues.join("");
-    if (otpString.length < OTP_LENGTH) return;
+  const verify = async (code: string) => {
+    if (code.length < OTP_LENGTH) return;
 
     setError("");
     setLoading(true);
     try {
-      const res = await verifyOtp(phone, otpString, rememberMe);
+      const res = await verifyOtp(phone, code, rememberMe);
       if (res.success && res.data) {
         // JWT stored for Authorization header (fallback for cross-origin/local dev)
         // httpOnly cookie is also set by the backend for same-site production security
@@ -116,8 +155,8 @@ export function LoginForm({
         setTimeout(onSuccess, 900);
       } else {
         fail(res.message || "Invalid OTP. Please try again.");
-        setOtp(Array(OTP_LENGTH).fill(""));
-        otpRefs.current[0]?.focus();
+        setOtp("");
+        setTimeout(() => otpRef.current?.focus(), 0);
       }
     } catch {
       fail("Network error. Please try again.");
@@ -126,45 +165,12 @@ export function LoginForm({
     }
   };
 
-  const handleVerifyOtp = () => handleVerifyOtpWithValues(otp);
-
-  const handleOtpChange = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const newOtp = [...otp];
-    newOtp[index] = digit;
-    setOtp(newOtp);
+  // One hidden input drives the six boxes, so typing, paste and SMS autofill all work the same way.
+  const handleOtpChange = (value: string) => {
+    const code = value.replace(/\D/g, "").slice(0, OTP_LENGTH);
+    setOtp(code);
     setError("");
-
-    if (digit && index < OTP_LENGTH - 1) {
-      otpRefs.current[index + 1]?.focus();
-    }
-    if (digit && index === OTP_LENGTH - 1 && newOtp.every((d) => d !== "")) {
-      setTimeout(() => handleVerifyOtpWithValues(newOtp), 100);
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    } else if (e.key === "ArrowLeft" && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    } else if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
-      otpRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
-      .slice(0, OTP_LENGTH);
-    if (pasted.length === OTP_LENGTH) {
-      const newOtp = pasted.split("");
-      setOtp(newOtp);
-      otpRefs.current[OTP_LENGTH - 1]?.focus();
-      setTimeout(() => handleVerifyOtpWithValues(newOtp), 100);
-    }
+    if (code.length === OTP_LENGTH) setTimeout(() => verify(code), 100);
   };
 
   const resend = async () => {
@@ -177,59 +183,63 @@ export function LoginForm({
       fail("Network error. Please check your connection.");
     }
     setLoading(false);
-    setOtp(Array(OTP_LENGTH).fill(""));
+    setOtp("");
     startResendTimer();
-    otpRefs.current[0]?.focus();
+    otpRef.current?.focus();
   };
 
-  const ErrorText = ({ center }: { center?: boolean }) =>
+  const ErrorText = ({ id, center }: { id?: string; center?: boolean }) =>
     error ? (
       <p
+        id={id}
         key={errorKey}
         role="alert"
-        className={cn(
-          "mt-2.5 flex items-center gap-1.5 text-sm font-medium text-danger animate-fade-in",
-          center && "justify-center",
-        )}
+        className={cn("flex items-center gap-1.5 text-[13px] font-medium text-[#FCA5A5]", center && "justify-center")}
       >
         <i className="ri-error-warning-fill" aria-hidden />
         {error}
       </p>
     ) : null;
 
+  const heading = "m-0 font-display text-[40px] font-bold uppercase leading-none text-white sm:text-5xl [@media(max-height:820px)]:text-[40px]";
+  const lead = "m-0 text-[15px] leading-relaxed text-[#D6E2F5]";
+
   return (
     <div>
       {/* ── STEP: Phone ── */}
       {step === "phone" && (
         <form
-          className="animate-fade-up"
+          className="ch-rise flex flex-col gap-7 [@media(max-height:820px)]:gap-5"
           onSubmit={(e) => {
             e.preventDefault();
             handleSendOtp();
           }}
         >
-          <h2 className="font-display text-[1.75rem] font-bold uppercase leading-none text-fg sm:text-3xl">{copy.title}</h2>
-          <p className="mt-1.5 text-sm text-fg-muted">
-            {copy.lead} We&apos;ll text a 6-digit code to your phone. No password needed.
-          </p>
-          <p className="mt-1 text-xs text-fg-subtle">New to CricsHub? The same code creates your account.</p>
+          <div className="flex flex-col gap-3">
+            <StepBadge>Step 1 of 2</StepBadge>
+            <h2 className={heading}>{copy.title}</h2>
+            <p className={lead}>
+              {copy.lead && `${copy.lead} `}
+              We&apos;ll text you a 6-digit code. No password needed, and if you&apos;re new, the same code creates your account.
+            </p>
+          </div>
 
-          <div className="mt-7">
-            <label htmlFor="login-phone" className="mb-1.5 block text-sm font-medium text-fg">
+          <div className="flex flex-col gap-2.5">
+            <label htmlFor="login-phone" className="text-sm font-medium text-[#EEF3FB]">
               Phone number
             </label>
             <div
               key={errorKey}
               className={cn(
-                "flex h-12 items-center overflow-hidden rounded-xl border bg-surface shadow-xs transition-[border-color,box-shadow] duration-150 focus-within:border-primary focus-within:shadow-focus",
-                error ? "border-danger animate-shake" : "border-line-strong",
+                "ch-field flex h-[58px] overflow-hidden rounded-2xl border bg-white/[0.06]",
+                error ? "ch-shake border-[#F87171]/70" : "border-white/[0.18]",
               )}
             >
-              <span className="flex h-full items-center gap-1.5 border-r border-line bg-surface-2 px-3.5 text-sm font-medium text-fg-muted">
-                <span className="text-2xs font-semibold uppercase tracking-wider text-fg-subtle" aria-hidden>
+              <span className="flex items-center gap-2 border-r border-white/[0.14] px-4 text-base text-white">
+                <span className="text-xs font-semibold text-[#C3CEE0]" aria-hidden>
                   {COUNTRY_DATA.label}
                 </span>
-                <span className="font-mono tabular-nums">{COUNTRY_DATA.code}</span>
+                <span className="tabular-nums">{COUNTRY_DATA.code}</span>
               </span>
               <input
                 id="login-phone"
@@ -240,9 +250,7 @@ export function LoginForm({
                 inputMode="numeric"
                 autoComplete="tel-national"
                 placeholder="98765 43210"
-                maxLength={10}
-                pattern="[0-9]{10}"
-                value={phone}
+                value={formatPhone(phone)}
                 onPaste={(e) => {
                   e.preventDefault();
                   const digits = e.clipboardData.getData("text").replace(/\D/g, "");
@@ -255,45 +263,51 @@ export function LoginForm({
                   setError("");
                 }}
                 aria-invalid={!!error || undefined}
-                aria-describedby={error ? "login-error" : undefined}
-                className="h-full min-w-0 flex-1 bg-transparent px-3.5 text-base font-medium tracking-wide text-fg placeholder:font-normal placeholder:text-fg-subtle focus:outline-none"
+                aria-describedby="login-phone-hint"
+                className="min-w-0 flex-1 border-0 bg-transparent px-4 text-lg tracking-[0.05em] text-white tabular-nums outline-none"
                 disabled={loading}
               />
-              {phone.length === 10 && (
-                <i className="ri-checkbox-circle-fill mr-3.5 text-lg text-success animate-pop" aria-hidden />
-              )}
+              {phoneOk && <i className="ri-checkbox-circle-fill ch-pop mr-4 self-center text-lg text-[#34D399]" aria-hidden />}
             </div>
-            <div id="login-error">
-              <ErrorText />
-            </div>
+            {error ? (
+              <ErrorText id="login-phone-hint" />
+            ) : (
+              <span id="login-phone-hint" className="text-[13px] text-[#C3CEE0]">
+                {phoneOk ? "Looks good. We’ll send the code by SMS." : "Enter your 10-digit mobile number."}
+              </span>
+            )}
           </div>
 
-          <Checkbox
-            className="mt-5"
-            checked={rememberMe}
-            onChange={setRememberMe}
-            label="Keep me signed in for 30 days"
-          />
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[15px] text-[#D6E2F5]">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="m-0 h-5 w-5 accent-[#5AA9F0]"
+            />
+            Keep me signed in for 30 days
+          </label>
 
-          <Button
-            type="submit"
-            size="lg"
-            block
-            className="mt-6"
-            loading={loading}
-            disabled={phone.length < 10}
-            trailingIcon="ri-arrow-right-line"
-          >
-            {loading ? "Sending code…" : "Continue"}
-          </Button>
+          <PrimaryButton type="submit" enabled={phoneOk} loading={loading}>
+            {loading ? (
+              <>
+                <Spin /> Sending code…
+              </>
+            ) : (
+              <>
+                Send code
+                <i className="ri-arrow-right-line text-lg" aria-hidden />
+              </>
+            )}
+          </PrimaryButton>
 
-          <p className="mt-6 text-center text-xs leading-relaxed text-fg-subtle">
+          <p className="m-0 text-center text-[13px] leading-relaxed text-[#C3CEE0]">
             By continuing, you agree to CricsHub&apos;s{" "}
-            <Link href="/terms-of-service" className="rounded-sm font-medium text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Link href="/terms-of-service" className="underline underline-offset-2">
               Terms
             </Link>{" "}
             and{" "}
-            <Link href="/privacy-policy" className="rounded-sm font-medium text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Link href="/privacy-policy" className="underline underline-offset-2">
               Privacy Policy
             </Link>
             .
@@ -303,101 +317,121 @@ export function LoginForm({
 
       {/* ── STEP: OTP ── */}
       {step === "otp" && (
-        <div className="animate-fade-up">
-          <button
-            type="button"
-            onClick={() => {
-              setStep("phone");
-              setError("");
-              setOtp(Array(OTP_LENGTH).fill(""));
-            }}
-            className="-ml-1 mb-5 inline-flex items-center gap-1 rounded-md px-1 text-sm font-medium text-fg-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <i className="ri-arrow-left-line" aria-hidden />
-            Change number
-          </button>
-
-          <h2 className="font-display text-[1.75rem] font-bold uppercase leading-none text-fg sm:text-3xl">Enter verification code</h2>
-          <p className="mt-1.5 text-sm text-fg-muted">
-            Sent to{" "}
-            <span className="font-mono font-medium tabular-nums text-fg">
-              {COUNTRY_DATA.code} {phone}
-            </span>
-          </p>
-
-          <fieldset className="mt-7" onPaste={handleOtpPaste}>
-            <legend className="sr-only">6-digit verification code</legend>
-            <div key={errorKey} className={cn("flex justify-between gap-2 sm:gap-2.5", error && "animate-shake")}>
-              {otp.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => {
-                    otpRefs.current[index] = el;
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete={index === 0 ? "one-time-code" : "off"}
-                  maxLength={1}
-                  value={digit}
-                  aria-label={`Digit ${index + 1}`}
-                  onChange={(e) => handleOtpChange(index, e.target.value)}
-                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                  onFocus={(e) => e.target.select()}
-                  disabled={loading}
-                  className={cn(
-                    "aspect-square w-full min-w-0 max-w-[3.25rem] rounded-xl border bg-surface text-center font-mono text-xl font-semibold text-fg shadow-xs",
-                    "transition-[border-color,box-shadow,background-color] duration-150 focus:border-primary focus:shadow-focus focus:outline-none disabled:opacity-50",
-                    error ? "border-danger" : digit ? "border-primary/50 bg-primary-soft/50" : "border-line-strong",
-                  )}
-                />
-              ))}
-            </div>
-          </fieldset>
-
-          <ErrorText center />
-
-          <Button
-            size="lg"
-            block
-            className="mt-6"
-            onClick={handleVerifyOtp}
-            loading={loading}
-            disabled={otp.some((d) => d === "")}
-            icon={loading ? undefined : "ri-shield-check-line"}
-          >
-            {loading ? "Verifying…" : "Verify and continue"}
-          </Button>
-
-          {/* Resend */}
-          <div className="mt-6 flex h-6 items-center justify-center text-sm">
-            {resendTimer > 0 ? (
-              <p className="text-fg-subtle">
-                Resend code in <span className="font-medium tabular-nums text-fg-muted">{resendTimer}s</span>
-              </p>
-            ) : (
+        <form
+          className="ch-rise flex flex-col gap-7 [@media(max-height:820px)]:gap-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            verify(otp);
+          }}
+        >
+          <div className="flex flex-col gap-3">
+            <StepBadge>Step 2 of 2</StepBadge>
+            <h2 className={heading}>Enter your code</h2>
+            <p className={lead}>
+              Sent to{" "}
+              <span className="font-semibold tabular-nums text-white">
+                {COUNTRY_DATA.code} {formatPhone(phone)}
+              </span>
+              .{" "}
               <button
                 type="button"
-                onClick={() => void resend()}
-                disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded font-medium text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={linkButton}
+                onClick={() => {
+                  setStep("phone");
+                  setError("");
+                  setOtp("");
+                }}
               >
-                {loading && <i className="ri-loader-4-line animate-spin" aria-hidden />}
-                Resend code
+                Change number
               </button>
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            <label htmlFor="login-otp" className="text-sm font-medium text-[#EEF3FB]">
+              Verification code
+            </label>
+            <div key={errorKey} className={cn("relative", error && "ch-shake")}>
+              <div aria-hidden className="grid grid-cols-6 gap-2 sm:gap-2.5">
+                {Array.from({ length: OTP_LENGTH }, (_, i) => {
+                  const ch = otp.charAt(i);
+                  const active = otpFocused && !loading && i === Math.min(otp.length, OTP_LENGTH - 1);
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "flex h-14 items-center justify-center rounded-[14px] border-[1.5px] font-display text-[32px] font-bold text-white backdrop-blur-md transition-[border-color,background-color] duration-200 sm:h-[62px]",
+                        active && "ch-active",
+                        error
+                          ? "border-[#F87171]/70 bg-white/[0.05]"
+                          : active
+                            ? "border-[#5AA9F0] bg-white/[0.05]"
+                            : ch
+                              ? "border-white/[0.35] bg-white/[0.12]"
+                              : "border-white/[0.16] bg-white/[0.05]",
+                      )}
+                    >
+                      {ch}
+                    </div>
+                  );
+                })}
+              </div>
+              <input
+                id="login-otp"
+                ref={otpRef}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={OTP_LENGTH}
+                value={otp}
+                onChange={(e) => handleOtpChange(e.target.value)}
+                onFocus={() => setOtpFocused(true)}
+                onBlur={() => setOtpFocused(false)}
+                disabled={loading}
+                aria-invalid={!!error || undefined}
+                aria-describedby={error ? "login-otp-error" : undefined}
+                className="absolute inset-0 h-full w-full cursor-text border-0 text-base opacity-0"
+              />
+            </div>
+            <ErrorText id="login-otp-error" />
+          </div>
+
+          <PrimaryButton type="submit" enabled={otpOk} loading={loading}>
+            {loading ? (
+              <>
+                <Spin /> Verifying…
+              </>
+            ) : (
+              "Verify and continue"
+            )}
+          </PrimaryButton>
+
+          <div className="flex min-h-6 items-center justify-center text-sm text-[#C3CEE0]">
+            {resendTimer > 0 ? (
+              <span>
+                Didn&apos;t get it? Resend in <span className="tabular-nums">0:{String(resendTimer).padStart(2, "0")}</span>
+              </span>
+            ) : (
+              <span>
+                Didn&apos;t get it?{" "}
+                <button type="button" onClick={() => void resend()} disabled={loading} className={linkButton}>
+                  Resend code
+                </button>
+              </span>
             )}
           </div>
-        </div>
+        </form>
       )}
 
       {/* ── STEP: Success ── */}
       {step === "success" && (
-        <div className="py-8 text-center animate-fade-in" role="status">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-success-soft text-success ring-8 ring-success-soft/40 animate-pop">
-            <i className="ri-check-line text-4xl" aria-hidden />
-          </div>
-          <h2 className="font-display text-[1.75rem] font-bold uppercase leading-none text-fg sm:text-3xl">You&apos;re signed in</h2>
-          <p className="mt-1.5 flex items-center justify-center gap-2 text-sm text-fg-muted">
-            <i className="ri-loader-4-line animate-spin" aria-hidden />
+        <div className="ch-rise flex flex-col items-center gap-[18px] py-6 text-center" role="status">
+          <span className="ch-pop inline-flex h-[72px] w-[72px] items-center justify-center rounded-full border border-white/[0.22] bg-white/10 text-[#5AA9F0] shadow-[0_0_40px_-6px_#5AA9F0]">
+            <i className="ri-check-line text-[32px]" aria-hidden />
+          </span>
+          <h2 className={heading}>You&apos;re in</h2>
+          <p className={cn(lead, "flex items-center gap-2")}>
+            <Spin />
             {copy.next}
           </p>
         </div>

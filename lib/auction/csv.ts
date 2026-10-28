@@ -11,13 +11,13 @@ export interface CsvPreview {
   errors: CsvRowError[];
 }
 
-const HEADER = ["name", "role", "nationality", "overseas", "category", "basePrice", "matches", "battingAvg", "bowlingAvg", "phone"];
+const HEADER = ["name", "role", "nationality", "category", "basePrice", "matches", "battingAvg", "bowlingAvg", "phone"];
 
 export function csvTemplate(): string {
   return [
     HEADER.join(","),
-    "Arjun Mehta,BAT,India,no,A,100000,42,41.2,,9876543210",
-    "Liam Hart,BOWL,England,yes,A,100000,48,9.2,22.4,",
+    "Arjun Mehta,BAT,India,A,100000,42,41.2,,9876543210",
+    "Liam Hart,BOWL,England,A,100000,48,9.2,22.4,",
   ].join("\n");
 }
 
@@ -79,15 +79,32 @@ export function parsePlayerCsv(text: string, startOrder: number): CsvPreview {
   const players: CsvPreview["players"] = [];
   if (!lines.length) return { players, errors: [{ row: 1, message: "The file is empty." }] };
 
+  // With a header, columns are matched by name in any order (unknown ones ignored); without one, in HEADER order.
   let start = 0;
+  let columns = HEADER;
   const head = splitCsvLine(lines[0]).map((c) => c.toLowerCase());
-  if (head[0] === "name") start = 1;
+  if (head.includes("name")) {
+    start = 1;
+    columns = head.map((h) => HEADER.find((k) => k.toLowerCase() === h) ?? "");
+  }
 
   const seen = new Set<string>();
   for (let i = start; i < lines.length; i += 1) {
     const row = i + 1;
     const cells = splitCsvLine(lines[i]);
-    const [name = "", roleRaw = "", nationality = "India", overseasRaw = "no", category = "B", baseRaw = "", matchesRaw = "0", battingAvg = "", bowlingAvg = "", phoneRaw = ""] = cells;
+    const cell = (key: string) => {
+      const at = columns.indexOf(key);
+      return at >= 0 ? (cells[at] ?? "") : "";
+    };
+    const name = cell("name");
+    const roleRaw = cell("role");
+    const nationality = cell("nationality");
+    const category = cell("category");
+    const baseRaw = cell("basePrice");
+    const matchesRaw = cell("matches");
+    const battingAvg = cell("battingAvg");
+    const bowlingAvg = cell("bowlingAvg");
+    const phoneRaw = cell("phone");
     if (!name) {
       errors.push({ row, message: "Name is required." });
       continue;
@@ -113,16 +130,14 @@ export function parsePlayerCsv(text: string, startOrder: number): CsvPreview {
       continue;
     }
     seen.add(key);
-    const overseas = /^(y|yes|true|1|overseas)$/i.test(overseasRaw);
     const matches = Number(matchesRaw);
     players.push({
       name,
       role,
-      nationality: nationality || "India",
-      overseas,
-      category: (category || "B").toUpperCase(),
+      nationality,
+      category: category.toUpperCase(),
       basePrice,
-      matches: Number.isFinite(matches) ? matches : 0,
+      matches: matchesRaw && Number.isFinite(matches) ? matches : 0,
       battingAvg: battingAvg || "—",
       bowlingAvg: bowlingAvg || "—",
       phone: phone || null,

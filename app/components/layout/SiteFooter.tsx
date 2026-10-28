@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Logo } from "@/app/components/ui";
+import { Logo, cn } from "@/app/components/ui";
 import { EXPLORE_HREF, PLAY_STORE_URL, SOCIAL_LINKS, SUPPORT_EMAIL } from "@/lib/site";
 
 const COLUMNS = [
@@ -31,14 +31,20 @@ const COLUMNS = [
   },
 ];
 
-export default function SiteFooter() {
+export default function SiteFooter({
+  variant = "default",
+}: {
+  /** "glass" = landing page: translucent over the page's colour orbs */
+  variant?: "default" | "glass";
+}) {
+  const glass = variant === "glass";
   return (
-    <footer className="border-t border-line bg-surface">
-      <div className="container-page py-14 sm:py-16">
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
-          <div className="max-w-sm">
+    <footer className={cn("border-t", glass ? "relative mt-[120px] border-white/10 bg-[rgba(6,10,20,0.6)]" : "border-line bg-surface")}>
+      <div className={cn("py-14 sm:py-16", glass ? "mx-auto max-w-[1200px] px-6" : "container-page")}>
+        <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]" data-anim-stagger="90">
+          <div className="max-w-sm" data-anim="up">
             <Logo />
-            <p className="mt-4 text-sm leading-relaxed text-fg-muted">
+            <p className={cn("mt-4 text-sm leading-relaxed", glass ? "text-[#C3CEE0]" : "text-fg-muted")}>
               The all-in-one cricket platform for live scoring, tournament management and
               broadcast-quality live streaming.
             </p>
@@ -58,7 +64,12 @@ export default function SiteFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`CricsHub on ${s.name}`}
-                  className="flex h-10 w-10 items-center justify-center rounded-control border border-line text-lg text-fg-muted transition-colors hover:border-fg-subtle hover:text-fg"
+                  className={cn(
+                    "flex items-center justify-center border text-lg transition-colors",
+                    glass
+                      ? "ch-gl h-11 w-11 rounded-xl border-white/[0.14] bg-white/[0.08] text-white hover:bg-white/[0.14]"
+                      : "h-10 w-10 rounded-control border-line text-fg-muted hover:border-fg-subtle hover:text-fg",
+                  )}
                 >
                   <i className={s.icon} aria-hidden />
                 </a>
@@ -68,12 +79,15 @@ export default function SiteFooter() {
 
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-3">
             {COLUMNS.map((col) => (
-              <div key={col.title}>
-                <h3 className="text-sm font-semibold text-fg">{col.title}</h3>
+              <div key={col.title} data-anim="up">
+                <h3 className={cn("text-sm font-semibold", glass ? "text-white" : "text-fg")}>{col.title}</h3>
                 <ul className="mt-4 space-y-3">
                   {col.links.map((l) => (
                     <li key={l.label}>
-                      <Link href={l.href} className="break-all text-sm text-fg-muted transition-colors hover:text-fg">
+                      <Link
+                        href={l.href}
+                        className={cn("break-all text-sm transition-colors", glass ? "text-[#D6E2F5] hover:text-white" : "text-fg-muted hover:text-fg")}
+                      >
                         {l.label}
                       </Link>
                     </li>
@@ -84,7 +98,12 @@ export default function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-sm text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className={cn(
+            "mt-12 flex flex-col gap-2 border-t pt-6 text-sm sm:flex-row sm:items-center sm:justify-between",
+            glass ? "border-white/[0.08] text-[#C3CEE0]" : "border-line text-fg-subtle",
+          )}
+        >
           <p>© {new Date().getFullYear()} CricsHub. All rights reserved.</p>
           <p>Made for the cricket community.</p>
         </div>

@@ -42,9 +42,10 @@ export interface BidIncrement {
   step: number;
 }
 
+/** Optional per role: a max blocks more buys of that role; a min never blocks, results flag teams below it. */
 export interface RoleLimit {
   role: PlayerRole;
-  min: number;
+  min: number | null;
   max: number | null;
 }
 
@@ -54,8 +55,7 @@ export interface AuctionRules {
   increments: BidIncrement[];
   minSquad: number;
   maxSquad: number;
-  /** Null means no overseas cap. */
-  overseasLimit: number | null;
+  /** Optional; [] means no role limits. */
   roleLimits: RoleLimit[];
   /** When false, a team cannot be given a purse different from pursePerTeam. */
   allowPurseOverride: boolean;
@@ -84,7 +84,6 @@ export interface AuctionPlayer {
   name: string;
   role: PlayerRole;
   nationality: string;
-  overseas: boolean;
   category: string;
   basePrice: number;
   matches: number;
@@ -94,7 +93,7 @@ export interface AuctionPlayer {
   queueOrder: number;
   soldToTeamId: string | null;
   soldPrice: number | null;
-  /** 10-digit phone identifying the CricsHub user (auctioneer only); required when a tournament is linked. */
+  /** 10-digit phone identifying the CricsHub user (auctioneer only); needed for sold players before linking to CricsHub. */
   phone?: string | null;
   /** How the player entered the pool. */
   source?: "manual" | "csv" | "registration";
@@ -150,13 +149,13 @@ export interface Auction {
   revision?: number;
   /** Caller's role from the server. A player is anyone registered in the auction. */
   role?: "auctioneer" | "viewer" | "player" | null;
-  /** Linked CricsHub tournament (auction + tournament mode); null = auction only. */
+  /** CricsHub tournament linked after the auction completed; null until then. */
   tournamentId?: string | null;
   /** Push of teams and squads into the linked tournament. */
   handoverStatus?: "none" | "done" | "failed";
   handedOverAt?: string | null;
   handoverError?: string | null;
-  /** Players whose nationality differs count as overseas. */
+  /** Default nationality for self-registered players. */
   homeCountry?: string;
   /** Auctioneer only: registration settings and how many registrations wait for a decision. */
   registration?: RegistrationConfig | null;
@@ -220,7 +219,6 @@ export interface RegistrationRow {
   battingHand?: string;
   bowlingStyle?: string;
   nationality?: string;
-  overseas: boolean;
   matches?: number;
   battingAvg?: string;
   bowlingAvg?: string;
@@ -348,15 +346,14 @@ export interface LinkableTournament {
   linkedAuctionId: string | null;
 }
 
+/** Only the name is required. tournamentId is never sent during setup: linking happens after completion. */
 export interface AuctionDraftInput {
   name: string;
-  tournament: string;
-  description: string;
-  startsAt: string;
-  timezone: string;
-  visibility: AuctionVisibility;
-  /** "" unlinks; omitted leaves the link unchanged. */
-  tournamentId?: string;
+  tournament?: string;
+  description?: string;
+  startsAt?: string | null;
+  timezone?: string;
+  visibility?: AuctionVisibility;
   homeCountry?: string;
 }
 

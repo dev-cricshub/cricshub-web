@@ -36,19 +36,19 @@ export default function FAQSection() {
   const [open, setOpen] = useState(0);
 
   return (
-    <Section id="faq" className="max-w-[820px] pb-20 pt-[60px]">
-      <SectionHead
-        kicker="FAQ"
-        title={<span className="text-[clamp(2.4rem,5vw,3.4rem)]">Questions from the dressing room</span>}
-        className="mb-9"
-      />
-      <div className="flex flex-col gap-2.5">
+    <Section id="faq" className="flex flex-wrap gap-12">
+      <SectionHead kicker="FAQ" title="Questions from the dressing room" className="flex-[1_1_320px] self-start" />
+      <div className="flex min-w-0 flex-[2_1_520px] flex-col gap-2.5" data-anim-stagger="70">
         {FAQS.map((f, i) => {
           const isOpen = open === i;
           return (
             <div
               key={f.q}
-              className={cn("overflow-hidden rounded-[20px] border bg-surface transition-colors", isOpen ? "border-line-accent" : "border-line")}
+              data-anim="up"
+              className={cn(
+                "ch-gl overflow-hidden rounded-[18px] border transition-colors duration-[250ms]",
+                isOpen ? "border-white/[0.24] bg-white/10" : "border-white/[0.12] bg-white/[0.05]",
+              )}
             >
               <h3 className="m-0">
                 <button
@@ -57,17 +57,14 @@ export default function FAQSection() {
                   aria-expanded={isOpen}
                   aria-controls={`faq-a-${i}`}
                   onClick={() => setOpen(isOpen ? -1 : i)}
-                  className="flex min-h-16 w-full items-center justify-between gap-4 px-5 py-4 text-left text-base font-bold text-fg"
+                  className="flex min-h-[60px] w-full items-center justify-between gap-4 px-[22px] py-3 text-left text-base font-semibold text-white"
                 >
                   {f.q}
-                  <span
-                    className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-[transform,background-color,color] duration-[250ms]",
-                      isOpen ? "rotate-45 bg-primary text-white" : "bg-primary-soft text-accent-soft",
-                    )}
-                  >
-                    <PlusIcon />
-                  </span>
+                  <PlusIcon
+                    size={18}
+                    strokeWidth={2}
+                    className={cn("flex-none text-[#D6E2F5] transition-transform duration-[250ms]", isOpen && "rotate-45")}
+                  />
                 </button>
               </h3>
               <div
@@ -75,7 +72,7 @@ export default function FAQSection() {
                 role="region"
                 aria-labelledby={`faq-q-${i}`}
                 hidden={!isOpen}
-                className="px-5 pb-5 text-[15px] leading-relaxed text-fg-lead"
+                className="px-[22px] pb-5 text-[15px] leading-[1.65] text-[#C3CEE0]"
               >
                 {f.a}
               </div>
